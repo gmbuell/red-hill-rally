@@ -2,7 +2,7 @@
 
 The Rocket Rally fundraising site: static pages (`site/`, no build
 step) plus a small Cloudflare Worker (`worker/`) for Stripe Checkout,
-signed student links, and live tallies in a D1 database.
+short student links, and live tallies in a D1 database.
 
 **Live:** <https://red-hill-rally.gmbuell.workers.dev>
 
@@ -40,12 +40,9 @@ The site is currently wired to the Stripe **sandbox**: the full flow
 works end to end with test cards (`4242 4242 4242 4242`), and nothing
 charges real money. To flip to live:
 
-1. **Clear test data** —
-   `npx wrangler d1 execute red-hill-rally --remote --command "DELETE FROM donations; DELETE FROM links"`
-   (demo donations and any test student links).
-2. **Live Stripe key** — `npx wrangler secret put STRIPE_SECRET_KEY`
+1. **Live Stripe key** — `npx wrangler secret put STRIPE_SECRET_KEY`
    with the live-mode key (Dashboard → Developers → API keys).
-3. **Live webhook** — in the Stripe dashboard (live mode) add an
+2. **Live webhook** — in the Stripe dashboard (live mode) add an
    endpoint for
    `https://red-hill-rally.gmbuell.workers.dev/api/stripe/webhook`
    listening for **both** `checkout.session.completed` and
@@ -56,13 +53,21 @@ charges real money. To flip to live:
    secret. (The sandbox webhook endpoint can stay; it only ever
    receives sandbox events, and the worker holds one webhook secret at
    a time.)
-4. **Receipts** — turn on email receipts in Stripe settings (live
+3. **Receipts** — turn on email receipts in Stripe settings (live
    mode); the site promises one. Every receipt already carries the
    IRS-required donation acknowledgment ("No goods or services were
    provided…") via the charge description, so each emailed receipt
    doubles as the written acknowledgment donors need to deduct gifts
-   of $250+. Spot-check the first real receipt to confirm the line is
-   there.
+   of $250+.
+4. **Clear test data** (last, so nothing sneaks in between) —
+   `npx wrangler d1 execute red-hill-rally --remote --command "DELETE FROM donations; DELETE FROM links"`
+   (demo donations and any test student links).
+5. **Prove it live** — make one small real donation with a real card:
+   confirm the tally moves on the Rally Board, the email receipt
+   arrives with the acknowledgment line, and the gift appears in the
+   CSV export. Refund it from the Stripe dashboard if you like (the
+   refund won't remove the D1 row — delete it by session id, or just
+   let your own gift open the campaign).
 
 ## PTA operations
 
