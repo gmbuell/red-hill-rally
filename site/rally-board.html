@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Rally Board · Red Hill Elementary PTA</title>
+<meta name="description" content="Live Rocket Rally standings: campaign progress toward the goal, the classroom participation race, and the family honor roll.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cg transform='rotate(45 32 32)'%3E%3Cpath d='M25 28C20 32 17 37 16.5 43L25 38Z' fill='%230A2B4E'/%3E%3Cpath d='M39 28C44 32 47 37 47.5 43L39 38Z' fill='%230A2B4E'/%3E%3Cpath d='M32 6C36.5 11 39 18 39 26L39 38L25 38L25 26C25 18 27.5 11 32 6Z' fill='%230A2B4E'/%3E%3Cpath d='M27.5 38L36.5 38L34.5 43L29.5 43Z' fill='%230A2B4E'/%3E%3Ccircle cx='32' cy='21' r='4.8' fill='%23FFF'/%3E%3Cg stroke='%23B92025' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M28.5 46.5L28.5 51.5'/%3E%3Cpath d='M32 46.5L32 55'/%3E%3Cpath d='M35.5 46.5L35.5 51.5'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E">
+<link rel="preload" href="/fonts/nunitosans-var.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/oswald-600.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="board-page">
+
+<div class="board-rail" aria-hidden="true">
+  <svg class="rail-dart" viewBox="20 4 24 50">
+    <path d="M27 31 C24.5 33.5 23.2 36.5 23 40 C25 38.2 26 37.6 27 37.2 Z" fill="#FFFFFF"/>
+    <path d="M37 31 C39.5 33.5 40.8 36.5 41 40 C39 38.2 38 37.6 37 37.2 Z" fill="#FFFFFF"/>
+    <path d="M32 8 C35.5 13 37 19 37 26 L37 36 L27 36 L27 26 C27 19 28.5 13 32 8 Z" fill="#FFFFFF"/>
+    <circle cx="32" cy="20" r="3" fill="#0A2B4E"/>
+    <g stroke="#FFFFFF" stroke-linecap="round">
+      <path d="M32 40 L32 50" stroke-width="2.5"/>
+      <path d="M27.5 39 L27.5 45.5" stroke-width="2"/>
+      <path d="M36.5 39 L36.5 45.5" stroke-width="2"/>
+    </g>
+  </svg>
+</div>
+
+<header class="site-header">
+  <div class="wrap bar">
+    <a class="wordmark" href="/">
+      <span class="rh">Red Hill</span>
+      <span class="org">Elementary PTA</span>
+    </a>
+    <nav class="site-nav" aria-label="Site">
+      <a href="/">Home</a>
+      <a href="/rally-board" aria-current="page">Rally Board</a>
+      <a href="/student-link">Student Link</a>
+    </nav>
+    <a class="btn secondary small donate-cta" href="/donate">Donate <span class="arrow" aria-hidden="true">→</span></a>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="board-masthead">
+    <span class="label">Red Hill Elementary PTA &middot; Rocket Rally 2026</span>
+  </div>
+
+  <h1 class="board-title">The Rally Board</h1>
+  <p class="board-lede">Here&rsquo;s how the Rally is flying.</p>
+
+  <div class="board-totals" id="board-totals"></div>
+
+  <section aria-labelledby="race-head">
+    <h2 class="display" id="race-head" style="font-size:1.6rem;margin-bottom:0.4rem;">The Classroom Race</h2>
+    <ol class="race" id="race"></ol>
+  </section>
+
+  <section aria-labelledby="honor-head">
+    <div class="board-section-head">
+      <span class="script red" id="honor-head">Thank you!</span>
+      <p>To every name below, and to everyone who gave anonymously &mdash; our whole crew is grateful.</p>
+    </div>
+    <ul class="honor-roll" id="honor-roll"></ul>
+    <p class="thanks-sign">
+      <svg width="26" height="24" viewBox="35 38 22 20" aria-hidden="true">
+        <path d="M46 56c-5.5-4.5-9-8.5-9-13a5.5 5.5 0 0 1 9-3.5 5.5 5.5 0 0 1 9 3.5c0 4.5-3.5 8.5-9 13z" fill="none" stroke="#B92025" stroke-width="3" stroke-linejoin="round"/>
+      </svg>
+    </p>
+  </section>
+</main>
+
+<footer class="site-footer on-navy">
+  <span class="script">Thank you for investing in our students, staff &amp; school.</span>
+  <nav aria-label="Footer">
+    <a href="/">Home</a>
+    <a href="/donate">Donate</a>
+    <a href="/rally-board">Rally Board</a>
+    <a href="/student-link">Student Link</a>
+  </nav>
+  <p>Red Hill Elementary PTA &middot; Home of the Rockets &middot; Tustin Unified School District</p>
+</footer>
+
+<script src="js/data.js" defer></script>
+<script src="js/ui.js" defer></script>
+<script src="js/board.js" defer></script>
+</body>
+</html>

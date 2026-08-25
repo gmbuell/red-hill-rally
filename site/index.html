@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rocket Rally · Red Hill Elementary PTA</title>
+<meta name="description" content="The Rocket Rally is Red Hill Elementary PTA's one fall fundraiser — powering student support staff, STEM, arts, sports, the garden, and campus upgrades. Donations are tax-deductible.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cg transform='rotate(45 32 32)'%3E%3Cpath d='M25 28C20 32 17 37 16.5 43L25 38Z' fill='%230A2B4E'/%3E%3Cpath d='M39 28C44 32 47 37 47.5 43L39 38Z' fill='%230A2B4E'/%3E%3Cpath d='M32 6C36.5 11 39 18 39 26L39 38L25 38L25 26C25 18 27.5 11 32 6Z' fill='%230A2B4E'/%3E%3Cpath d='M27.5 38L36.5 38L34.5 43L29.5 43Z' fill='%230A2B4E'/%3E%3Ccircle cx='32' cy='21' r='4.8' fill='%23FFF'/%3E%3Cg stroke='%23B92025' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M28.5 46.5L28.5 51.5'/%3E%3Cpath d='M32 46.5L32 55'/%3E%3Cpath d='M35.5 46.5L35.5 51.5'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E">
+<link rel="preload" href="/fonts/nunitosans-var.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/oswald-600.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap bar">
+    <a class="wordmark" href="/">
+      <span class="rh">Red Hill</span>
+      <span class="org">Elementary PTA</span>
+    </a>
+    <nav class="site-nav" aria-label="Site">
+      <a href="/" aria-current="page">Home</a>
+      <a href="/rally-board">Rally Board</a>
+      <a href="/student-link">Student Link</a>
+    </nav>
+    <a class="btn secondary small donate-cta" href="/donate">Donate <span class="arrow" aria-hidden="true">→</span></a>
+  </div>
+</header>
+
+<main>
+  <section class="hero">
+    <div class="wrap">
+      <span class="kicker">It&rsquo;s launch season, Rockets!</span>
+      <h1>
+        <span class="visually-hidden">Rocket Rally 2026</span>
+        <svg class="arc-title" viewBox="0 0 560 118" aria-hidden="true">
+          <defs><path id="hero-arc" d="M 14 102 Q 280 44 546 102" fill="none"/></defs>
+          <text style="font-family:'Oswald','Arial Narrow',Impact,sans-serif;font-weight:600;font-size:64px;letter-spacing:0.03em;" fill="#0A2B4E">
+            <textPath href="#hero-arc" startOffset="50%" text-anchor="middle">ROCKET RALLY 2026</textPath>
+          </text>
+        </svg>
+      </h1>
+      <div class="trajectory" id="trajectory"></div>
+      <div class="trajectory-stats">
+        <div class="stat">
+          <span class="num money" id="stat-raised">$0</span>
+          <span class="label">Raised so far</span>
+        </div>
+        <div class="stat goal">
+          <span class="num money" id="stat-goal">$0</span>
+          <span class="label" id="stat-goal-label">Our goal</span>
+        </div>
+      </div>
+
+      <div class="cta-row">
+        <a class="btn" href="/donate">Give to the Rally <span class="arrow" aria-hidden="true">→</span></a>
+        <a class="btn secondary" href="/rally-board">See the Rally Board <span class="arrow" aria-hidden="true">→</span></a>
+      </div>
+      <p class="assurance">Donations are tax-deductible &middot; 501(c)(3) nonprofit &middot; EIN 33-0973857</p>
+    </div>
+    <div id="scatter"></div>
+  </section>
+
+  <section class="section" id="priorities">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="label">Where your gift goes</span>
+        <h2>Every dollar has a destination</h2>
+        <svg class="underline" viewBox="0 0 130 10" aria-hidden="true"><path d="M2 3.5 L6.5 3.9 L3.5 5 L7.5 5.4 L4.5 6.8 C20 8.8 42 9.2 64 8.6 C84 8 104 6.6 126 4.2 C127.5 4 127.5 3.4 126 3.3 C104 2.5 80 2.3 58 2.7 C38 3 18 3.2 2 3.5 Z" fill="#B92025"/></svg>
+        <p class="intro">Pick the one that speaks to you.</p>
+      </div>
+      <div class="priority-grid" id="priority-grid"></div>
+    </div>
+  </section>
+
+  <section class="section" id="parents">
+    <div class="wrap">
+      <div class="parent-callout">
+        <svg class="qr-demo" viewBox="0 0 84 84" aria-hidden="true">
+          <g fill="none" stroke="#0A2B4E" stroke-width="4">
+            <rect x="4" y="4" width="20" height="20"/>
+            <rect x="60" y="4" width="20" height="20"/>
+            <rect x="4" y="60" width="20" height="20"/>
+          </g>
+          <g fill="#0A2B4E">
+            <rect x="11" y="11" width="6" height="6"/>
+            <rect x="67" y="11" width="6" height="6"/>
+            <rect x="11" y="67" width="6" height="6"/>
+            <rect x="32" y="6" width="6" height="6"/><rect x="44" y="12" width="6" height="6"/>
+            <rect x="32" y="24" width="6" height="6"/><rect x="6" y="32" width="6" height="6"/>
+            <rect x="20" y="38" width="6" height="6"/><rect x="32" y="38" width="6" height="6"/>
+            <rect x="50" y="32" width="6" height="6"/><rect x="62" y="38" width="6" height="6"/>
+            <rect x="74" y="32" width="6" height="6"/><rect x="38" y="50" width="6" height="6"/>
+            <rect x="50" y="56" width="6" height="6"/><rect x="62" y="50" width="6" height="6"/>
+            <rect x="74" y="62" width="6" height="6"/><rect x="38" y="68" width="6" height="6"/>
+            <rect x="56" y="70" width="6" height="6"/><rect x="70" y="74" width="6" height="6"/>
+          </g>
+        </svg>
+        <div>
+          <h2>Parents &amp; guardians: get your student&rsquo;s Rally link</h2>
+          <p>Make a personal link and QR code for your student &mdash; every gift through it credits their name and classroom automatically.</p>
+        </div>
+        <a class="btn secondary" href="/student-link">Create your student&rsquo;s link <span class="arrow" aria-hidden="true">→</span></a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer on-navy">
+  <span class="script">Thank you for investing in our students, staff &amp; school.</span>
+  <nav aria-label="Footer">
+    <a href="/">Home</a>
+    <a href="/donate">Donate</a>
+    <a href="/rally-board">Rally Board</a>
+    <a href="/student-link">Student Link</a>
+  </nav>
+  <p>Red Hill Elementary PTA &middot; Home of the Rockets &middot; Tustin Unified School District</p>
+  <p>Red Hill PTA is a 501(c)(3) nonprofit, EIN 33-0973857 &mdash; donations are tax-deductible. Many employers match gifts; ask us how.</p>
+</footer>
+
+<script src="js/data.js" defer></script>
+<script src="js/ui.js" defer></script>
+<script src="js/home.js" defer></script>
+</body>
+</html>

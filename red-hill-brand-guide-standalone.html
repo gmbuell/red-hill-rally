@@ -6,7 +6,7 @@
 <title>Red Hill Brand Guide</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@600&family=Kaushan+Script&family=Fraunces:wght@900&family=Nunito+Sans:ital,wght@0,400;0,700;0,800;1,400&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@600&family=Kaushan+Script&family=Nunito+Sans:ital,wght@0,400;0,700;0,800;1,400&display=swap">
 <style>
   /* Single-theme light page: brand colors must render exactly as specified,
      so every color is painted explicitly and holds on any host ground. */
@@ -20,7 +20,6 @@
     --grey: #5A6474;
     --display: 'Oswald', 'Arial Narrow', Impact, sans-serif;
     --script: 'Kaushan Script', 'Brush Script MT', cursive;
-    --serif: 'Fraunces', 'Rockwell', Georgia, serif;
     --body: 'Nunito Sans', 'Segoe UI', Verdana, sans-serif;
   }
   @media (prefers-reduced-motion: no-preference) {
@@ -63,7 +62,7 @@
   }
   .toc a:hover, .toc a:focus-visible { color: var(--red); }
   .script { font-family: var(--script); color: var(--red); font-weight: 400; }
-  .serif-sub { font-family: var(--serif); color: var(--navy); font-weight: 900; }
+  .sub-head { font-family: var(--body); color: var(--navy); font-weight: 800; }
 
   /* ---------- hero ---------- */
   .hero {
@@ -74,15 +73,6 @@
     position: relative;
     overflow: hidden;
   }
-  .hero .wordmark-lead {
-    font-family: var(--serif);
-    font-weight: 900;
-    text-transform: none;
-    font-size: clamp(2.2rem, 6vw, 3.4rem);
-    color: var(--navy);
-    display: block;
-    margin-bottom: 0.25rem;
-  }
   .hero h1 {
     font-family: var(--display);
     font-weight: 600;
@@ -90,6 +80,16 @@
     color: var(--navy);
     text-transform: uppercase;
     line-height: 1;
+  }
+  .hero .wordmark-lead {
+    display: block;
+    letter-spacing: 0.04em;
+  }
+  .hero .guide-word {
+    display: block;
+    font-size: clamp(1.4rem, 3.8vw, 2.3rem);
+    letter-spacing: 0.16em;
+    margin-top: 0.5rem;
   }
   .hero .sub {
     display: block;
@@ -180,7 +180,7 @@
     min-width: 34rem;
   }
   table.contrast caption {
-    font-family: var(--serif); font-weight: 900; font-size: 1.15rem; color: var(--navy);
+    font-family: var(--body); font-weight: 800; font-size: 1.15rem; color: var(--navy);
     margin-bottom: 0.75rem;
   }
   table.contrast th, table.contrast td {
@@ -265,13 +265,13 @@
   /* ---------- grounds ---------- */
   .grounds { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: 1.5rem; margin-top: 1.75rem; }
   .ground-card { border: 2px solid var(--navy); padding: 1.6rem 1.7rem; }
-  .ground-card h3 { font-family: var(--serif); font-weight: 900; font-size: 1.2rem; margin-bottom: 0.6rem; }
+  .ground-card h3 { font-family: var(--body); font-weight: 800; font-size: 1.2rem; margin-bottom: 0.6rem; }
   .ground-card p { font-size: 1rem; margin: 0; max-width: none; }
 
   /* ---------- voice ---------- */
   .voice-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: 1.5rem; margin-top: 1.5rem; }
   .voice-card { border: 2px solid var(--navy); padding: 1.5rem 1.6rem; background: var(--paper); }
-  .voice-card h3 { font-family: var(--serif); font-weight: 900; color: var(--navy); font-size: 1.2rem; margin-bottom: 0.6rem; }
+  .voice-card h3 { font-family: var(--body); font-weight: 800; color: var(--navy); font-size: 1.2rem; margin-bottom: 0.6rem; }
   .voice-card ul { margin: 0; padding-left: 1.2rem; font-size: 1rem; }
   .voice-card li { margin-bottom: 0.45rem; }
   .voice-card .say { font-style: italic; color: var(--red); }
@@ -336,7 +336,7 @@
         </g>
       </g>
     </svg>
-    <h1><span class="wordmark-lead">Red Hill</span> Brand Guide</h1>
+    <h1><span class="wordmark-lead">Red Hill</span> <span class="guide-word">Brand Guide</span></h1>
     <span class="sub">Official Identity &amp; Style Guide &middot; Red Hill Elementary PTA</span>
   </div>
 </div>
@@ -469,7 +469,7 @@
   <div class="wrap">
     <div class="ribbon-head">
       <span class="num">02 &middot; Typography</span>
-      <h2>Four Voices, One Choir</h2>
+      <h2>Three Voices, One Choir</h2>
       <svg class="underline" viewBox="0 0 130 10" aria-hidden="true"><g transform="translate(130,0) scale(-1,1)"><path d="M2 3.5 L6.5 3.9 L3.5 5 L7.5 5.4 L4.5 6.8 C20 8.8 42 9.2 64 8.6 C84 8 104 6.6 126 4.2 C127.5 4 127.5 3.4 126 3.3 C104 2.5 80 2.3 58 2.7 C38 3 18 3.2 2 3.5 Z" fill="#B92025"/></g></svg>
     </div>
 
@@ -507,21 +507,21 @@
     </div>
 
     <div class="type-card">
-      <div class="role">Sub-headings &middot; Fraunces Black</div>
-      <div class="specimen serif-sub" style="font-size:clamp(1.5rem,3.5vw,2.2rem);">Create your account today, simplify your school year.</div>
-      <p class="notes">The friendly formal voice. Large, bold serif for prominent sub-headlines, introductory sentences, and the wordmark — anywhere the display caps would shout but body text would whisper. Always navy, sentence case, generous size.</p>
+      <div class="role">Body &amp; UI &middot; Nunito Sans</div>
+      <div class="specimen" style="font-size:1.05rem; max-width:36rem;">Once you're signed in, you can view the school calendar, join the PTA, sign up to volunteer, and more. <strong>Bold for emphasis</strong>, and <span style="font-weight:800; font-size:0.82rem; letter-spacing:0.18em; text-transform:uppercase;">SPACED CAPS FOR LABELS</span>.</div>
+      <p class="notes">The workhorse. All paragraphs, buttons, captions, and fine print. Rounded and warm, so even the fine print feels friendly. Labels get 800 weight, uppercase, and letter-spacing — slate for wayfinding (section numbers, captions, running labels), navy otherwise. A kicker introducing a headline may spend the composition's red moment (The Red Rule, Section 01) — as "The Big Idea" does above. Body text stays 16px or larger. One technical exception: hex values and code may render in the system monospace.</p>
+    </div>
+
+    <div class="type-card">
+      <div class="role">Sub-headings &middot; Nunito Sans ExtraBold</div>
+      <div class="specimen sub-head" style="font-size:clamp(1.5rem,3.5vw,2.2rem);">Create your account today, simplify your school year.</div>
+      <p class="notes">The body voice, speaking up. The same Nunito Sans as the paragraphs, pushed to ExtraBold at generous size for prominent sub-headlines and introductory sentences — anywhere the display caps would shout but body text would whisper. Always navy, always sentence case. Not a fourth face: sub-headings earn their weight from size and boldness, so the whole page below headline level stays one warm family.</p>
     </div>
 
     <div class="type-card">
       <div class="role">The Wordmark</div>
-      <div class="specimen serif-sub" style="font-size:clamp(2rem,5vw,3rem);">Red Hill</div>
-      <p class="notes">"Red Hill" set in Fraunces Black — navy on light grounds, white on navy — sentence case, optionally on the gentle arc. Minimum size 24px; keep clear space equal to the cap height of the R on all sides. As a logotype it's exempt from contrast requirements, but don't lean on that: set it on approved grounds anyway. This guide's own cover uses it above the display caps. A script "Red Hill" is a greeting flourish, never the wordmark.</p>
-    </div>
-
-    <div class="type-card">
-      <div class="role">Body &amp; UI &middot; Nunito Sans</div>
-      <div class="specimen" style="font-size:1.05rem; max-width:36rem;">Once you're signed in, you can view the school calendar, join the PTA, sign up to volunteer, and more. <strong>Bold for emphasis</strong>, and <span style="font-weight:800; font-size:0.82rem; letter-spacing:0.18em; text-transform:uppercase;">SPACED CAPS FOR LABELS</span>.</div>
-      <p class="notes">The workhorse. All paragraphs, buttons, captions, and fine print. Rounded and warm, so even the fine print feels friendly. Labels get 800 weight, uppercase, and letter-spacing — slate for wayfinding (section numbers, captions, running labels), navy otherwise. A kicker introducing a headline may spend the composition's red moment (The Red Rule, Section 01) — as "The Big Idea" does above. Body text stays 16px or larger. One technical exception: hex values and code may render in the system monospace.</p>
+      <div class="specimen" style="font-family:var(--display); font-weight:600; text-transform:uppercase; letter-spacing:0.04em; font-size:clamp(2rem,5vw,3rem); color:var(--navy);">Red Hill</div>
+      <p class="notes">"Red Hill" set in Oswald SemiBold caps with slight letter-spacing — navy on light grounds, white on navy — optionally on the gentle arc. What makes it the wordmark rather than a headline is discipline, not a different face: nothing else shares its line, and clear space equal to the cap height of the R holds on all sides. Minimum size 24px. As a logotype it's exempt from contrast requirements, but don't lean on that: set it on approved grounds anyway. This guide's own cover leads with it, "Brand Guide" stepped down beneath. A script "Red Hill" is a greeting flourish, never the wordmark.</p>
     </div>
 
     <div class="lockup-demo">
@@ -862,7 +862,7 @@
       <svg class="underline" viewBox="0 0 130 10" aria-hidden="true"><g transform="translate(0,10) scale(1,-1)"><path d="M2 3.5 L6.5 3.9 L3.5 5 L7.5 5.4 L4.5 6.8 C20 8.8 42 9.2 64 8.6 C84 8 104 6.6 126 4.2 C127.5 4 127.5 3.4 126 3.3 C104 2.5 80 2.3 58 2.7 C38 3 18 3.2 2 3.5 Z" fill="#B92025"/></g></svg>
     </div>
     <p>Every digital piece — web pages, forms, emails — meets <strong>WCAG 2.2 AA</strong>. Print doesn't answer to WCAG, but it answers to the same eyes: posters and flyers use the same approved color pairs and size minimums, so the standard travels with the brand. The palette was built so this happens by default — follow the roles above and you're compliant. The specifics (SC numbers refer to WCAG 2.2):</p>
-    <p><strong>Text contrast (SC 1.4.3).</strong> Body-size text uses only combinations rated 4.5:1 or better in the table in Section 01. Large text — 24px+ regular or 19px+ bold, which covers all Oswald headlines and Fraunces sub-headings — needs 3:1, and every approved pair clears that with room to spare. Script below 24px follows the 4.5:1 body rule like everything else (every approved pair already does). Two exemptions apply: the "Red Hill" wordmark and rocket logo lockup are logotypes with no contrast requirement, and text inside busy illustrated scenes is treated as part of the picture — but don't put information there in the first place.</p>
+    <p><strong>Text contrast (SC 1.4.3).</strong> Body-size text uses only combinations rated 4.5:1 or better in the table in Section 01. Large text — 24px+ regular or 19px+ bold, which covers all Oswald headlines and ExtraBold sub-headings — needs 3:1, and every approved pair clears that with room to spare. Script below 24px follows the 4.5:1 body rule like everything else (every approved pair already does). Two exemptions apply: the "Red Hill" wordmark and rocket logo lockup are logotypes with no contrast requirement, and text inside busy illustrated scenes is treated as part of the picture — but don't put information there in the first place.</p>
     <p><strong>Non-text contrast (SC 1.4.11).</strong> Anything a reader must identify to use or understand — button shapes, form fields, focus rings, program icons, chart segments — holds 3:1 against what it touches. In practice: navy components on light grounds (13:1+), navy hairlines separating adjacent light fills (as in the proportion bar above), and the two-ring focus rule from Section 04. Purely decorative elements — star scatter, sparks and trails, Sky Wash panels — are exempt and stay exempt only as long as they carry no information.</p>
     <p><strong>Text spacing.</strong> Body leading is at least 1.5 (this page uses 1.6), and the gap between paragraphs is at least half a line beyond normal leading, so paragraph breaks read as breaks — baseline-to-baseline across a paragraph boundary comes to roughly 1.6&times; a normal line advance. Never set body copy solid.</p>
     <p><strong>Minimum sizes.</strong> Body text 16px+, captions and labels 13px+ in slate, navy, or red, script 18px+, icons legible at 40px. Gold text exists only on navy, at any size.</p>

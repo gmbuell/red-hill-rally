@@ -1,0 +1,16 @@
+{
+  "name": "red-hill-rally",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "vitest run",
+    "audit": "bash scripts/lighthouse.sh"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.22.0",
+    "lighthouse": "^13.4.1",
+    "vitest": "^4.1.11",
+    "wrangler": "^4.0.0"
+  }
+}

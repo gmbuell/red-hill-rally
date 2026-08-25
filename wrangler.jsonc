@@ -1,0 +1,34 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "red-hill-rally",
+  "main": "worker/index.js",
+  "compatibility_date": "2026-08-15",
+  "compatibility_flags": ["nodejs_compat"],
+
+  // The finished design prototype is served as-is — no build step.
+  "assets": {
+    "directory": "./site",
+    "binding": "ASSETS",
+    "not_found_handling": "404-page",
+    // Browser navigations to unmatched paths are otherwise answered by
+    // the asset layer's 404 page without ever running the worker —
+    // these routes must reach the worker (short links, API-in-browser).
+    "run_worker_first": ["/l/*", "/api/*"]
+  },
+
+  // Donation records: one row per Stripe checkout session (id = session
+  // id, so webhook retries are idempotent), aggregated with SQL.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "red-hill-rally",
+      "database_id": "2b01227d-9ceb-499f-aff1-0ccd87902e11",
+      "migrations_dir": "./migrations"
+    }
+  ],
+
+  "observability": { "enabled": true, "head_sampling_rate": 1 }
+
+  // Secrets (wrangler secret put): ADMIN_KEY, STRIPE_SECRET_KEY,
+  // STRIPE_WEBHOOK_SECRET
+}

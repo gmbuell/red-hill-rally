@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Give to the Rally · Red Hill Elementary PTA</title>
+<meta name="description" content="Give to the Rocket Rally: pick a priority, choose an amount, and pay securely through Stripe. Donations to Red Hill Elementary PTA are tax-deductible.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cg transform='rotate(45 32 32)'%3E%3Cpath d='M25 28C20 32 17 37 16.5 43L25 38Z' fill='%230A2B4E'/%3E%3Cpath d='M39 28C44 32 47 37 47.5 43L39 38Z' fill='%230A2B4E'/%3E%3Cpath d='M32 6C36.5 11 39 18 39 26L39 38L25 38L25 26C25 18 27.5 11 32 6Z' fill='%230A2B4E'/%3E%3Cpath d='M27.5 38L36.5 38L34.5 43L29.5 43Z' fill='%230A2B4E'/%3E%3Ccircle cx='32' cy='21' r='4.8' fill='%23FFF'/%3E%3Cg stroke='%23B92025' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M28.5 46.5L28.5 51.5'/%3E%3Cpath d='M32 46.5L32 55'/%3E%3Cpath d='M35.5 46.5L35.5 51.5'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E">
+<link rel="preload" href="/fonts/nunitosans-var.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/oswald-600.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap bar">
+    <a class="wordmark" href="/">
+      <span class="rh">Red Hill</span>
+      <span class="org">Elementary PTA</span>
+    </a>
+    <nav class="site-nav" aria-label="Site">
+      <a href="/">Home</a>
+      <a href="/rally-board">Rally Board</a>
+      <a href="/student-link">Student Link</a>
+    </nav>
+    <a class="btn secondary small donate-cta" href="/donate" aria-current="page">Donate <span class="arrow" aria-hidden="true">→</span></a>
+  </div>
+</header>
+
+<main>
+  <div class="flow-header wrap-narrow">
+    <h1>Give to the Rally</h1>
+    <span class="script">Thank you for being part of this.</span>
+    <p class="assurance">Donations are tax-deductible &middot; 501(c)(3) nonprofit &middot; EIN 33-0973857</p>
+  </div>
+
+  <ol class="stepper wrap-narrow" aria-label="Donation steps">
+    <li data-step="1"><span class="dot"></span><span class="s-label">Priority</span></li>
+    <li data-step="2"><span class="dot"></span><span class="s-label">Amount</span></li>
+    <li data-step="3"><span class="dot"></span><span class="s-label">Your Rocket</span></li>
+    <li data-step="4"><span class="dot"></span><span class="s-label">Thanks</span></li>
+  </ol>
+
+  <form id="donate-form" class="wrap-narrow" novalidate>
+
+    <section class="flow-panel" data-panel="1">
+      <h2>What would you like to fund?</h2>
+      <div class="option-list" id="priority-options" role="radiogroup" aria-label="Priority to fund"></div>
+    </section>
+
+    <section class="flow-panel" data-panel="2" hidden>
+      <h2>How much feels right?</h2>
+      <p class="hint">Any amount is appreciated and makes an impact!</p>
+      <div class="amount-grid" id="amount-grid"></div>
+      <div class="field" id="custom-field">
+        <label for="custom-amount">Or choose your own amount</label>
+        <input type="number" id="custom-amount" inputmode="numeric" min="1" step="1" placeholder="$">
+        <p class="error">Please pick an amount or enter your own.</p>
+      </div>
+    </section>
+
+    <section class="flow-panel" data-panel="3" hidden>
+      <h2>Cheering for a Rocket? <span class="optional-note">(optional)</span></h2>
+
+      <div id="link-chip-holder" hidden></div>
+
+      <div id="manual-dedication">
+        <div class="field">
+          <label for="classroom">Classroom</label>
+          <select id="classroom">
+            <option value="">Choose a classroom&hellip;</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="student-name">Student name <span class="optional">&middot; optional</span></label>
+          <input type="text" id="student-name" autocomplete="off" maxlength="80" placeholder="e.g. Teddy Buell">
+        </div>
+      </div>
+    </section>
+
+    <section class="flow-panel" data-panel="4" hidden>
+      <h2>How should we thank you?</h2>
+      <p class="hint">Either way, your gift does the same good.</p>
+
+      <div class="option-list" role="radiogroup" aria-label="Recognition preference">
+        <label class="option-card" id="opt-public">
+          <input type="radio" name="visibility" value="public" checked>
+          <span class="name">List our name on the Rally Board</span>
+          <p class="desc">Your name appears on the public honor roll.</p>
+        </label>
+        <label class="option-card" id="opt-anon">
+          <input type="radio" name="visibility" value="anon">
+          <span class="name">Keep our gift anonymous</span>
+          <p class="desc">No public listing.</p>
+        </label>
+      </div>
+
+      <div class="field" id="donor-name-field">
+        <label for="donor-name">Your name, as it should appear</label>
+        <input type="text" id="donor-name" maxlength="80" placeholder="e.g. The Rodriguez Family" autocomplete="name">
+        <p class="error">Please tell us the name to list &mdash; or choose anonymous.</p>
+      </div>
+
+      <label class="check-row">
+        <input type="checkbox" id="match">
+        <span>My employer matches gifts &mdash; send me the details.</span>
+      </label>
+
+      <div class="summary-box" id="summary">
+        <span class="label">Your gift</span>
+        <p id="summary-text"></p>
+      </div>
+    </section>
+
+    <div class="flow-nav">
+      <button type="button" class="btn secondary" id="back-btn">Back</button>
+      <button type="button" class="btn" id="next-btn">Next <span class="arrow" aria-hidden="true">→</span></button>
+    </div>
+    <p class="fine-print" id="stripe-note" hidden>Secure payment by Stripe.</p>
+    <p class="form-error" id="checkout-error" role="alert" hidden></p>
+  </form>
+</main>
+
+<footer class="site-footer on-navy">
+  <span class="script">Thank you for investing in our students, staff &amp; school.</span>
+  <nav aria-label="Footer">
+    <a href="/">Home</a>
+    <a href="/donate">Donate</a>
+    <a href="/rally-board">Rally Board</a>
+    <a href="/student-link">Student Link</a>
+  </nav>
+  <p>Red Hill Elementary PTA &middot; Home of the Rockets &middot; Tustin Unified School District</p>
+</footer>
+
+<script src="js/data.js" defer></script>
+<script src="js/ui.js" defer></script>
+<script src="js/donate.js" defer></script>
+</body>
+</html>

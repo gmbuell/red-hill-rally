@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Your Student&rsquo;s Rally Link · Red Hill Elementary PTA</title>
+<meta name="description" content="Create a personal Rally link and QR code for your student — every gift through it credits their classroom in the Rocket Rally.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cg transform='rotate(45 32 32)'%3E%3Cpath d='M25 28C20 32 17 37 16.5 43L25 38Z' fill='%230A2B4E'/%3E%3Cpath d='M39 28C44 32 47 37 47.5 43L39 38Z' fill='%230A2B4E'/%3E%3Cpath d='M32 6C36.5 11 39 18 39 26L39 38L25 38L25 26C25 18 27.5 11 32 6Z' fill='%230A2B4E'/%3E%3Cpath d='M27.5 38L36.5 38L34.5 43L29.5 43Z' fill='%230A2B4E'/%3E%3Ccircle cx='32' cy='21' r='4.8' fill='%23FFF'/%3E%3Cg stroke='%23B92025' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M28.5 46.5L28.5 51.5'/%3E%3Cpath d='M32 46.5L32 55'/%3E%3Cpath d='M35.5 46.5L35.5 51.5'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E">
+<link rel="preload" href="/fonts/nunitosans-var.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/oswald-600.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap bar">
+    <a class="wordmark" href="/">
+      <span class="rh">Red Hill</span>
+      <span class="org">Elementary PTA</span>
+    </a>
+    <nav class="site-nav" aria-label="Site">
+      <a href="/">Home</a>
+      <a href="/rally-board">Rally Board</a>
+      <a href="/student-link" aria-current="page">Student Link</a>
+    </nav>
+    <a class="btn secondary small donate-cta" href="/donate">Donate <span class="arrow" aria-hidden="true">→</span></a>
+  </div>
+</header>
+
+<main>
+  <div class="flow-header wrap-narrow">
+    <h1>Your Student&rsquo;s Rally Link</h1>
+    <span class="script">Their whole crew, cheering.</span>
+    <p class="assurance">A personal giving link &amp; QR code for your student</p>
+  </div>
+
+  <div class="wrap-narrow">
+    <form id="link-form" novalidate>
+      <div class="field" id="f-name">
+        <label for="sl-name">Student name</label>
+        <input type="text" id="sl-name" autocomplete="off" maxlength="80" placeholder="e.g. Finn Buell">
+        <p class="error">Please enter your student&rsquo;s name.</p>
+      </div>
+      <div class="field" id="f-class">
+        <label for="sl-class">Classroom</label>
+        <select id="sl-class">
+          <option value="">Choose a classroom&hellip;</option>
+        </select>
+        <p class="error">Please choose your student&rsquo;s classroom.</p>
+      </div>
+      <button type="submit" class="btn">Create the link <span class="arrow" aria-hidden="true">→</span></button>
+      <p class="form-error" id="link-error" role="alert" hidden></p>
+    </form>
+
+    <div class="linkkit-result" id="result" hidden>
+      <div class="qr-panel">
+        <div class="qr-holder"><img id="qr-img" alt="QR code for your student's Rally link"></div>
+        <div>
+          <h3 id="result-title">Rally link</h3>
+          <p style="margin:0;font-size:0.95rem;">Every gift through it credits your Rocket automatically.</p>
+          <div class="link-line" id="link-line"></div>
+          <div class="btn-row">
+            <button type="button" class="btn small" id="copy-btn">Copy link</button>
+            <button type="button" class="btn secondary small" id="share-btn">Share <span class="arrow" aria-hidden="true">→</span></button>
+            <button type="button" class="btn secondary small" id="print-btn">Print a handout card</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div class="print-card" aria-hidden="true">
+  <div class="pc-script">Help our Rocket fly!</div>
+  <div class="pc-name"></div>
+  <div class="pc-class"></div>
+  <div class="pc-cta">Scan to give</div>
+  <img class="pc-qr" alt="">
+  <div class="pc-url"></div>
+  <div class="pc-foot">Rocket Rally &middot; Red Hill Elementary PTA fall fundraiser<br>
+  Donations are tax-deductible &middot; 501(c)(3) nonprofit &middot; EIN 33-0973857</div>
+</div>
+
+<footer class="site-footer on-navy">
+  <span class="script">Thank you for investing in our students, staff &amp; school.</span>
+  <nav aria-label="Footer">
+    <a href="/">Home</a>
+    <a href="/donate">Donate</a>
+    <a href="/rally-board">Rally Board</a>
+    <a href="/student-link">Student Link</a>
+  </nav>
+  <p>Red Hill Elementary PTA &middot; Home of the Rockets &middot; Tustin Unified School District</p>
+</footer>
+
+<script src="js/vendor/qrcode.js" defer></script>
+<script src="js/data.js" defer></script>
+<script src="js/ui.js" defer></script>
+<script src="js/student-link.js" defer></script>
+</body>
+</html>
