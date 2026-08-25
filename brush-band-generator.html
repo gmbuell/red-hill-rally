@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Brush Band Generator — Red Hill</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@600&family=Kaushan+Script&family=Nunito+Sans:ital,wght@0,400;0,700;0,800;1,400&display=swap">
+<style>
+  :root {
+    --navy: #0A2B4E;
+    --red: #B92025;
+    --gold: #F5B70F;
+    --sky: #E9F1F9;
+    --paper: #F7FAFD;
+    --white: #FFFFFF;
+    --grey: #5A6474;
+    --display: 'Oswald', 'Arial Narrow', Impact, sans-serif;
+    --script: 'Kaushan Script', 'Brush Script MT', cursive;
+    --body: 'Nunito Sans', 'Segoe UI', Verdana, sans-serif;
+  }
+  body {
+    background: var(--paper);
+    color: var(--navy);
+    font-family: var(--body);
+    font-size: 1.0625rem;
+    line-height: 1.6;
+    margin: 0;
+  }
+  .wrap { max-width: 62rem; margin: 0 auto; padding: 0 1.5rem 4rem; }
+
+  header { text-align: center; padding: 3.5rem 0 2.5rem; }
+  header .kicker {
+    font-weight: 800; font-size: 0.85rem; letter-spacing: 0.22em;
+    text-transform: uppercase; color: var(--grey); display: block; margin-bottom: 0.5rem;
+  }
+  header h1 {
+    font-family: var(--display); font-weight: 600; text-transform: uppercase;
+    font-size: clamp(2rem, 6vw, 3.2rem); line-height: 1.05; margin: 0;
+  }
+  header .script {
+    font-family: var(--script); color: var(--red);
+    font-size: clamp(1.3rem, 3vw, 1.7rem); display: block; margin-top: 0.5rem;
+  }
+
+  .panel { border: 2px solid var(--navy); padding: 2rem 1.5rem; }
+  .preview-panel { background: var(--sky); transition: background 0.15s ease; }
+  .preview-panel svg { display: block; width: 100%; height: auto; }
+
+  .controls {
+    background: var(--paper); border: 2px solid var(--navy); border-top: none;
+    padding: 1.4rem 1.5rem 1.6rem;
+    display: flex; flex-wrap: wrap; gap: 1.1rem 1.6rem; align-items: flex-end;
+  }
+  .field { display: flex; flex-direction: column; gap: 0.3rem; }
+  .field.grow { flex: 1 1 14rem; }
+  label, .field .lbl {
+    font-weight: 800; font-size: 0.78rem; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--grey);
+  }
+  input[type="text"], input[type="number"], select {
+    font-family: var(--body); font-size: 1rem; color: var(--navy);
+    background: var(--white); border: 2px solid var(--navy); border-radius: 0;
+    padding: 0.5rem 0.65rem;
+  }
+  input[type="number"] { width: 7rem; }
+  input:focus-visible, select:focus-visible, button:focus-visible, .thumb:focus-visible {
+    outline: 3px solid var(--navy); outline-offset: 3px;
+  }
+  .check { flex-direction: row; align-items: center; gap: 0.5rem; padding-bottom: 0.55rem; }
+  .check input { width: 1.1rem; height: 1.1rem; accent-color: var(--navy); }
+  .check label { letter-spacing: 0.12em; }
+
+  .btn-row { display: flex; flex-wrap: wrap; gap: 0.9rem; margin-top: 1.6rem; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 0.6rem;
+    background: var(--navy); color: var(--white);
+    font-family: var(--body); font-weight: 700; font-size: 1rem;
+    padding: 0.8rem 1.7rem; border-radius: 999px; border: none;
+    cursor: pointer; transition: background 0.15s ease;
+  }
+  .btn:hover, .btn:focus-visible { background: var(--red); }
+  .btn.secondary { background: transparent; color: var(--navy); border: 2px solid var(--navy); }
+  .btn.secondary:hover, .btn.secondary:focus-visible { background: var(--sky); }
+  .copied-note { font-size: 0.95rem; color: var(--grey); align-self: center; min-height: 1.2em; }
+
+  h2 {
+    font-family: var(--display); font-weight: 600; text-transform: uppercase;
+    font-size: clamp(1.3rem, 3.2vw, 1.7rem); margin: 3rem 0 0.4rem;
+  }
+  .section-note { color: var(--grey); font-size: 0.95rem; margin: 0 0 1.2rem; max-width: 44rem; }
+
+  .sheet { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(17rem, 100%), 1fr)); gap: 1rem; }
+  .thumb {
+    border: 2px solid var(--navy); background: var(--sky);
+    padding: 0.9rem 0.8rem 0.6rem; cursor: pointer; text-align: left;
+    font-family: var(--body); display: block; width: 100%;
+  }
+  .thumb:hover { background: var(--paper); }
+  .thumb svg { display: block; width: 100%; height: auto; }
+  .thumb .seed-tag {
+    font-size: 0.75rem; font-weight: 800; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--grey); margin-top: 0.4rem; display: block;
+  }
+
+  details { margin-top: 2.5rem; border: 2px solid var(--navy); background: var(--paper); }
+  summary {
+    cursor: pointer; padding: 0.8rem 1.4rem; font-weight: 800; font-size: 0.85rem;
+    letter-spacing: 0.18em; text-transform: uppercase;
+  }
+  details textarea {
+    display: block; width: calc(100% - 2.8rem); margin: 0 1.4rem 1.2rem;
+    height: 11rem; font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+    font-size: 0.8rem; color: var(--navy); background: var(--white);
+    border: 1px solid var(--grey); border-radius: 0; padding: 0.6rem;
+  }
+
+  .fine-print { margin-top: 2.5rem; border-left: 2px solid var(--navy); padding-left: 1rem; }
+  .fine-print .fp-label {
+    display: block; font-size: 0.78rem; font-weight: 800; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--grey); margin-bottom: 0.4rem;
+  }
+  .fine-print ul { margin: 0; padding-left: 1.1rem; font-size: 0.95rem; line-height: 1.55; max-width: 40rem; }
+  .fine-print li { margin-bottom: 0.35rem; }
+
+  footer { text-align: center; padding: 2rem 1.5rem 3rem; color: var(--grey); font-size: 0.95rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span class="kicker">Red Hill Elementary PTA &middot; The Spirit Kit, Appendix</span>
+    <h1>Brush Band Generator</h1>
+    <span class="script">never the same stroke twice</span>
+  </header>
+
+  <div class="panel preview-panel" id="previewPanel">
+    <svg id="preview" xmlns="http://www.w3.org/2000/svg" role="img"></svg>
+  </div>
+  <div class="controls">
+    <div class="field grow">
+      <label for="bandText">Band text</label>
+      <input type="text" id="bandText" value="CLICK TO SHOP!" maxlength="42" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="fill">Fill</label>
+      <select id="fill">
+        <option value="navy" selected>Red Hill Navy</option>
+        <option value="red">Rocket Red</option>
+        <option value="white">White (non-ice grounds only)</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="ground">Sits on</label>
+      <select id="ground">
+        <option value="ice">Ice Paper</option>
+        <option value="sky" selected>Sky Wash</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="size">Size</label>
+      <select id="size">
+        <option value="760x90" selected>Full width (760&times;90)</option>
+        <option value="1080x110">Poster (1080&times;110)</option>
+        <option value="480x72">Compact (480&times;72)</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="seed">Seed</label>
+      <input type="number" id="seed" value="17" min="1" max="999999" step="1">
+    </div>
+    <div class="field check">
+      <input type="checkbox" id="arrow" checked>
+      <label for="arrow">Arrow</label>
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn" type="button" id="newVariation">New variation</button>
+    <button class="btn secondary" type="button" id="copySvg">Copy SVG</button>
+    <button class="btn secondary" type="button" id="downloadSvg">Download SVG</button>
+    <span class="copied-note" id="copyNote" role="status" aria-live="polite"></span>
+  </div>
+
+  <h2>Six from the same brush</h2>
+  <p class="section-note">The band is drawn fresh from its seed every time — edge wobble, ragged ends, dry-brush streaks, and stray flecks all vary a little, and never enough to be a different device. Pick a stroke to use its seed.</p>
+  <div class="sheet" id="sheet"></div>
+
+  <details>
+    <summary>SVG markup</summary>
+    <textarea id="svgOut" readonly aria-label="Generated SVG markup"></textarea>
+  </details>
+
+  <div class="fine-print">
+    <span class="fp-label">House rules (from the brand guide)</span>
+    <ul>
+      <li>One band per piece, and a piece with a band skips the brush swipe.</li>
+      <li>Band text sets straight — the arch belongs to the ribbon banner.</li>
+      <li>A red band spends the composition's red allowance.</li>
+      <li>White bands live only on non-ice grounds where the edge can read — the tool enforces this.</li>
+      <li>Dry-brush streaks are painted in the ground color: regenerate the band if it moves to a different ground.</li>
+      <li>Keep the seed with the artwork — the same seed always redraws the same band.</li>
+    </ul>
+  </div>
+</div>
+<footer>Red Hill Elementary PTA &middot; A Spirit Kit tool &middot; The brush band frames action; see the brand guide for when to reach for it.</footer>
+
+<script>
+/* ============================================================
+   Brush band generator — seeded, deterministic, self-contained.
+   Same seed + same options always draws the same band, so a band
+   used in print can be reproduced exactly later.
+   ============================================================ */
+
+function mulberry32(seed) {
+  let a = seed >>> 0;
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const COLORS = {
+  navy: '#0A2B4E', red: '#B92025', white: '#FFFFFF',
+  ice: '#F7FAFD', sky: '#E9F1F9'
+};
+
+function generateBrushBand(opts) {
+  const o = Object.assign({
+    width: 760, height: 90, fill: COLORS.navy, ground: COLORS.sky, seed: 1
+  }, opts);
+  const rng = mulberry32(o.seed);
+  const W = o.width, H = o.height, s = H / 90;
+  const r1 = n => Math.round(n * 10) / 10;
+
+  // Band core: the vertical slab the stroke occupies. Ends are inset so
+  // ragged tips and flecks stay inside the viewBox.
+  const coreTop = H * 0.228, coreBot = H * 0.761;
+  const xL = (10 + rng() * 8) * s, xR = W - (10 + rng() * 8) * s;
+
+  // Edge wobble: two low-frequency sine components per edge, plus a slight
+  // shared bow. The envelope dampens wobble mid-band so text always clears.
+  function makeEdge() {
+    const A1 = (2.0 + rng() * 1.4) * s, f1 = 0.7 + rng() * 0.6, p1 = rng() * Math.PI * 2;
+    const A2 = (0.7 + rng() * 0.9) * s, f2 = 2.0 + rng() * 1.5, p2 = rng() * Math.PI * 2;
+    return x => {
+      const u = x / W;
+      const env = 0.65 + 0.35 * Math.abs(2 * u - 1);
+      return env * (A1 * Math.sin(2 * Math.PI * f1 * u + p1) + A2 * Math.sin(2 * Math.PI * f2 * u + p2));
+    };
+  }
+  const bow = (rng() * 5 - 2.5) * s;
+  const bowAt = x => bow * Math.sin(Math.PI * x / W);
+  const topOff = makeEdge(), botOff = makeEdge();
+  const taperL = rng() * 4 * s, taperR = rng() * 4 * s;
+  const taperAt = x => {
+    const dl = (x - xL) / (W * 0.06), dr = (xR - x) / (W * 0.06);
+    if (dl < 1) return taperL * (1 - dl);
+    if (dr < 1) return taperR * (1 - dr);
+    return 0;
+  };
+  const topY = x => coreTop + topOff(x) + bowAt(x) + taperAt(x);
+  const botY = x => coreBot + botOff(x) + bowAt(x) - taperAt(x);
+
+  // Sample the edges (slight x jitter keeps the rhythm un-mechanical).
+  const N = Math.max(14, Math.round(W / 34));
+  const xs = [];
+  for (let i = 0; i <= N; i++) {
+    let x = xL + (xR - xL) * i / N;
+    if (i > 0 && i < N) x += (rng() * 6 - 3) * s;
+    xs.push(x);
+  }
+  const top = xs.map(x => [x, topY(x)]);
+  const bot = xs.map(x => [x, botY(x)]).reverse();
+
+  // End bevels: a brush lifts on a slant, so each end's top and bottom
+  // corners land at different x. Positive shear pushes the top corner out.
+  const shearL = (rng() * 18 - 9) * s, shearR = (rng() * 18 - 9) * s;
+  top[0][0] += shearL / 2;
+  bot[bot.length - 1][0] -= shearL / 2;
+  top[top.length - 1][0] += shearR / 2;
+  bot[0][0] -= shearR / 2;
+
+  function smoothTo(pts) {
+    let d = '';
+    for (let i = 1; i < pts.length - 1; i++) {
+      const mx = (pts[i][0] + pts[i + 1][0]) / 2, my = (pts[i][1] + pts[i + 1][1]) / 2;
+      d += `Q${r1(pts[i][0])} ${r1(pts[i][1])} ${r1(mx)} ${r1(my)} `;
+    }
+    const last = pts[pts.length - 1];
+    return d + `L${r1(last[0])} ${r1(last[1])} `;
+  }
+
+  // Ragged ends: 3-5 zigzag notches walking the beveled line between the
+  // two sheared corners of an end.
+  function raggedEnd(from, to, dir) {
+    const k = 3 + Math.floor(rng() * 3);
+    let d = '';
+    for (let i = 1; i <= k; i++) {
+      const t = i / (k + 1);
+      const xBase = from[0] + (to[0] - from[0]) * t;
+      const y = from[1] + (to[1] - from[1]) * t + (rng() * 5 - 2.5) * s;
+      const out = (i % 2 === 1) ? (4 + rng() * 5) : -(2.5 + rng() * 3.5);
+      d += `L${r1(xBase + dir * out * s)} ${r1(y)} `;
+    }
+    return d;
+  }
+
+  let d = `M${r1(top[0][0])} ${r1(top[0][1])} `;
+  d += smoothTo(top);
+  d += raggedEnd(top[top.length - 1], bot[0], 1);
+  d += `L${r1(bot[0][0])} ${r1(bot[0][1])} `;
+  d += smoothTo(bot);
+  d += raggedEnd(bot[bot.length - 1], top[0], -1);
+  d += 'Z';
+
+  // Dry-brush streaks: ground-colored slivers hugging an edge, only in the
+  // outer thirds so they never sit behind the text.
+  const streakRoll = rng();
+  const nStreaks = streakRoll < 0.3 ? 1 : (streakRoll < 0.78 ? 2 : 3);
+  const streaks = [];
+  for (let i = 0; i < nStreaks; i++) {
+    const side = (nStreaks === 1) ? (rng() < 0.5 ? 0 : 1) : (i % 2); // spread across both ends
+    const span = xR - xL;
+    const len = (50 + rng() * 90) * s * (W / 760);
+    const x0 = side === 0
+      ? xL + (8 + rng() * 40) * s
+      : xR - (8 + rng() * 40) * s - len;
+    const x1 = Math.min(x0 + len, xL + span * 0.32 + (side === 1 ? span * 0.68 : 0));
+    const onTop = rng() < 0.5;
+    const inset = (2 + rng() * 3) * s;
+    const y0 = onTop ? topY(x0) + inset : botY(x0) - inset;
+    const y1 = (onTop ? topY(x1) + inset : botY(x1) - inset) + (rng() * 2 - 1) * s;
+    const th = (1.5 + rng() * 2) * s;
+    const mx = (x0 + x1) / 2;
+    streaks.push(
+      `M${r1(x0)} ${r1(y0)} Q${r1(mx)} ${r1(y0 - th)} ${r1(x1)} ${r1(y1)} ` +
+      `Q${r1(mx)} ${r1(y0 + th * 0.5)} ${r1(x0)} ${r1(y0)} Z`
+    );
+  }
+
+  // Stray flecks just past the tips.
+  const fleckRoll = rng();
+  const nFlecks = fleckRoll < 0.25 ? 0 : (fleckRoll < 0.75 ? 1 : 2);
+  const flecks = [];
+  for (let i = 0; i < nFlecks; i++) {
+    const side = (nFlecks === 2) ? i : (rng() < 0.5 ? 0 : 1);
+    const x = side === 0 ? xL - (2 + rng() * 8) * s : xR + (2 + rng() * 8) * s;
+    const y = coreTop + (coreBot - coreTop) * (0.15 + rng() * 0.7);
+    flecks.push({ x: r1(Math.max(2, Math.min(W - 2, x))), y: r1(y), r: r1((1 + rng() * 1.4) * s) });
+  }
+
+  return { d, streaks, flecks, W, H, s, fill: o.fill, ground: o.ground };
+}
+
+/* ---------- DOM wiring ---------- */
+
+const els = {
+  preview: document.getElementById('preview'),
+  panel: document.getElementById('previewPanel'),
+  text: document.getElementById('bandText'),
+  fill: document.getElementById('fill'),
+  ground: document.getElementById('ground'),
+  size: document.getElementById('size'),
+  seed: document.getElementById('seed'),
+  arrow: document.getElementById('arrow'),
+  sheet: document.getElementById('sheet'),
+  out: document.getElementById('svgOut'),
+  note: document.getElementById('copyNote')
+};
+
+function currentOptions() {
+  // White bands are illegal on ice paper (the edge can't read) — force sky.
+  if (els.fill.value === 'white' && els.ground.value === 'ice') els.ground.value = 'sky';
+  els.ground.querySelector('option[value="ice"]').disabled = els.fill.value === 'white';
+  const [w, h] = els.size.value.split('x').map(Number);
+  return {
+    width: w, height: h,
+    fill: COLORS[els.fill.value],
+    ground: COLORS[els.ground.value],
+    ink: els.fill.value === 'white' ? COLORS.navy : COLORS.white,
+    text: els.text.value.toUpperCase(),
+    arrow: els.arrow.checked,
+    seed: Math.max(1, Math.floor(Number(els.seed.value) || 1))
+  };
+}
+
+function renderBand(svg, opts) {
+  const g = generateBrushBand(opts);
+  const { W, H, s } = g;
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.setAttribute('aria-label', `Brush band reading: ${opts.text || 'no text'}`);
+
+  const fs = Math.round(H / 3);
+  let inner = `<path d="${g.d}" fill="${g.fill}"/>`;
+  inner += g.streaks.map(p => `<path d="${p}" fill="${g.ground}"/>`).join('');
+  inner += g.flecks.map(f => `<circle cx="${f.x}" cy="${f.y}" r="${f.r}" fill="${g.fill}"/>`).join('');
+  if (opts.text) {
+    inner += `<text x="${W / 2}" y="0" text-anchor="middle" style="font-family:'Oswald','Arial Narrow',sans-serif; font-weight:600; font-size:${fs}px; letter-spacing:${(2 * s).toFixed(1)}px;" fill="${opts.ink}">${opts.text.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</text>`;
+  }
+  svg.innerHTML = inner;
+
+  // Fit and center the text (with its arrow) after real font metrics exist.
+  const t = svg.querySelector('text');
+  if (t) {
+    let size = fs;
+    const maxW = W * (opts.arrow ? 0.56 : 0.68);
+    while (t.getComputedTextLength() > maxW && size > 14) {
+      size -= 1;
+      t.style.fontSize = size + 'px';
+    }
+    const len = t.getComputedTextLength();
+    const yMid = H * 0.495;
+    const baseline = yMid + size * 0.35;
+    const gap = 22 * s, shaft = 46 * s, head = 11 * s;
+    const unit = opts.arrow ? len + gap + shaft : len;
+    const textX = (W - unit) / 2 + len / 2;
+    t.setAttribute('x', textX.toFixed(1));
+    t.setAttribute('y', baseline.toFixed(1));
+    if (opts.arrow) {
+      const aX = textX + len / 2 + gap;
+      const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      arrow.setAttribute('stroke', opts.ink);
+      arrow.setAttribute('stroke-width', (4 * s).toFixed(1));
+      arrow.setAttribute('stroke-linecap', 'round');
+      arrow.setAttribute('stroke-linejoin', 'round');
+      arrow.setAttribute('fill', 'none');
+      arrow.innerHTML =
+        `<path d="M${aX.toFixed(1)} ${yMid.toFixed(1)} L${(aX + shaft).toFixed(1)} ${yMid.toFixed(1)}"/>` +
+        `<path d="M${(aX + shaft - head).toFixed(1)} ${(yMid - head * 0.85).toFixed(1)} L${(aX + shaft).toFixed(1)} ${yMid.toFixed(1)} L${(aX + shaft - head).toFixed(1)} ${(yMid + head * 0.85).toFixed(1)}"/>`;
+      svg.appendChild(arrow);
+    }
+  }
+}
+
+function serializeSvg() {
+  const clone = els.preview.cloneNode(true);
+  clone.removeAttribute('id');
+  clone.removeAttribute('role');
+  return clone.outerHTML;
+}
+
+let sheetSeeds = [];
+function rollSheetSeeds(fromSeed) {
+  const rng = mulberry32(fromSeed * 7919 + 1);
+  sheetSeeds = Array.from({ length: 6 }, () => 1 + Math.floor(rng() * 99999));
+}
+
+function renderSheet(opts) {
+  els.sheet.innerHTML = '';
+  sheetSeeds.forEach(seed => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'thumb';
+    b.setAttribute('aria-label', `Use seed ${seed}`);
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    b.appendChild(svg);
+    const tag = document.createElement('span');
+    tag.className = 'seed-tag';
+    tag.textContent = 'Seed ' + seed;
+    b.appendChild(tag);
+    els.sheet.appendChild(b);
+    renderBand(svg, Object.assign({}, opts, { seed }));
+    b.addEventListener('click', () => {
+      els.seed.value = seed;
+      update(false);
+    });
+  });
+}
+
+function update(reroll) {
+  const opts = currentOptions();
+  els.panel.style.background = opts.ground;
+  renderBand(els.preview, opts);
+  els.out.value = serializeSvg();
+  if (reroll) rollSheetSeeds(opts.seed);
+  renderSheet(opts);
+  els.note.textContent = '';
+}
+
+document.getElementById('newVariation').addEventListener('click', () => {
+  els.seed.value = 1 + Math.floor(Math.random() * 99999);
+  update(true);
+});
+
+document.getElementById('copySvg').addEventListener('click', async () => {
+  const markup = serializeSvg();
+  try {
+    await navigator.clipboard.writeText(markup);
+    els.note.textContent = 'Copied';
+  } catch (e) {
+    els.out.closest('details').open = true;
+    els.out.select();
+    els.note.textContent = 'Clipboard unavailable — markup selected below';
+  }
+});
+
+document.getElementById('downloadSvg').addEventListener('click', () => {
+  const opts = currentOptions();
+  const blob = new Blob(
+    ['<?xml version="1.0" encoding="UTF-8"?>\n' + serializeSvg()],
+    { type: 'image/svg+xml' }
+  );
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `brush-band-seed-${opts.seed}.svg`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+
+[els.text, els.fill, els.ground, els.size, els.arrow].forEach(el =>
+  el.addEventListener('input', () => update(false)));
+els.seed.addEventListener('input', () => update(false));
+
+rollSheetSeeds(17);
+update(false);
+// Text metrics change once webfonts arrive — re-render so centering is exact.
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => update(false));
+</script>
+</body>
+</html>

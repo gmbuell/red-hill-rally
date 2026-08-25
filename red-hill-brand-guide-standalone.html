@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Red Hill Brand Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@600&family=Kaushan+Script&family=Fraunces:wght@900&family=Nunito+Sans:ital,wght@0,400;0,700;0,800;1,400&display=swap">
+<style>
+  /* Single-theme light page: brand colors must render exactly as specified,
+     so every color is painted explicitly and holds on any host ground. */
+  :root {
+    --navy: #0A2B4E;
+    --red: #B92025;
+    --gold: #F5B70F;
+    --sky: #E9F1F9;
+    --paper: #F7FAFD;
+    --white: #FFFFFF;
+    --grey: #5A6474;
+    --display: 'Oswald', 'Arial Narrow', Impact, sans-serif;
+    --script: 'Kaushan Script', 'Brush Script MT', cursive;
+    --serif: 'Fraunces', 'Rockwell', Georgia, serif;
+    --body: 'Nunito Sans', 'Segoe UI', Verdana, sans-serif;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    html { scroll-behavior: smooth; }
+  }
+  body {
+    background: var(--paper);
+    color: var(--navy);
+    font-family: var(--body);
+    font-size: 1.0625rem;
+    line-height: 1.6;
+    margin: 0;
+  }
+  .wrap { max-width: 62rem; margin: 0 auto; padding: 0 1.5rem; }
+  section { padding: 3.5rem 0; }
+
+  h1, h2, h3 { text-wrap: balance; margin: 0; }
+  p { margin: 0 auto 1rem; max-width: 36rem; }
+
+  .display {
+    font-family: var(--display);
+    text-transform: uppercase;
+    color: var(--navy);
+    letter-spacing: 0.03em;
+    line-height: 1.05;
+    font-weight: 600;
+  }
+  h2.display { font-size: clamp(1.9rem, 4.5vw, 2.75rem); margin-bottom: 1rem; }
+  section[id] { scroll-margin-top: 6rem; }
+  .toc {
+    position: sticky; top: 0; z-index: 10;
+    background: var(--paper); border-bottom: 2px solid var(--navy);
+    display: flex; flex-wrap: wrap; justify-content: center;
+    gap: 0.25rem 1.4rem; padding: 0.6rem 1rem;
+  }
+  .toc a {
+    color: var(--navy); text-decoration: none; font-weight: 800;
+    font-size: 0.85rem; letter-spacing: 0.12em; text-transform: uppercase;
+    padding: 0.2rem;
+  }
+  .toc a:hover, .toc a:focus-visible { color: var(--red); }
+  .script { font-family: var(--script); color: var(--red); font-weight: 400; }
+  .serif-sub { font-family: var(--serif); color: var(--navy); font-weight: 900; }
+
+  /* ---------- hero ---------- */
+  .hero {
+    background: var(--sky);
+    border-bottom: 6px solid var(--navy);
+    text-align: center;
+    padding: 4.5rem 0 4rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero .wordmark-lead {
+    font-family: var(--serif);
+    font-weight: 900;
+    text-transform: none;
+    font-size: clamp(2.2rem, 6vw, 3.4rem);
+    color: var(--navy);
+    display: block;
+    margin-bottom: 0.25rem;
+  }
+  .hero h1 {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: clamp(3rem, 9vw, 5.5rem);
+    color: var(--navy);
+    text-transform: uppercase;
+    line-height: 1;
+  }
+  .hero .sub {
+    display: block;
+    margin-top: 1.5rem;
+    color: var(--navy);
+    font-weight: 800;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+  }
+  .sparkle { position: absolute; opacity: 0.9; }
+
+  /* ---------- section headers ---------- */
+  .ribbon-head { text-align: center; margin-bottom: 2.25rem; }
+  .ribbon-head .num {
+    font-family: var(--body); font-weight: 800; font-size: 0.85rem;
+    letter-spacing: 0.22em; color: var(--grey); text-transform: uppercase;
+    display: block; margin-bottom: 0.5rem;
+  }
+  .ribbon-head h2 {
+    font-family: var(--display); text-transform: uppercase;
+    color: var(--navy); font-size: clamp(1.9rem, 4.5vw, 2.75rem);
+    font-weight: 600;
+  }
+  .ribbon-head .underline {
+    width: 130px; height: 10px; margin: 0.8rem auto 0; display: block;
+  }
+
+  /* ---------- palette ---------- */
+  .swatches {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 1.25rem;
+    margin: 2rem 0;
+  }
+  .swatch { border: 2px solid var(--navy); background: var(--paper); }
+  .swatch .chip { height: 110px; }
+  .scene-note {
+    text-align: left; font-size: 1rem; max-width: 46rem;
+    margin: 1.5rem auto 0;
+  }
+  .scene-chip {
+    display: inline-block; width: 0.85em; height: 0.85em;
+    vertical-align: -0.08em;
+  }
+  .swatch .meta { padding: 0.8rem 0.9rem 0.9rem; }
+  .swatch .name { font-weight: 800; color: var(--navy); font-size: 0.95rem; }
+  .swatch .hex {
+    font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+    font-size: 0.82rem; color: var(--grey); letter-spacing: 0.04em;
+  }
+  .swatch .use { font-size: 0.85rem; margin: 0.35rem 0 0; line-height: 1.5; }
+  .prop-bar { display: flex; height: 44px; border: 2px solid var(--navy); margin: 0.5rem 0 0.75rem; }
+  .prop-bar span { display: block; }
+  .prop-bar span + span { border-left: 2px solid var(--navy); }
+  .prop-caption { font-size: 0.85rem; color: var(--grey); text-align: left; max-width: 38rem; }
+
+  /* ---------- rule cards: one bold rule line, nuance demoted to fine print ---------- */
+  .rule {
+    border: 2px solid var(--navy); background: var(--paper);
+    padding: 1.4rem 1.6rem; margin: 2rem auto; max-width: 46rem;
+    text-align: left;
+  }
+  .rule-line {
+    font-weight: 800; font-size: 1.15rem; color: var(--navy);
+    margin: 0; max-width: 42rem;
+  }
+  .type-card .rule-line { margin-top: 0.9rem; }
+  .fine-print {
+    margin-top: 0.9rem; padding-left: 1rem;
+    border-left: 2px solid var(--navy);
+  }
+  .fine-print .fp-label {
+    display: block; font-size: 0.78rem; font-weight: 800;
+    letter-spacing: 0.18em; text-transform: uppercase; color: var(--grey);
+    margin-bottom: 0.4rem;
+  }
+  .fine-print ul {
+    margin: 0; padding-left: 1.1rem;
+    font-size: 0.95rem; line-height: 1.55; max-width: 38rem;
+  }
+  .fine-print li { margin-bottom: 0.35rem; }
+  .fine-print li:last-child { margin-bottom: 0; }
+
+  .contrast-wrap { overflow-x: auto; margin-top: 2.5rem; }
+  table.contrast {
+    border-collapse: collapse; margin: 0 auto; font-size: 1rem;
+    min-width: 34rem;
+  }
+  table.contrast caption {
+    font-family: var(--serif); font-weight: 900; font-size: 1.15rem; color: var(--navy);
+    margin-bottom: 0.75rem;
+  }
+  table.contrast th, table.contrast td {
+    border: 1px solid var(--grey); padding: 0.5rem 0.9rem; text-align: left;
+  }
+  table.contrast th {
+    background: var(--sky); font-weight: 800; font-size: 0.85rem;
+    letter-spacing: 0.08em; text-transform: uppercase;
+  }
+  table.contrast .num { font-variant-numeric: tabular-nums; text-align: right; }
+  .pass { font-weight: 800; color: var(--navy); }
+  .fail { font-weight: 800; color: var(--navy); }
+  .pair-chip {
+    display: inline-block; padding: 0.15rem 0.6rem; font-weight: 700;
+    font-size: 0.85rem; border: 1px solid var(--grey);
+  }
+
+  /* ---------- typography ---------- */
+  .type-card {
+    border: 2px solid var(--navy);
+    background: var(--paper);
+    padding: 1.75rem 2rem;
+    margin-bottom: 1.5rem;
+  }
+  .type-card .role {
+    font-size: 0.85rem; font-weight: 800; letter-spacing: 0.2em;
+    text-transform: uppercase; color: var(--red); margin-bottom: 0.7rem;
+  }
+  .type-card .specimen { line-height: 1.15; margin-bottom: 0.85rem; overflow-wrap: break-word; }
+  .type-card .notes { font-size: 1rem; margin: 0; max-width: 38rem; }
+  .arc-demo { display: block; margin: 0 auto 0.85rem; max-width: 100%; height: auto; }
+  .lockup-demo {
+    background: var(--sky);
+    border: 2px solid var(--navy);
+    text-align: center;
+    padding: 3rem 1.5rem;
+    margin-top: 2rem;
+  }
+  .lockup-demo .l1 { font-family: var(--script); font-size: clamp(2rem, 5vw, 3rem); color: var(--navy); }
+  .lockup-demo .l2 {
+    font-family: var(--display); font-weight: 600; text-transform: uppercase;
+    font-size: clamp(1.6rem, 4.5vw, 2.6rem); color: var(--navy); margin: 0.35rem 0;
+  }
+  .lockup-demo .l2 em { font-style: normal; color: var(--red); }
+  .lockup-demo .l3 { font-family: var(--script); font-size: clamp(1.6rem, 4vw, 2.3rem); color: var(--navy); }
+  .lockup-demo .caption { font-size: 0.85rem; color: var(--grey); margin: 1.5rem auto 0; text-align: left; max-width: 38rem; }
+
+  /* ---------- motifs ---------- */
+  .motif-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.25rem;
+    margin-top: 2rem;
+  }
+  .motif {
+    border: 2px solid var(--navy); background: var(--paper);
+    padding: 1.5rem 1.25rem; text-align: center;
+  }
+  .motif svg { display: block; margin: 0 auto 1rem; }
+  .motif .name { font-weight: 800; color: var(--navy); }
+  .motif p { font-size: 1rem; margin: 0.4rem 0 0; line-height: 1.5; text-align: left; }
+
+  .banner-demo { display: block; width: min(46rem, 100%); height: auto; margin: 2rem auto 0; }
+
+  /* ---------- buttons ---------- */
+  .btn-row { display: flex; flex-wrap: wrap; gap: 1.25rem; align-items: center; justify-content: center; margin-top: 1.75rem; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 0.6rem;
+    background: var(--navy); color: var(--white);
+    font-family: var(--body); font-weight: 700; font-size: 1rem;
+    padding: 0.85rem 1.8rem; border-radius: 999px; border: none;
+    cursor: pointer; transition: background 0.15s ease;
+  }
+  .btn:hover, .btn:focus-visible { background: var(--red); }
+  /* Focus indicators must hit 3:1 against adjacent colors (WCAG 1.4.11):
+     navy ring on light grounds; gold is reserved for focus on navy grounds. */
+  .btn:focus-visible { outline: 3px solid var(--navy); outline-offset: 3px; }
+  .btn .arrow { font-size: 1.1rem; line-height: 1; }
+  .btn.secondary { background: transparent; color: var(--navy); border: 2px solid var(--navy); }
+  .btn.secondary:hover, .btn.secondary:focus-visible { background: var(--sky); }
+
+  /* ---------- grounds ---------- */
+  .grounds { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: 1.5rem; margin-top: 1.75rem; }
+  .ground-card { border: 2px solid var(--navy); padding: 1.6rem 1.7rem; }
+  .ground-card h3 { font-family: var(--serif); font-weight: 900; font-size: 1.2rem; margin-bottom: 0.6rem; }
+  .ground-card p { font-size: 1rem; margin: 0; max-width: none; }
+
+  /* ---------- voice ---------- */
+  .voice-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: 1.5rem; margin-top: 1.5rem; }
+  .voice-card { border: 2px solid var(--navy); padding: 1.5rem 1.6rem; background: var(--paper); }
+  .voice-card h3 { font-family: var(--serif); font-weight: 900; color: var(--navy); font-size: 1.2rem; margin-bottom: 0.6rem; }
+  .voice-card ul { margin: 0; padding-left: 1.2rem; font-size: 1rem; }
+  .voice-card li { margin-bottom: 0.45rem; }
+  .voice-card .say { font-style: italic; color: var(--red); }
+
+  /* ---------- do / don't ---------- */
+  .dd { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); gap: 1.5rem; margin-top: 1.5rem; }
+  .dd-col { border: 2px solid var(--navy); background: var(--paper); }
+  .dd-col .head {
+    padding: 0.7rem 1.4rem; font-family: var(--display); font-weight: 600; text-transform: uppercase;
+    font-size: 1.2rem; letter-spacing: 0.04em; color: var(--white);
+  }
+  .dd-col.do .head { background: var(--navy); }
+  .dd-col.dont .head { background: var(--navy); }
+  .dd-col ul { margin: 0; padding: 1.2rem 1.4rem 1.4rem 2.4rem; font-size: 1rem; }
+  .dd-col li { margin-bottom: 0.55rem; }
+
+  .on-sky { background: var(--sky); }
+  footer {
+    background: var(--navy); color: var(--white); text-align: center;
+    padding: 2.5rem 1.5rem;
+  }
+  footer .script { color: var(--gold); font-size: 1.8rem; display: block; margin-bottom: 0.4rem; }
+  footer p { margin: 0 auto; font-size: 1rem; opacity: 0.85; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .hero .rocket-float { animation: floaty 5s ease-in-out infinite; }
+    @keyframes floaty { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+  }
+
+  @media print {
+    .toc { display: none; }
+    section { padding: 2rem 0; }
+    .swatch, .type-card, .motif, .rule, .voice-card, .ground-card, .dd-col,
+    .lockup-demo, .banner-demo, table.contrast, .prop-bar { break-inside: avoid; }
+    /* Swatches and chips are the guide's content, not decoration — force their inks
+       even when the browser strips backgrounds for print. */
+    .swatch .chip, .prop-bar span, .pair-chip, .scene-chip {
+      print-color-adjust: exact; -webkit-print-color-adjust: exact;
+    }
+    footer { background: none; color: var(--navy); border-top: 2px solid var(--navy); }
+    footer .script { color: var(--red); }
+  }
+</style>
+</head>
+<body>
+<div class="hero">
+  <svg class="sparkle" style="top:15%; left:calc(50% + 58px);" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z" fill="#B92025"/></svg>
+  <svg class="sparkle" style="top:29%; left:calc(50% + 96px);" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z" fill="#0A2B4E"/></svg>
+  <svg class="sparkle" style="top:10%; left:calc(50% - 86px);" width="13" height="13" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z" fill="#F5B70F"/></svg>
+  <div class="wrap">
+    <svg class="rocket-float" width="72" height="72" viewBox="0 0 64 64" aria-hidden="true" style="margin-bottom:0.5rem;">
+      <g id="badge-rocket" transform="rotate(45 32 32)">
+        <path d="M25 28 C20 32 17 37 16.5 43 L25 38 Z" fill="#0A2B4E"/>
+        <path d="M39 28 C44 32 47 37 47.5 43 L39 38 Z" fill="#0A2B4E"/>
+        <path d="M32 6 C36.5 11 39 18 39 26 L39 38 L25 38 L25 26 C25 18 27.5 11 32 6 Z" fill="#0A2B4E"/>
+        <path d="M27.5 38 L36.5 38 L34.5 43 L29.5 43 Z" fill="#0A2B4E"/>
+        <circle cx="32" cy="21" r="4.8" fill="#FFFFFF"/>
+        <g stroke="#B92025" stroke-width="2.5" stroke-linecap="round">
+          <path d="M28.5 46.5 L28.5 51.5"/>
+          <path d="M32 46.5 L32 55"/>
+          <path d="M35.5 46.5 L35.5 51.5"/>
+        </g>
+      </g>
+    </svg>
+    <h1><span class="wordmark-lead">Red Hill</span> Brand Guide</h1>
+    <span class="sub">Official Identity &amp; Style Guide &middot; Red Hill Elementary PTA</span>
+  </div>
+</div>
+
+<nav class="toc" aria-label="Sections">
+  <a href="#color">Color</a>
+  <a href="#type">Type</a>
+  <a href="#motifs">Motifs</a>
+  <a href="#layout">Layout</a>
+  <a href="#voice">Voice</a>
+  <a href="#accessibility">Accessibility</a>
+  <a href="#guardrails">Guardrails</a>
+</nav>
+
+<section style="text-align:center;">
+  <div class="wrap">
+    <p style="font-weight:800; font-size:0.85rem; letter-spacing:0.22em; text-transform:uppercase; color:var(--red); margin-bottom:0.75rem;">The Big Idea</p>
+    <h2 class="display">Launch-day energy, hometown heart</h2>
+    <p style="text-align:left;">Red Hill's visual voice blends two feelings that always appear together: the upward <strong>launch energy</strong> of the Rockets — bold caps, stars, motion lines, a rocket mid-flight — and <strong>hometown warmth</strong> — handwritten script, hearts, thank-yous, and a palette pulled from launch morning: red and gold against a clear blue sky. The warmth is the feeling; the standard is discipline. Every piece should carry the heart of a school community and the craft of a real brand: friendly, educational, and inspiring — spirited, never sloppy, and never corporate.</p>
+  </div>
+</section>
+
+<section class="on-sky" id="color">
+  <div class="wrap">
+    <div class="ribbon-head">
+      <span class="num">01 &middot; Color</span>
+      <h2>The Palette</h2>
+      <svg class="underline" viewBox="0 0 130 10" aria-hidden="true"><path d="M2 3.5 L6.5 3.9 L3.5 5 L7.5 5.4 L4.5 6.8 C20 8.8 42 9.2 64 8.6 C84 8 104 6.6 126 4.2 C127.5 4 127.5 3.4 126 3.3 C104 2.5 80 2.3 58 2.7 C38 3 18 3.2 2 3.5 Z" fill="#B92025"/></svg>
+    </div>
+    <p>Six colors, always in the same roles. Navy leads, red punctuates, gold celebrates, ice paper grounds, sky organizes, slate supports.</p>
+    <div class="swatches">
+      <div class="swatch">
+        <div class="chip" style="background:#0A2B4E;"></div>
+        <div class="meta">
+          <div class="name">Red Hill Navy</div>
+          <div class="hex">#0A2B4E</div>
+          <p class="use">The lead voice. All primary text, structural elements, icons, buttons, and the rocket itself. When in doubt, it's navy.</p>
+        </div>
+      </div>
+      <div class="swatch">
+        <div class="chip" style="background:#B92025;"></div>
+        <div class="meta">
+          <div class="name">Rocket Red</div>
+          <div class="hex">#B92025</div>
+          <p class="use">The punctuation. One red moment per composition — see The Red Rule below the grid. Deep enough to carry white text.</p>
+        </div>
+      </div>
+      <div class="swatch">
+        <div class="chip" style="background:#F5B70F;"></div>
+        <div class="meta">
+          <div class="name">Sunlight Gold</div>
+          <div class="hex">#F5B70F</div>
+          <p class="use">Celebration only: stars, rocket flames, suns, and script over navy. Never text on light backgrounds — it can't hold contrast there.</p>
+        </div>
+      </div>
+      <div class="swatch">
+        <div class="chip" style="background:#F7FAFD; border-bottom:1px solid #5A6474;"></div>
+        <div class="meta">
+          <div class="name">Ice Paper</div>
+          <div class="hex">#F7FAFD</div>
+          <p class="use">The paper. A cool, sky-biased near-white — the ground for every piece, print and digital. True #FFFFFF is reserved for knockout text and shapes on navy and red.</p>
+        </div>
+      </div>
+      <div class="swatch">
+        <div class="chip" style="background:#E9F1F9; border-bottom:1px solid #5A6474;"></div>
+        <div class="meta">
+          <div class="name">Sky Wash</div>
+          <div class="hex">#E9F1F9</div>
+          <p class="use">Quiet panels behind icon rows and info blocks, hero grounds, and the sky in illustrated scenes. Organizes without competing.</p>
+        </div>
+      </div>
+      <div class="swatch">
+        <div class="chip" style="background:#5A6474;"></div>
+        <div class="meta">
+          <div class="name">Slate</div>
+          <div class="hex">#5A6474</div>
+          <p class="use">Utility only: captions, secondary labels, and hairline rules. Passes AA for small text on every light ground — never for headlines or brand moments.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="rule">
+      <p class="rule-line">The Red Rule: red gets one moment per composition — one word you'd stress aloud, or one short element worn all-red.</p>
+      <div class="fine-print">
+        <span class="fp-label">The fine print</span>
+        <ul>
+          <li><em>Stress</em> is a single word you'd stress saying the line aloud — always inside a multi-word line, never a word alone on its line.</li>
+          <li><em>Voice</em> is one whole short element worn all-red: a label, a kicker, a script phrase.</li>
+          <li>A matched set of repeated labels reads as one element — repetition is rhythm, not competition.</li>
+          <li>Never body copy; never headlines by default.</li>
+          <li>Beyond text, red is ribbon banners, brush bands, hearts, fins, and — in grid builds — one structural mass a knockout mark can sit in, whether a block or an edge rail.</li>
+          <li>Budget red by area, not count: a structural red spend usually exhausts the allowance on its own, and when it does, text and labels stay navy.</li>
+        </ul>
+      </div>
+    </div>
+    <p class="scene-note">One color lives outside the palette: <strong>Leaf Green</strong> <span class="scene-chip" style="background:#7FB069;"></span> <span style="font-family:ui-monospace,Consolas,monospace; font-size:0.9em;">#7FB069</span>, for grass, bushes, and stems in illustrated scenes only — never in text, icons, or layout. Everything else, including scene skies and clouds, comes from the six above.</p>
+    <div class="prop-bar" role="img" aria-label="Color proportions: ice paper dominates, then navy, then sky wash, then red, a small amount of gold">
+      <span style="background:#F7FAFD; flex:52;"></span>
+      <span style="background:#0A2B4E; flex:21;"></span>
+      <span style="background:#E9F1F9; flex:14;"></span>
+      <span style="background:#B92025; flex:10;"></span>
+      <span style="background:#F5B70F; flex:3;"></span>
+    </div>
+    <p class="prop-caption">Rough proportions on any layout: ice paper dominates, navy carries the message, sky organizes, red punctuates, gold accents sparingly.</p>
+
+    <div class="contrast-wrap">
+      <table class="contrast">
+        <caption>Text contrast: what's allowed where</caption>
+        <thead>
+          <tr><th scope="col">Combination</th><th scope="col" class="num">Ratio</th><th scope="col">Use for text?</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><span class="pair-chip" style="background:#0A2B4E; color:#FFFFFF;">White on navy</span></td><td class="num">14.3:1</td><td class="pass">Yes — any size (AAA)</td></tr>
+          <tr><td><span class="pair-chip" style="background:#F7FAFD; color:#0A2B4E;">Navy on ice</span></td><td class="num">13.7:1</td><td class="pass">Yes — any size (AAA)</td></tr>
+          <tr><td><span class="pair-chip" style="background:#E9F1F9; color:#0A2B4E;">Navy on sky</span></td><td class="num">12.5:1</td><td class="pass">Yes — any size (AAA)</td></tr>
+          <tr><td><span class="pair-chip" style="background:#0A2B4E; color:#F5B70F;">Gold on navy</span></td><td class="num">7.9:1</td><td class="pass">Yes — any size (AAA)</td></tr>
+          <tr><td><span class="pair-chip" style="background:#B92025; color:#FFFFFF;">White on red</span></td><td class="num">6.4:1</td><td class="pass">Yes (AA)</td></tr>
+          <tr><td><span class="pair-chip" style="background:#F7FAFD; color:#B92025;">Red on ice</span></td><td class="num">6.1:1</td><td class="pass">Yes (AA)</td></tr>
+          <tr><td><span class="pair-chip" style="background:#F7FAFD; color:#5A6474;">Slate on ice</span></td><td class="num">5.7:1</td><td class="pass">Yes (AA)</td></tr>
+          <tr><td><span class="pair-chip" style="background:#E9F1F9; color:#B92025;">Red on sky</span></td><td class="num">5.6:1</td><td class="pass">Yes (AA)</td></tr>
+          <tr><td><span class="pair-chip" style="background:#E9F1F9; color:#5A6474;">Slate on sky</span></td><td class="num">5.3:1</td><td class="pass">Yes (AA)</td></tr>
+          <tr><td><span class="pair-chip" style="background:#F7FAFD; color:#5A6474;">Gold <span style="display:inline-block; width:0.8em; height:0.8em; background:#F5B70F; vertical-align:-0.05em;"></span> on ice</span></td><td class="num">1.7:1</td><td class="fail">Never</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section id="type">
+  <div class="wrap">
+    <div class="ribbon-head">
+      <span class="num">02 &middot; Typography</span>
+      <h2>Four Voices, One Choir</h2>
+      <svg class="underline" viewBox="0 0 130 10" aria-hidden="true"><g transform="translate(130,0) scale(-1,1)"><path d="M2 3.5 L6.5 3.9 L3.5 5 L7.5 5.4 L4.5 6.8 C20 8.8 42 9.2 64 8.6 C84 8 104 6.6 126 4.2 C127.5 4 127.5 3.4 126 3.3 C104 2.5 80 2.3 58 2.7 C38 3 18 3.2 2 3.5 Z" fill="#B92025"/></g></svg>
+    </div>
+
+    <div class="type-card">
+      <div class="role">Display &middot; Oswald SemiBold</div>
+      <div class="specimen" style="font-family:var(--display); font-weight:600; text-transform:uppercase; font-size:clamp(1.8rem,4vw,2.8rem); color:var(--navy);">Proceeds go back to Red Hill!</div>
+      <p class="notes">The megaphone. Tall, tightly-set caps for headlines, banners, and calls to action. Always uppercase, reserved for headline scale — never body sizes. Navy or red on light grounds; white when knocked out of navy or red. On hero headlines and ribbon banners, set the caps on a slight upward arc (see below) for launch energy; leave arcs off body-adjacent headings.</p>
+    </div>
+
+    <div class="type-card" style="text-align:center;">
+      <div class="role" style="text-align:left;">Arc Treatment</div>
+      <svg class="arc-demo" width="560" height="110" viewBox="0 0 560 110" aria-hidden="true">
+        <defs><path id="arcpath" d="M 30 95 Q 280 35 530 95" fill="none"/></defs>
+        <text style="font-family:'Oswald','Arial Narrow',sans-serif; font-weight:600; font-size:44px; letter-spacing:2px;" fill="#0A2B4E">
+          <textPath href="#arcpath" startOffset="50%" text-anchor="middle">WELCOME TO RED HILL</textPath>
+        </text>
+      </svg>
+      <p class="notes" style="text-align:left;">A gentle rise — the middle of the line sits roughly one cap-height above the ends. Reserve it for one heading per composition, usually the topmost. Never arc script or body text, and never bend text into a full circle.</p>
+    </div>
+
+    <div class="type-card">
+      <div class="role">Script &middot; Kaushan Script</div>
+      <div class="specimen script" style="font-size:clamp(1.9rem,4vw,2.9rem);">Thank you for making a difference</div>
+      <p class="notes">The handwritten heart. Reserved for greetings, titles, and emotional hooks — <em>thank you, any amount, together, special thanks</em>.</p>
+      <p class="rule-line">One script moment per composition, for feelings — never information.</p>
+      <div class="fine-print">
+        <span class="fp-label">The fine print</span>
+        <ul>
+          <li>A lockup's adjacent script-caps-script alternation counts as one moment; a script line separated from it by other elements is a second.</li>
+          <li>Never uppercase, never information — dates, prices, instructions — and never smaller than 18px.</li>
+          <li>Gratitude doesn't require script: body text can say thank you.</li>
+          <li>Over navy, script may be gold or white.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="type-card">
+      <div class="role">Sub-headings &middot; Fraunces Black</div>
+      <div class="specimen serif-sub" style="font-size:clamp(1.5rem,3.5vw,2.2rem);">Create your account today, simplify your school year.</div>
+      <p class="notes">The friendly formal voice. Large, bold serif for prominent sub-headlines, introductory sentences, and the wordmark — anywhere the display caps would shout but body text would whisper. Always navy, sentence case, generous size.</p>
+    </div>
+
+    <div class="type-card">
+      <div class="role">The Wordmark</div>
+      <div class="specimen serif-sub" style="font-size:clamp(2rem,5vw,3rem);">Red Hill</div>
+      <p class="notes">"Red Hill" set in Fraunces Black — navy on light grounds, white on navy — sentence case, optionally on the gentle arc. Minimum size 24px; keep clear space equal to the cap height of the R on all sides. As a logotype it's exempt from contrast requirements, but don't lean on that: set it on approved grounds anyway. This guide's own cover uses it above the display caps. A script "Red Hill" is a greeting flourish, never the wordmark.</p>
+    </div>
+
+    <div class="type-card">
+      <div class="role">Body &amp; UI &middot; Nunito Sans</div>
+      <div class="specimen" style="font-size:1.05rem; max-width:36rem;">Once you're signed in, you can view the school calendar, join the PTA, sign up to volunteer, and more. <strong>Bold for emphasis</strong>, and <span style="font-weight:800; font-size:0.82rem; letter-spacing:0.18em; text-transform:uppercase;">SPACED CAPS FOR LABELS</span>.</div>
+      <p class="notes">The workhorse. All paragraphs, buttons, captions, and fine print. Rounded and warm, so even the fine print feels friendly. Labels get 800 weight, uppercase, and letter-spacing — slate for wayfinding (section numbers, captions, running labels), navy otherwise. A kicker introducing a headline may spend the composition's red moment (The Red Rule, Section 01) — as "The Big Idea" does above. Body text stays 16px or larger. One technical exception: hex values and code may render in the system monospace.</p>
+    </div>
+
+    <div class="lockup-demo">
+      <div class="l1">Every</div>
+      <div class="l2">Donation <em>Counts!</em></div>
+      <div class="l3">…and any amount helps.</div>
+      <p class="caption">The signature lockup: script &rarr; caps &rarr; script. Alternate the voices line by line. Red is written stress — this lockup could stress "Every" or "Counts!", and stresses "Counts!" because a stressed word must sit inside a multi-word line. When no word takes the stress, the line stays navy, as on this guide's own cover.</p>
+    </div>
+  </div>
+</section>
+
+<section class="on-sky" id="motifs">
+  <div class="wrap">
+    <div class="ribbon-head">
+      <span class="num">03 &middot; Motifs</span>
+      <h2>The Spirit Kit</h2>
+      <svg class="underline" viewBox="0 0 130 10" aria-hidden="true"><g transform="translate(0,10) scale(1,-1)"><path d="M2 3.5 L6.5 3.9 L3.5 5 L7.5 5.4 L4.5 6.8 C20 8.8 42 9.2 64 8.6 C84 8 104 6.6 126 4.2 C127.5 4 127.5 3.4 126 3.3 C104 2.5 80 2.3 58 2.7 C38 3 18 3.2 2 3.5 Z" fill="#B92025"/></g></svg>
+    </div>
+    <p>All visuals are flat vector: solid fills, no gradients, no drop shadows, no outlined illustration — with one signature exception: the red outlined heart. (The Sticker Cut's die-cut edge is a border around a solid motif, not an outline — it has its own card below.) And every piece carries at least one Spirit Kit motif, however austere the layout: without one, even a perfectly on-palette piece stops being Red Hill. When a piece needs to feel hand-made, reach for irregular contours — a brush edge, a wavy grass line, a hand-hung tilt — never texture: no grain, no aging, no distressing.</p>
+    <div class="motif-grid">
+      <div class="motif">
+        <svg width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><use href="#badge-rocket"/></svg>
+        <div class="name">The Badge Rocket</div>
+        <p>The primary mark. Solid navy silhouette, white porthole, three red speed dashes — the version that behaves like a logo, built for badges, seals, and the heart lockup. On navy or red grounds it runs as an all-white knockout, porthole in the ground color, dashes white or omitted — or it keeps its colors inside a sticker cut.</p>
+      </div>
+      <div class="motif">
+        <svg width="64" height="64" viewBox="0 0 64 64" aria-hidden="true">
+          <g transform="rotate(40 32 32)">
+            <path d="M23.5 30 C18 32.5 15 37.5 14 44 C17.5 41.5 20.5 40.5 23.5 40.5 Z" fill="#0A2B4E"/>
+            <path d="M40.5 30 C46 32.5 49 37.5 50 44 C46.5 41.5 43.5 40.5 40.5 40.5 Z" fill="#0A2B4E"/>
+            <path d="M32 45 C36 49 37 53.5 32 60 C27 53.5 28 49 32 45 Z" fill="#F5B70F"/>
+            <path d="M32 47.5 C34.2 50.2 34.5 52.5 32 56.5 C29.5 52.5 29.8 50.2 32 47.5 Z" fill="#B92025"/>
+            <path d="M32 5 C37.5 10.5 40.5 17.5 40.5 26 L40.5 39 Q40.5 42 37.5 42 L26.5 42 Q23.5 42 23.5 39 L23.5 26 C23.5 17.5 26.5 10.5 32 5 Z" fill="#B92025"/>
+            <path d="M26.5 42 L37.5 42 L36.3 45.5 L27.7 45.5 Z" fill="#0A2B4E"/>
+            <circle cx="32" cy="22" r="5.6" fill="#0A2B4E"/>
+            <circle cx="32" cy="22" r="3.6" fill="#FFFFFF"/>
+          </g>
+        </svg>
+        <div class="name">The Red Rocket</div>
+        <p>The celebration rocket. Red body, navy fins and porthole ring, and a full, curving gold plume with a red inner tongue — the flame is drawn, never a straight triangle. The big expressive version for banners and spirit pieces, always with a dotted trail's worth of room to fly.</p>
+      </div>
+      <div class="motif">
+        <svg width="64" height="64" viewBox="0 0 64 64" aria-hidden="true">
+          <g transform="rotate(40 32 32)">
+            <path d="M27 31 C24.5 33.5 23.2 36.5 23 40 C25 38.2 26 37.6 27 37.2 Z" fill="#B92025"/>
+            <path d="M37 31 C39.5 33.5 40.8 36.5 41 40 C39 38.2 38 37.6 37 37.2 Z" fill="#B92025"/>
+            <path d="M32 8 C35.5 13 37 19 37 26 L37 36 L27 36 L27 26 C27 19 28.5 13 32 8 Z" fill="#0A2B4E"/>
+            <circle cx="32" cy="20" r="3" fill="#FFFFFF"/>
+            <g stroke-linecap="round">
+              <path d="M32 40 L32 50" stroke="#B92025" stroke-width="2.5"/>
+              <path d="M27.5 39 L27.5 45.5" stroke="#0A2B4E" stroke-width="2"/>
+              <path d="M36.5 39 L36.5 45.5" stroke="#0A2B4E" stroke-width="2"/>
+            </g>
+          </g>
+        </svg>
+        <div class="name">The Dart</div>
+        <p>The accent. A small, simplified dart — navy body, red fins, streak exhaust — for corners, dividers, and above headlines, where it stays legible at 24px. Every rocket flies mid-flight at an angle, never grounded, never pointing down.</p>
+      </div>
+      <div class="motif">
+        <svg width="64" height="64" viewBox="0 0 64 64" aria-hidden="true">
+          <rect x="1" y="1" width="62" height="62" fill="#0A2B4E"/>
+          <g transform="translate(3.84 3.84) scale(0.88)">
+            <g transform="rotate(45 32 32)">
+              <!-- In the sticker variant the fins and nozzle pull away from the
+                   body, so the cut fills the gaps and truly separates the parts. -->
+              <g fill="#FFFFFF" stroke="#FFFFFF" stroke-width="4" stroke-linejoin="round">
+                <path d="M22.5 27.5 C17.5 31.5 14.5 36.5 14 43.5 L22.5 38.5 Z"/>
+                <path d="M41.5 27.5 C46.5 31.5 49.5 36.5 50 43.5 L41.5 38.5 Z"/>
+                <path d="M32 6 C36.5 11 39 18 39 26 L39 38 L25 38 L25 26 C25 18 27.5 11 32 6 Z"/>
+                <path d="M27.5 40 L36.5 40 L34.5 45 L29.5 45 Z"/>
+              </g>
+              <path d="M22.5 27.5 C17.5 31.5 14.5 36.5 14 43.5 L22.5 38.5 Z" fill="#0A2B4E"/>
+              <path d="M41.5 27.5 C46.5 31.5 49.5 36.5 50 43.5 L41.5 38.5 Z" fill="#0A2B4E"/>
+              <path d="M32 6 C36.5 11 39 18 39 26 L39 38 L25 38 L25 26 C25 18 27.5 11 32 6 Z" fill="#B92025"/>
+              <path d="M27.5 40 L36.5 40 L34.5 45 L29.5 45 Z" fill="#0A2B4E"/>
+              <circle cx="32" cy="21" r="4.8" fill="#FFFFFF"/>
+              <g stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round">
+                <path d="M28.5 49 L28.5 53.5"/>
+                <path d="M32 49 L32 57"/>
+                <path d="M35.5 49 L35.5 53.5"/>
+              </g>
+            </g>
+          </g>
+        </svg>
+        <div class="name">The Sticker Cut</div>
+        <p>Any motif may wear a solid, even border — a sticker slapped on the page. The cut runs between the parts too, so fins sit apart from the body. White is the classic cut, and it's what lets the rocket — navy fins and all — land on a navy band. On light grounds the cut may instead match the ground color: an invisible edge whose whole job is those crisp gaps. The motif inside stays flat and solid — this is an edge, not line-art.</p>
+      </div>
+      <div class="motif">
+        <svg width="64" height="64" viewBox="0 0 64 64" aria-hidden="true">
+          <path d="M20 8l3.5 10.5L34 22l-10.5 3.5L20 36l-3.5-10.5L6 22l10.5-3.5z" fill="#B92025"/>
+          <path d="M46 26l2.7 8L57 36.7l-8.3 2.6L46 47.6l-2.7-8.3L35 36.7l8.3-2.7z" fill="#0A2B4E"/>
+          <path d="M42 9.5 L43.1 12.9 L46.5 14 L43.1 15.1 L42 18.5 L40.9 15.1 L37.5 14 L40.9 12.9 Z" fill="#F5B70F"/>
+        </svg>
+        <div class="name">Star Scatter</div>
+        <p>Confetti, not wallpaper. Two or three stars in mixed sizes and colors clustered near a headline or motif — asymmetric, like they just burst. Always star-shaped: no dots or circles standing in for stars.</p>
+      </div>
+      <div class="motif">
+        <svg width="64" height="64" viewBox="0 0 64 64" aria-hidden="true">
+          <path d="M24 44C16 37.5 11 32 11 26a7.5 7.5 0 0 1 13-4.5A7.5 7.5 0 0 1 37 26c0 6-5 11.5-13 18z" fill="#B92025"/>
+          <path d="M46 56c-5.5-4.5-9-8.5-9-13a5.5 5.5 0 0 1 9-3.5 5.5 5.5 0 0 1 9 3.5c0 4.5-3.5 8.5-9 13z" fill="none" stroke="#B92025" stroke-width="3" stroke-linejoin="round"/>
+        </svg>
+        <div class="name">Hearts</div>
+        <p>Always Rocket Red, never navy — and always on light grounds: red can't hold contrast against navy (2.2:1), so hearts never sit on navy or red. Solid hearts work as icons and symbols of care; a small outlined heart tucks at the end of a thank-you like a signature.</p>
+      </div>
+      <div class="motif">
+        <svg width="80" height="64" viewBox="0 0 96 64" aria-hidden="true">
+          <g transform="rotate(-2 48 32)">
+            <path d="M14 26 L2 29 L8 38.5 L2 48 L14 51 Z" fill="#B92025"/>
+            <path d="M82 26 L94 29 L88 38.5 L94 48 L82 51 Z" fill="#B92025"/>
+            <path d="M12 21 Q48 14 84 21 L84 45 Q48 38 12 45 Z" fill="#B92025"/>
+            <defs><path id="ribbonline" d="M16 35.5 Q48 28.5 80 35.5" fill="none"/></defs>
+            <text style="font-family:'Oswald','Arial Narrow',sans-serif; font-weight:600; font-size:10px; letter-spacing:0.6px;" fill="#FFFFFF">
+              <textPath href="#ribbonline" startOffset="50%" text-anchor="middle">GO ROCKETS!</textPath>
+            </text>
+          </g>
+        </svg>
+        <div class="name">Ribbon Banner</div>
+        <p>Frames a key sentence in white knockout caps that follow the ribbon's arch. On navy fills, a leading warm word may be gold script; on red fills every word stays white — gold on red is 3.5:1, too low for script sizes. Swallow-tail ends step slightly below the band, a degree or two of tilt — hand-hung, never perfectly straight. Red or navy fills only.</p>
+      </div>
+      <div class="motif">
+        <svg width="80" height="64" viewBox="0 0 96 64" aria-hidden="true">
+          <path d="M5 28.5 L10 29.2 L6.5 31.5 L11 32.2 L7.5 34.5 L11.5 35.3 L8.5 38 C21 41.8 39 42.6 55 41.2 C69 40 81.5 37 91.5 32.2 C92.6 31.7 92.5 30.9 91.3 30.8 C77 28.9 62 28.1 47 28.3 C32 28.5 17 28.4 5 28.5 Z" fill="#0A2B4E"/>
+          <path d="M58 39.8 C69 38.9 78.5 36.9 86 34 C79 37.6 69.5 39.7 59 40.4 Z" fill="#F7FAFD"/>
+          <path d="M18 39.8 C28 41.2 38 41.6 47 41.2 C38 42.2 28 41.9 19 40.7 Z" fill="#F7FAFD"/>
+          <circle cx="93.5" cy="34.5" r="1.2" fill="#0A2B4E"/>
+          <circle cx="12" cy="41.5" r="1.1" fill="#0A2B4E"/>
+        </svg>
+        <div class="name">Brush Stroke</div>
+        <p>A painted swipe of navy or red behind script or under a word — tapered ends, a dry-brush streak or two, a stray fleck. Adds energy and a hand-made edge in one move. Its full-width sibling, the Brush Band, carries a whole line.</p>
+      </div>
+      <div class="motif">
+        <svg width="80" height="64" viewBox="0 0 96 64" aria-hidden="true">
+          <path d="M5 24 Q28 21 48 21 Q70 21 90 23.5 L92 26 L90.5 30 L92.5 34 L91 38 L92 41 Q68 44.5 46 44.5 Q26 44.5 7 42 L4 39 L6.5 34.5 L3.5 29.5 L5.5 27 Z" fill="#0A2B4E"/>
+          <path d="M8 25.5 C16 24.6 24 24.2 30 24.3 C22 25.1 15 25.7 9.5 26.6 Z" fill="#F7FAFD"/>
+          <path d="M64 42.8 C74 42 82 40.8 88.5 39 C82.5 41.4 74.5 42.9 66 43.5 Z" fill="#F7FAFD"/>
+          <circle cx="94.5" cy="27" r="1.1" fill="#0A2B4E"/>
+          <circle cx="2" cy="42" r="1" fill="#0A2B4E"/>
+          <text x="48" y="37" text-anchor="middle" style="font-family:'Oswald','Arial Narrow',sans-serif; font-weight:600; font-size:11px; letter-spacing:0.8px;" fill="#FFFFFF">SHOP NOW!</text>
+        </svg>
+        <div class="name">The Brush Band</div>
+        <p>The ribbon's energetic sibling: one full-width stroke carrying one short line of white knockout caps. Ribbon frames celebration; band frames action — sign-ups, launches, calls to action. Band text sets straight (the arch belongs to the ribbon), fills are navy or red — a red band spends the red allowance — and white bands live only on non-ice grounds where the edge can read. One band per piece, and a piece with a band skips the swipe.</p>
+      </div>
+      <div class="motif">
+        <svg width="80" height="64" viewBox="0 0 96 64" aria-hidden="true">
+          <g stroke="#B92025" stroke-width="4" stroke-linecap="round">
+            <path d="M14 32 L26 32"/><path d="M20 20 L30 26"/><path d="M20 44 L30 38"/>
+          </g>
+          <g stroke="#0A2B4E" stroke-width="4" stroke-linecap="round">
+            <path d="M82 32 L70 32"/><path d="M76 20 L66 26"/><path d="M76 44 L66 38"/>
+          </g>
+          <path d="M40 48 Q 48 42 44 34 T 52 20" stroke="#0A2B4E" stroke-width="3" fill="none" stroke-dasharray="1 8" stroke-linecap="round"/>
+        </svg>
+        <div class="name">Sparks &amp; Trails</div>
+        <p>Sunburst dashes flank a headline like a cheer; a dotted trail follows the rocket — round dots on a loose, curving path, tracing the flight it just took. Both say "something exciting is happening here."</p>
+      </div>
+      <div class="motif">
+        <svg width="80" height="64" viewBox="0 0 96 64" aria-hidden="true">
+          <circle cx="86" cy="11" r="5.5" fill="#F5B70F"/>
+          <g stroke="#F5B70F" stroke-width="2" stroke-linecap="round">
+            <path d="M86 3.5 L86 1.5"/>
+            <path d="M78.5 11 L76.5 11"/>
+            <path d="M80.8 5.8 L79.4 4.4"/>
+          </g>
+          <g fill="#E9F1F9">
+            <circle cx="13" cy="18" r="4"/>
+            <circle cx="19" cy="15.5" r="5"/>
+            <circle cx="25" cy="18" r="3.8"/>
+            <rect x="11" y="17" width="16" height="4.5" rx="2.2"/>
+          </g>
+          <path d="M2 57 Q48 51 94 57 L94 61 Q48 55 2 61 Z" fill="#7FB069"/>
+          <rect x="31" y="33" width="34" height="24" fill="#FFFFFF"/>
+          <path d="M27 35 L48 19 L69 35 Z" fill="#0A2B4E"/>
+          <circle cx="48" cy="29.5" r="2.6" fill="#F5B70F"/>
+          <path d="M48 19 L48 10" stroke="#0A2B4E" stroke-width="1.5"/>
+          <path d="M48 10 L56 12.2 L48 14.4 Z" fill="#B92025"/>
+          <path d="M44 56 L44 45.5 Q48 41.5 52 45.5 L52 56 Z" fill="#B92025"/>
+          <g fill="#0A2B4E">
+            <rect x="34.5" y="40" width="7" height="7" rx="1"/>
+            <rect x="54.5" y="40" width="7" height="7" rx="1"/>
+          </g>
+          <g stroke="#FFFFFF" stroke-width="1">
+            <path d="M38 40.5 L38 47"/><path d="M34.5 43.5 L41.5 43.5"/>
+            <path d="M58 40.5 L58 47"/><path d="M54.5 43.5 L61.5 43.5"/>
+          </g>
+          <g fill="#7FB069">
+            <circle cx="14" cy="51" r="5.5"/>
+            <circle cx="20" cy="48.5" r="6.5"/>
+            <circle cx="25.5" cy="51.5" r="4.8"/>
+          </g>
+          <g stroke="#7FB069" stroke-width="1.5" stroke-linecap="round">
+            <path d="M78 56 L78 50.5"/>
+            <path d="M84 56 L84 52.5"/>
+          </g>
+          <circle cx="78" cy="49" r="2.2" fill="#B92025"/>
+          <circle cx="84" cy="51" r="2" fill="#F5B70F"/>
+          <circle cx="78" cy="49" r="0.8" fill="#FFFFFF"/>
+          <circle cx="84" cy="51" r="0.7" fill="#FFFFFF"/>
+        </svg>
+        <div class="name">Environmental Vectors</div>
+        <p>The schoolhouse is the anchor scene — gabled navy roof, arched red door, flag flying — supported by flat clouds, bushes, grass, and flowers. Grass and foliage use Leaf Green; skies and clouds use Sky Wash; suns are gold. Characters and icons stay in the core palette.</p>
+      </div>
+      <div class="motif">
+        <svg width="80" height="64" viewBox="0 0 96 64" aria-hidden="true">
+          <path d="M8 24 C12 21 17 21.5 20 23.5 L20 40 C17 38 12 37.5 8 39.5 Z" fill="#0A2B4E"/>
+          <path d="M32 24 C28 21 23 21.5 20 23.5 L20 40 C23 38 28 37.5 32 39.5 Z" fill="#0A2B4E"/>
+          <path d="M20 23.5 L20 40" stroke="#F7FAFD" stroke-width="1.4"/>
+          <path d="M26 26.5 l1.1 2.3 2.5 0.35 -1.8 1.75 0.45 2.5 -2.25 -1.2 -2.25 1.2 0.45 -2.5 -1.8 -1.75 2.5 -0.35 Z" fill="#B92025"/>
+          <path d="M37 36.8 L37 28.5 C37 26.7 38.4 25.6 40.2 26 L44 26.9 C45.6 27.3 46.7 28.2 48 29.6 C50.5 32.3 54 34.2 58.3 35.2 C60.4 35.7 61.5 36.1 61.5 36.8 Z" fill="#0A2B4E"/>
+          <path d="M37 28.5 C37 26.7 38.4 25.6 40.2 26 L44 26.9 L43.4 29.4 C41 28.4 38.9 28.2 37 28.5 Z" fill="#B92025"/>
+          <rect x="36" y="36.6" width="26" height="2.2" rx="1.1" fill="#FFFFFF"/>
+          <rect x="36" y="38.8" width="26" height="3.4" rx="1.7" fill="#B92025"/>
+          <g stroke="#FFFFFF" stroke-width="1.3" stroke-linecap="round">
+            <path d="M46 31 L49.8 29.7"/>
+            <path d="M48.3 33.4 L52.1 32.1"/>
+          </g>
+          <path d="M76 21.5 C68.3 21.5 62.5 27 62.5 33.7 C62.5 40.4 68.3 45.5 75.6 45.5 C78.4 45.5 79.6 43.8 78.8 41.9 C78 39.9 79.2 38 81.6 38 L85.3 38 C87.6 38 89.5 36.2 89.5 33.9 C89.5 27 83.7 21.5 76 21.5 Z" fill="#0A2B4E"/>
+          <circle cx="70.5" cy="28.5" r="2.1" fill="#F5B70F"/>
+          <circle cx="76.5" cy="26.8" r="2.1" fill="#B92025"/>
+          <circle cx="82.5" cy="28.8" r="2.1" fill="#E9F1F9"/>
+          <circle cx="71.5" cy="38.5" r="2.4" fill="#F7FAFD"/>
+        </svg>
+        <div class="name">Program Icons</div>
+        <p>Simplified icons for programs: an open book with a red star for enrichment, a sneaker for PE and recess, a palette for the arts. Navy base plus one or two accent colors; one object, no fine detail — legible at 40px.</p>
+      </div>
+    </div>
+    <svg class="banner-demo" viewBox="0 0 760 120" role="img" aria-label="Navy ribbon banner reading: Any amount is appreciated and makes an impact!">
+      <g transform="rotate(-1.2 380 60)">
+        <path d="M74 38 L16 42 L42 66 L16 90 L74 94 Z" fill="#0A2B4E"/>
+        <path d="M686 38 L744 42 L718 66 L744 90 L686 94 Z" fill="#0A2B4E"/>
+        <path d="M70 30 Q380 8 690 30 L690 86 Q380 64 70 86 Z" fill="#0A2B4E"/>
+        <defs><path id="bannerarc" d="M90 68 Q380 45 670 68" fill="none"/></defs>
+        <text><textPath href="#bannerarc" startOffset="50%" text-anchor="middle"><tspan style="font-family:'Kaushan Script','Brush Script MT',cursive; font-size:29px;" fill="#F5B70F">Any amount </tspan><tspan style="font-family:'Oswald','Arial Narrow',sans-serif; font-weight:600; font-size:24px; letter-spacing:0.5px;" fill="#FFFFFF">IS APPRECIATED AND MAKES AN IMPACT!</tspan></textPath></text>
+      </g>
+    </svg>
+    <p class="prop-caption" style="margin-top:0.75rem;">Navy ribbon banners can mix voices: gold script for the warm phrase, white caps for the message. Red ribbons keep every word white.</p>
+    <svg class="banner-demo" viewBox="0 0 760 90" role="img" aria-label="Navy brush band reading: Click to shop!">
+      <path d="M14 28 Q120 21 300 20.5 Q520 20 742 26 L747 31 L744 38 L748 45 L745 52 L747 60 Q560 68 340 68.5 Q140 69 16 63 L10 57 L14 50 L9 43 L13 36 Z" fill="#0A2B4E"/>
+      <path d="M30 24.5 C80 22.8 130 22 170 22.3 C120 23.8 75 25 40 26.6 Z" fill="#E9F1F9"/>
+      <path d="M560 65 C620 63.5 670 61 715 57.5 C672 62 620 65 575 66.3 Z" fill="#E9F1F9"/>
+      <circle cx="753" cy="30" r="2.2" fill="#0A2B4E"/>
+      <circle cx="6" cy="64" r="2" fill="#0A2B4E"/>
+      <text x="352" y="55" text-anchor="middle" style="font-family:'Oswald','Arial Narrow',sans-serif; font-weight:600; font-size:30px; letter-spacing:2px;" fill="#FFFFFF">CLICK TO SHOP!</text>
+      <g stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+        <path d="M490 44 L540 44"/>
+        <path d="M528 34 L540 44 L528 54"/>
+      </g>
+    </svg>
+    <p class="prop-caption" style="margin-top:0.75rem;">The brush band frames action the way the ribbon frames celebration: straight white caps, no arch, navy or red fill, dry-brush streaks and a stray fleck at the ends. It sits square — the ribbon above keeps this view's tilt, and two tilts never share a view.</p>
+  </div>
+</section>
+
+<section id="layout">
+  <div class="wrap">
+    <div class="ribbon-head">
+      <span class="num">04 &middot; Layout &amp; Application</span>
+      <h2>How Pieces Come Together</h2>
+      <svg class="underline" viewBox="0 0 130 10" aria-hidden="true"><g transform="translate(130,10) scale(-1,-1)"><path d="M2 3.5 L6.5 3.9 L3.5 5 L7.5 5.4 L4.5 6.8 C20 8.8 42 9.2 64 8.6 C84 8 104 6.6 126 4.2 C127.5 4 127.5 3.4 126 3.3 C104 2.5 80 2.3 58 2.7 C38 3 18 3.2 2 3.5 Z" fill="#B92025"/></g></svg>
+    </div>
+
+    <div class="grounds">
+      <div class="ground-card" style="background:var(--paper);">
+        <h3>One paper for everything</h3>
+        <p>Every piece — flyers, posters, web pages, forms — sits on Ice Paper <span style="font-family:ui-monospace,Consolas,monospace; font-size:0.88em;">#F7FAFD</span>, a cool, sky-biased near-white. One ground means print and digital always feel like the same brand, and red and gold read hotter against it.</p>
+      </div>
+      <div class="ground-card" style="background:var(--sky);">
+        <h3>Sky wash organizes</h3>
+        <p>Section bands, icon rows, and info panels sit in Sky Wash — the same blue as the illustrated sky, so panels feel like air, not boxes. Warmth comes from gold, script, and the voice, not from the paper.</p>
+      </div>
+    </div>
+
+    <p style="margin-top:2rem;"><strong>Composition.</strong> Every piece commits to one spine. The default is the <em>spirit stack</em>: a centered vertical build — motif, then lockup, then ribbon or panel, then supporting detail — that balances itself and always feels like a poster. The alternative is the <em>grid build</em>: everything hangs flush-left on a strict grid, oversized type and generous whitespace, with one bold mass counterweighting the type. Choose the stack when the feeling leads, the grid when the information leads — and never mix spines in one piece. In both builds, body text stays left-aligned inside its column: centering is for the spine, never the sentences.</p>
+    <p><strong>The grid build in practice.</strong> Open with a hairline masthead — organization flush-left, date flush-right — anchored to the content edge: when a rail claims an edge of the sheet, the grid's origin moves with it. The counterweight to the type mass is one bold element, any of three forms: a navy or red block a knockout mark sits in, a single large motif, or a structural rail or band bled off the edge — and the band may itself be an illustrated scene, a grass strip serving as both mass and motif. Script keeps its warmth here, flush-left on its own line. And motifs may inhabit the structure instead of decorating it: a rocket climbing a rail, its trail running inside the band.</p>
+    <p><strong>Panels and rows.</strong> Lists of programs or benefits sit in a strip: icon above label, items separated by thin vertical rules, three to five items — enough to show breadth, few enough to read at a car-line glance. The strip has two grounds. Sky Wash is the default — quiet organization inside a busy page, labels in bold navy caps. Navy is the announcement variant, for when the row itself is the star: gold caps labels, white body text, white hairline rules, and icons as solid white knockouts — never line drawings. Gold is a label color on navy only; on light grounds labels stay navy or slate.</p>
+    <p><strong>Edges are horizons.</strong> The boundary between two grounds is a stage, not a seam. A panel's top edge can be the ground line the schoolhouse sits on; a navy band's rim, the surface a rocket launches from; a hairline, the path the dart flies above. One figure on one edge is plenty — it's the move that makes a piece look composed instead of assembled.</p>
+    <p><strong>Small against big.</strong> Scale drama runs both ways. Huge type is one kind of energy; a small motif alone in a generous field is the other — a tiny rocket high in an empty ice-paper sky reads as flight and wonder. When a motif shrinks, let the whitespace around it do the work.</p>
+    <p><strong>Photography.</strong> Event photos join a layout as blocks: sharp-edged rectangles set flush on the grid and treated as one bold mass — a photo can carry a grid build as its counterweight. Never behind text, never rounded, never floated. In a spirit stack, a photo may take the composition's one tilt, like a snapshot taped to the fridge; in a grid build it stays square like everything else.</p>
+    <p><strong>Tilt with intent.</strong> One tilt per view — a view being what the eye takes in at once. A ribbon, a badge, a brush band, a taped-down photo may rotate a degree or two; it's the hand-made wink. A poster is one view, so one tilt. A tall stacked piece is several views, so a tilted badge in its hero and a tilted ribbon at its close can coexist — but two tilts never share a view, and type blocks, panels, and anything on the grid never tilt. If everything tilts, nothing does. To know whether any device belongs in a grid build, ask where its energy lives: in its contour, or in its placement. Contour energy — script curves, brush edges, a wavy grass line — travels anywhere, because the grid governs placement and doesn't care about edges. Placement energy — tilt, arc, the ribbon's hand-hung hang — stays in the stack, because the grid is a placement discipline and those devices exist to defy it.</p>
+    <div class="rule">
+      <p class="rule-line">The device budget: a typical piece picks two or three devices and lets the rest sit out.</p>
+      <div class="fine-print">
+        <span class="fp-label">The fine print</span>
+        <ul>
+          <li>The one-of-each rules — arc, tilt (per view), brush stroke, star scatter, sparks, scene — are ceilings, not a recipe.</li>
+          <li>Reach for everything at once only when the occasion is genuinely maximal.</li>
+          <li>Even then, ask which device the piece would miss least — and cut it.</li>
+        </ul>
+      </div>
+    </div>
+    <p><strong>Buttons.</strong> Buttons are solid Red Hill Navy, pill-shaped, with white 700-weight text and a directional arrow; hover and pressed states fill Rocket Red. One primary button per view; secondary actions get the outlined variant. The pill shape is deliberate contrast: everything printed is sharp-cornered and flat, so anything rounded is something you can press — never use pill shapes on badges, panels, or anything else that isn't interactive. Keyboard focus gets a visible offset ring: navy on light grounds, gold on navy grounds — each side of the ring holds at least 3:1 against what it touches.</p>
+    <div class="btn-row">
+      <button class="btn" type="button">Create Your Account <span class="arrow">&rarr;</span></button>
+      <button class="btn secondary" type="button">View the Calendar <span class="arrow">&rarr;</span></button>
+    </div>
+  </div>
+</section>
+
+<section class="on-sky" id="voice">
+  <div class="wrap">
+    <div class="ribbon-head">
+      <span class="num">05 &middot; Voice</span>
+      <h2>How Red Hill Sounds</h2>
+      <svg class="underline" viewBox="0 0 130 10" aria-hidden="true"><g transform="translate(130,0) scale(-1,1)"><path d="M2 3.5 L6.5 3.9 L3.5 5 L7.5 5.4 L4.5 6.8 C20 8.8 42 9.2 64 8.6 C84 8 104 6.6 126 4.2 C127.5 4 127.5 3.4 126 3.3 C104 2.5 80 2.3 58 2.7 C38 3 18 3.2 2 3.5 Z" fill="#B92025"/></g></svg>
+    </div>
+    <p>Gratitude first, community always. Red Hill talks like a thankful neighbor, not an institution.</p>
+    <div class="voice-cols">
+      <div class="voice-card">
+        <h3>Lead with thanks</h3>
+        <ul>
+          <li>Open every ask — donations, volunteering, membership — with appreciation: <span class="say">"Thank you for investing in our students, staff &amp; school."</span></li>
+          <li>Name and celebrate helpers: <span class="say">"Special thanks to the Talbert Family!"</span></li>
+          <li>Announcements may lead with the news instead — but the community heart arrives before the call to action: <span class="say">"100% of proceeds support our students."</span></li>
+        </ul>
+      </div>
+      <div class="voice-card">
+        <h3>Always "our," never "the"</h3>
+        <ul>
+          <li>It's <span class="say">our students, our school, our community</span> — the reader is already part of it.</li>
+          <li>Invitations, not instructions: <span class="say">"Create your account today, simplify your school year."</span></li>
+        </ul>
+      </div>
+      <div class="voice-card">
+        <h3>Every bit counts</h3>
+        <ul>
+          <li>Remove pressure from every ask: <span class="say">"Any amount is appreciated and makes an impact!"</span></li>
+          <li>Excitement, never scarcity — no "before we sell out," no countdown clocks.</li>
+          <li>Exclamation points are welcome — one per sentence, earned by genuine enthusiasm.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="accessibility">
+  <div class="wrap">
+    <div class="ribbon-head">
+      <span class="num">06 &middot; Accessibility</span>
+      <h2>Everyone Reads the Poster</h2>
+      <svg class="underline" viewBox="0 0 130 10" aria-hidden="true"><g transform="translate(0,10) scale(1,-1)"><path d="M2 3.5 L6.5 3.9 L3.5 5 L7.5 5.4 L4.5 6.8 C20 8.8 42 9.2 64 8.6 C84 8 104 6.6 126 4.2 C127.5 4 127.5 3.4 126 3.3 C104 2.5 80 2.3 58 2.7 C38 3 18 3.2 2 3.5 Z" fill="#B92025"/></g></svg>
+    </div>
+    <p>Every digital piece — web pages, forms, emails — meets <strong>WCAG 2.2 AA</strong>. Print doesn't answer to WCAG, but it answers to the same eyes: posters and flyers use the same approved color pairs and size minimums, so the standard travels with the brand. The palette was built so this happens by default — follow the roles above and you're compliant. The specifics (SC numbers refer to WCAG 2.2):</p>
+    <p><strong>Text contrast (SC 1.4.3).</strong> Body-size text uses only combinations rated 4.5:1 or better in the table in Section 01. Large text — 24px+ regular or 19px+ bold, which covers all Oswald headlines and Fraunces sub-headings — needs 3:1, and every approved pair clears that with room to spare. Script below 24px follows the 4.5:1 body rule like everything else (every approved pair already does). Two exemptions apply: the "Red Hill" wordmark and rocket logo lockup are logotypes with no contrast requirement, and text inside busy illustrated scenes is treated as part of the picture — but don't put information there in the first place.</p>
+    <p><strong>Non-text contrast (SC 1.4.11).</strong> Anything a reader must identify to use or understand — button shapes, form fields, focus rings, program icons, chart segments — holds 3:1 against what it touches. In practice: navy components on light grounds (13:1+), navy hairlines separating adjacent light fills (as in the proportion bar above), and the two-ring focus rule from Section 04. Purely decorative elements — star scatter, sparks and trails, Sky Wash panels — are exempt and stay exempt only as long as they carry no information.</p>
+    <p><strong>Text spacing.</strong> Body leading is at least 1.5 (this page uses 1.6), and the gap between paragraphs is at least half a line beyond normal leading, so paragraph breaks read as breaks — baseline-to-baseline across a paragraph boundary comes to roughly 1.6&times; a normal line advance. Never set body copy solid.</p>
+    <p><strong>Minimum sizes.</strong> Body text 16px+, captions and labels 13px+ in slate, navy, or red, script 18px+, icons legible at 40px. Gold text exists only on navy, at any size.</p>
+  </div>
+</section>
+
+<section class="on-sky" id="guardrails">
+  <div class="wrap">
+    <div class="ribbon-head">
+      <span class="num">07 &middot; Guardrails</span>
+      <h2>Keep It Red Hill</h2>
+      <svg class="underline" viewBox="0 0 130 10" aria-hidden="true"><path d="M2 3.5 L6.5 3.9 L3.5 5 L7.5 5.4 L4.5 6.8 C20 8.8 42 9.2 64 8.6 C84 8 104 6.6 126 4.2 C127.5 4 127.5 3.4 126 3.3 C104 2.5 80 2.3 58 2.7 C38 3 18 3.2 2 3.5 Z" fill="#B92025"/></svg>
+    </div>
+    <div class="dd">
+      <div class="dd-col do">
+        <div class="head">Do</div>
+        <ul>
+          <li>Alternate script and caps line-by-line in lockups</li>
+          <li>Make red one text moment: one earned word, or one whole short element</li>
+          <li>Arc one caps heading per stack composition, gently</li>
+          <li>Keep the rocket flying upward at an angle</li>
+          <li>Ground every piece on ice paper; let sky wash panels organize</li>
+          <li>Check new color pairs against the contrast table before use</li>
+          <li>Scatter a few stars near headlines, asymmetrically</li>
+          <li>Carry at least one Spirit Kit motif, even on the sparest piece</li>
+          <li>Frame a call to action in a brush band — straight white caps on navy or red</li>
+          <li>Sticker-cut a motif to land it on a same-color ground</li>
+          <li>Say thank you before asking — or lead an announcement with the news, never with pressure</li>
+        </ul>
+      </div>
+      <div class="dd-col dont">
+        <div class="head">Don't</div>
+        <ul>
+          <li>Set script type in all caps or use it for dates and prices</li>
+          <li>Put red on a word you wouldn't stress aloud, a word alone on its line, or a full headline</li>
+          <li>Put gold text on ice paper or sky — it fails contrast (1.7:1)</li>
+          <li>Color hearts navy, use them outside red, or set them on navy or red grounds</li>
+          <li>Stack more than one script moment per composition</li>
+          <li>Use gradients, drop shadows, or outlined illustration (the red outlined heart and the sticker cut's edge are the exceptions)</li>
+          <li>Add grain, aging, or distressing — hand-made is contour, never texture</li>
+          <li>Arc more than one heading, or bend script text at all</li>
+          <li>Let the tone go corporate — no "utilize," no "per our policy"</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <span class="script">Thank you!</span>
+  <p>Red Hill Elementary PTA &middot; Official Brand Guide &middot; Consistency is part of school spirit — when in doubt, check the guide before improvising.</p>
+</footer>
+
+</body>
+</html>
