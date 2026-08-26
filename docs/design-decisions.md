@@ -106,6 +106,18 @@ trail, 13px minimum labels, no horizontal scroll at 390px.
   contribution." (plus the EIN once `ORG.ein` is set in `data.js`), and
   the receipt itself supplies the org name, amount, and date. Verified
   rendering on a live sandbox receipt 2026-08-25.
+- Donors can add a *voluntary* fee cover (2026-08-26): a default-checked
+  opt-out checkbox on the amount step adds a gross-up
+  (`(gift + 30¢) / (1 − 2.9%)`, shared math in `data.js`) as a second
+  Checkout line item ("Covering card processing"), disclosed with the
+  total on the summary step. Because it's opt-in, it is *not* a card
+  surcharge — none of the card-network surcharge rules (credit-only,
+  3% cap, preview API) apply, and the full amount remains a
+  tax-deductible gift to the PTA. The server computes the fee
+  (`coverFees` boolean is all the client sends) and stamps `fee_cents`
+  into session metadata; the webhook stores the gift and fee in
+  separate columns so campaign totals, the classroom race, and circle
+  tiers count the intended gift only, while the admin CSV shows both.
 - Still promised in the UI and owed by operations: email receipts
   (enable in Stripe), the Spring Impact Report, and employer-matching
   follow-up (flagged per gift in `/api/export.csv`).

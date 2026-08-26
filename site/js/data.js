@@ -15,6 +15,15 @@ const ORG = {
 const MAX_NAME = 80;      // characters, donor and student names
 const MAX_AMOUNT = 50000; // dollars, per gift
 
+/* Optional donor-paid fee cover, shared by the worker (authoritative)
+   and the donate form (display). The gross-up finds the extra cents so
+   the PTA nets the full gift after Stripe's 2.9% + 30¢:
+   total = (gift + 30¢) / (1 − 2.9%). */
+const FEE_RATE = 0.029;
+const FEE_FLAT_CENTS = 30;
+const feeCoverCents = (amountCents) =>
+  Math.round((amountCents + FEE_FLAT_CENTS) / (1 - FEE_RATE)) - amountCents;
+
 /* `circle` marks a priority's named $2,500 recognition tier: gifts of
    `min` dollars or more are badged with `label` on the honor roll. */
 const PRIORITIES = [
@@ -128,6 +137,6 @@ const classroomById = (id) => CLASSROOMS.find((c) => c.id === id) || null;
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     ORG, PRIORITIES, CAMPAIGN, CLASSROOMS,
-    MAX_NAME, MAX_AMOUNT, priorityById, classroomById,
+    MAX_NAME, MAX_AMOUNT, feeCoverCents, priorityById, classroomById,
   };
 }

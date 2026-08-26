@@ -201,6 +201,36 @@ describe('checkout', () => {
     expect(await bad({ link: 'forged.token' })).toBe(400);
   });
 
+  it('adds a fee-cover line item when the donor covers card costs', async () => {
+    const calls = stubStripe();
+    const res = await checkoutDirect({ ...validCheckout, coverFees: true });
+    expect(res.status).toBe(200);
+    const sent = new URLSearchParams(String(calls[0].body));
+    // The gift line is unchanged; the gross-up rides as its own line
+    // item ($100 needs $3.30 extra to net $100 after 2.9% + 30¢).
+    expect(sent.get('line_items[0][price_data][unit_amount]')).toBe('10000');
+    expect(sent.get('line_items[1][quantity]')).toBe('1');
+    expect(sent.get('line_items[1][price_data][unit_amount]')).toBe('330');
+    expect(sent.get('line_items[1][price_data][product_data][name]')).toBe('Covering card processing');
+    expect(sent.get('metadata[fee_cents]')).toBe('330');
+  });
+
+  it('rounds the fee-cover gross-up to the nearest cent', async () => {
+    const calls = stubStripe();
+    await checkoutDirect({ ...validCheckout, amount: 1, coverFees: true });
+    const sent = new URLSearchParams(String(calls[0].body));
+    // ($1.00 + 30¢) / 0.971 = $1.34 charged → 34¢ fee cover.
+    expect(sent.get('line_items[1][price_data][unit_amount]')).toBe('34');
+  });
+
+  it('omits the fee line when the donor declines', async () => {
+    const calls = stubStripe();
+    await checkoutDirect({ ...validCheckout, coverFees: false });
+    const sent = new URLSearchParams(String(calls[0].body));
+    expect(sent.has('line_items[1][price_data][unit_amount]')).toBe(false);
+    expect(sent.get('metadata[fee_cents]')).toBe('0');
+  });
+
   it('allows anonymous gifts without a donor name', async () => {
     stubStripe({ id: 'cs_3', url: 'https://checkout.stripe.com/c/pay/cs_3' });
     const res = await checkoutDirect({ ...validCheckout, visibility: 'anon', donorName: '' });
@@ -273,6 +303,24 @@ describe('webhook and campaign stats', () => {
     expect(stats.campaign.gifts).toBe(0);
   });
 
+  it('credits the base gift, not the fee cover, to campaign totals', async () => {
+    await deliverWebhook(sessionEvent({ amount_total: 10330, metadata: { fee_cents: '330' } }));
+    const stats = await (await SELF.fetch('https://rally.test/api/campaign')).json();
+    expect(stats.campaign.raised).toBe(100);
+    expect(stats.priorities.stem).toBe(100);
+  });
+
+  it('judges circle tiers on the base gift, not gift plus fee', async () => {
+    // $2,500.00 charged, but $75.30 of it is fee cover — the gift
+    // itself is $2,424.70, below the $2,500 circle tier.
+    await deliverWebhook(sessionEvent({
+      id: 'cs_fee_edge', amount_total: 250000,
+      metadata: { priority: 'people', fee_cents: '7530' },
+    }));
+    const board = await (await SELF.fetch('https://rally.test/api/board')).json();
+    expect(board.donors[0].circle).toBe(false);
+  });
+
   it('lists anonymous gifts as Anonymous and honors circle tiers', async () => {
     await deliverWebhook(sessionEvent({ id: 'cs_anon', metadata: { visibility: 'anon' } }));
     await deliverWebhook(sessionEvent({
@@ -320,6 +368,15 @@ describe('admin export', () => {
     expect(csv).toContain('Rosa Rodriguez');
     expect(csv).toContain('123 Rocket Way');
     expect(csv).toContain('"Tustin","CA","92780","US"');
+  });
+
+  it('exports the gift and the fee cover as separate columns', async () => {
+    await deliverWebhook(sessionEvent({ amount_total: 10330, metadata: { fee_cents: '330' } }));
+    const res = await SELF.fetch('https://rally.test/api/export.csv?key=test-admin-key');
+    const csv = await res.text();
+    expect(csv).toContain('fee_dollars');
+    expect(csv).toContain('"100.00"');
+    expect(csv).toContain('"3.30"');
   });
 
   it('neutralizes spreadsheet formulas in exported names', async () => {

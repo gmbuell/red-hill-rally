@@ -10,6 +10,7 @@
     step: 1,
     priority: RH.priorityById(RH.param('p')) || null,
     amount: 0,
+    coverFees: true, // opt-out; the server recomputes the amount
     link: null, // verified {code, n: student name, c: classroom id}
   };
 
@@ -33,6 +34,16 @@
   };
 
   /* ---- step 2: amounts ---- */
+  const feeCents = () => feeCoverCents(Math.round(state.amount) * 100);
+  const moneyCents = (cents) => '$' + (cents / 100)
+    .toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  const renderFeeLabel = () => {
+    RH.qs('#fee-label').textContent = state.amount > 0
+      ? `Add ${moneyCents(feeCents())} to cover card processing — 100% of my gift reaches the school.`
+      : 'Add a little extra to cover card processing — 100% of my gift reaches the school.';
+  };
+
   const renderAmounts = () => {
     const tiers = state.priority ? state.priority.tiers : [];
     RH.qs('#amount-grid').innerHTML = tiers.map((t) => `
@@ -40,6 +51,7 @@
         <span class="amt">${RH.money(t.amount)}</span>
         <span class="impact">${t.impact}</span>
       </button>`).join('');
+    renderFeeLabel();
   };
 
   /* ---- step 3: dedication ---- */
@@ -76,6 +88,11 @@
       s += `. Credited to <strong>${room.teacher}&rsquo;s class</strong>.`;
     } else {
       s += '.';
+    }
+    // Full price disclosure before Stripe: the fee cover and the total.
+    if (state.coverFees) {
+      const gift = Math.round(state.amount) * 100;
+      s += ` You&rsquo;re adding <strong>${moneyCents(feeCents())}</strong> to cover card processing &mdash; <strong>${moneyCents(gift + feeCents())}</strong> total.`;
     }
     RH.qs('#summary-text').innerHTML = s;
   };
@@ -155,6 +172,7 @@
         visibility: visibility(),
         donorName: RH.qs('#donor-name').value.trim(),
         match: RH.qs('#match').checked,
+        coverFees: state.coverFees,
       });
       if (ok && data.url) {
         location.href = data.url;
@@ -195,6 +213,9 @@
     if (e.target.name === 'visibility') {
       RH.qs('#donor-name-field').hidden = e.target.value !== 'public';
     }
+    if (e.target.id === 'cover-fees') {
+      state.coverFees = e.target.checked;
+    }
   });
 
   form.addEventListener('click', (e) => {
@@ -205,6 +226,7 @@
       RH.qs('#custom-field').classList.remove('invalid');
       form.querySelectorAll('.amount-btn').forEach((b) =>
         b.classList.toggle('selected', b === btn));
+      renderFeeLabel();
     }
   });
 
@@ -212,6 +234,7 @@
     state.amount = Number(e.target.value) || 0;
     RH.qs('#custom-field').classList.remove('invalid');
     form.querySelectorAll('.amount-btn').forEach((b) => b.classList.remove('selected'));
+    renderFeeLabel();
   });
 
   form.addEventListener('submit', (e) => e.preventDefault());

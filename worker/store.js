@@ -12,18 +12,24 @@ export async function recordDonation(db, session, createdSec) {
   const md = session.metadata || {};
   const cd = session.customer_details || {};
   const addr = cd.address || {};
+  // amount_cents is the intended gift: the charge total minus the
+  // opt-in fee cover our checkout endpoint stamped into metadata.
+  // Every stat (campaign, board, circles) counts the gift alone.
+  const total = session.amount_total || 0;
+  const feeCents = Math.min(Math.max(Number(md.fee_cents) || 0, 0), total);
   await db.prepare(`
     INSERT INTO donations
-      (id, amount_cents, priority, classroom, student_name, donor_name,
-       visibility, email, employer_match, via_link, created,
+      (id, amount_cents, fee_cents, priority, classroom, student_name,
+       donor_name, visibility, email, employer_match, via_link, created,
        billing_name, address_line1, address_line2, city, state,
        postal_code, country)
     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11,
-            ?12, ?13, ?14, ?15, ?16, ?17, ?18)
+            ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19)
     ON CONFLICT(id) DO NOTHING`)
     .bind(
       session.id,
-      session.amount_total || 0,
+      total - feeCents,
+      feeCents,
       md.priority || '',
       md.classroom || '',
       md.student_name || '',
@@ -104,16 +110,17 @@ export async function exportCsv(db) {
     if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
     return `"${s.replace(/"/g, '""')}"`;
   };
-  const header = ['id', 'date', 'amount_dollars', 'priority', 'classroom',
-    'student_name', 'donor_name', 'visibility', 'email', 'billing_name',
-    'address_line1', 'address_line2', 'city', 'state', 'postal_code',
-    'country', 'employer_match', 'via_link'];
+  const header = ['id', 'date', 'amount_dollars', 'fee_dollars', 'priority',
+    'classroom', 'student_name', 'donor_name', 'visibility', 'email',
+    'billing_name', 'address_line1', 'address_line2', 'city', 'state',
+    'postal_code', 'country', 'employer_match', 'via_link'];
   const rows = [header.join(',')];
   for (const r of results) {
     rows.push([
       r.id,
       new Date((r.created || 0) * 1000).toISOString(),
       (r.amount_cents / 100).toFixed(2),
+      ((r.fee_cents || 0) / 100).toFixed(2),
       r.priority, r.classroom, r.student_name, r.donor_name,
       r.visibility, r.email, r.billing_name,
       r.address_line1, r.address_line2, r.city, r.state, r.postal_code,

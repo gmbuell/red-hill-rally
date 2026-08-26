@@ -6,7 +6,7 @@ import { createCheckoutSession, verifyWebhook } from './stripe.js';
 import { recordDonation, campaignStats, boardStats, exportCsv } from './store.js';
 import data from '../site/js/data.js';
 
-const { ORG, CAMPAIGN, MAX_NAME, MAX_AMOUNT, priorityById, classroomById } = data;
+const { ORG, CAMPAIGN, MAX_NAME, MAX_AMOUNT, feeCoverCents, priorityById, classroomById } = data;
 
 /* The charge description prints on every Stripe receipt, making it the
    donor's IRS written acknowledgment (Pub 1771): org name + the
@@ -95,9 +95,15 @@ async function handleCheckout(request, env, url) {
     return json({ error: 'Online giving isn’t quite open yet — please check back soon!' }, 503);
   }
 
+  // The fee cover is voluntary and computed here, never client-side;
+  // the webhook subtracts fee_cents back out so stats count the gift.
+  const feeCents = body.coverFees === true ? feeCoverCents(amount * 100) : 0;
+
   const session = await createCheckoutSession(env, {
     amountCents: amount * 100,
     productName: `Rocket Rally — ${priority.name}`,
+    feeCents,
+    feeName: 'Covering card processing',
     description: TAX_ACKNOWLEDGMENT,
     successUrl: `${url.origin}/thanks?p=${priority.id}&amt=${amount}&sid={CHECKOUT_SESSION_ID}`,
     cancelUrl: `${url.origin}/donate?p=${priority.id}`,
@@ -109,6 +115,7 @@ async function handleCheckout(request, env, url) {
       visibility,
       employer_match: body.match ? '1' : '0',
       via_link: viaLink ? '1' : '0',
+      fee_cents: String(feeCents),
     },
   });
   if (!session) {
