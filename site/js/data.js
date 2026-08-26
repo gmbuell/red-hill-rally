@@ -22,7 +22,7 @@ const PRIORITIES = [
     id: 'people',
     name: 'Student Support Staff',
     goal: 90000,
-    blurb: 'The counselor, the PE teacher, and reading & math help that catches kids early — the quiet backbone of the whole school.',
+    blurb: 'The heart of our campus. Unlike most elementary schools, Red Hill directly funds key personnel: a full-time school counselor, a dedicated physical education teacher, and Tier II academic intervention specialists who catch struggling readers and mathematicians before they fall behind.',
     circle: { min: 2500, label: 'Counselor Circle' },
     tiers: [
       { amount: 50, impact: 'Joins hundreds of families powering the annual fund' },
@@ -33,9 +33,9 @@ const PRIORITIES = [
   },
   {
     id: 'stem',
-    name: 'The STEM Lab',
+    name: 'Hands-On STEM Lab',
     goal: 25000,
-    blurb: 'Real experiments, every grade, every week — circuits, chemistry, coding, and engineering challenges in our library.',
+    blurb: 'Weekly, interactive science for every student. Led by All Things Science, our lab provides hands-on experiments in coding, engineering, chemistry, and circuits — building scientific confidence early.',
     tiers: [
       { amount: 100, impact: "Materials for a classroom's experiment day" },
       { amount: 500, impact: 'One full week of STEM Lab, every class' },
@@ -44,20 +44,20 @@ const PRIORITIES = [
   },
   {
     id: 'sports',
-    name: 'Play With Purpose',
+    name: 'Organized Sports at Lunch Recess',
     goal: 15000,
-    blurb: 'Coached games at lunch recess where every kid gets in the game — teachers see it in calmer, more focused afternoons.',
+    blurb: 'Active, inclusive play. Partnering with Beyond Athletics, professional coaches turn lunchtime recess into structured games that teach teamwork, resolve conflicts, and ensure every child is included.',
     tiers: [
       { amount: 50, impact: 'Equipment: balls, cones, pinnies' },
       { amount: 250, impact: 'A full week of coached recess play' },
-      { amount: 1000, impact: 'A month of Play With Purpose' },
+      { amount: 1000, impact: 'A month of coached recess play' },
     ],
   },
   {
     id: 'garden',
-    name: 'The Red Hill Garden',
+    name: 'School Garden Program',
     goal: 15000,
-    blurb: 'Our outdoor classroom — planting, patience, nutrition, and the joy of eating something you grew yourself.',
+    blurb: 'Outdoor, hands-on learning. Provides hands-on nutrition and environmental science lessons, garden maintenance, and supply upkeep that enrich science curriculum across all grade levels.',
     tiers: [
       { amount: 100, impact: 'Soil, seeds, and tools for a season' },
       { amount: 250, impact: 'Sponsor a garden bed — your family name on it' },
@@ -66,9 +66,9 @@ const PRIORITIES = [
   },
   {
     id: 'arts',
-    name: 'Arts at Red Hill',
+    name: 'Arts & Cultural Enrichment',
     goal: 20000,
-    blurb: 'Art Masters, Class Act music, assemblies, and performing arts — the gift that takes a bow on stage.',
+    blurb: 'Inspiring creativity and performance. Fully funds visual arts instruction (Art Masters), classical music education (Class Act in partnership with Pacific Symphony), Red Hill performing arts, and visiting educational assemblies.',
     circle: { min: 2500, label: 'Season Patron' },
     tiers: [
       { amount: 100, impact: "Art supplies for a classroom's Art Masters unit" },
@@ -79,9 +79,9 @@ const PRIORITIES = [
   },
   {
     id: 'safety',
-    name: 'A Safer, Brighter Campus',
+    name: 'Campus Safety & Facility Upgrades',
     goal: 40000,
-    blurb: 'One-time upgrades: security window tinting for every classroom and a better MPR. Give once, see it done.',
+    blurb: 'Protecting and improving our learning spaces. A one-time capital investment to install classroom window tinting for enhanced campus security, alongside multi-purpose room (MPR) enhancements used by the entire school community.',
     tiers: [
       { amount: 250, impact: 'Tints one classroom window' },
       { amount: 1000, impact: 'Completes a full classroom' },
