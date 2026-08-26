@@ -21,6 +21,13 @@ npm run audit    # Lighthouse: every page, mobile + desktop
 Local secrets live in `.dev.vars` (gitignored — currently also holds
 the production `ADMIN_KEY` value).
 
+**Rally Board skeleton** — rally-board.html ships with the board's
+zero-state markup baked in (no layout shift on first paint; a real
+board for no-JS visitors). After editing the classroom roster in
+`site/js/data.js` or the board templates in `site/js/board.js`, run
+`node scripts/board-skeleton.js --write` to regenerate it; `npm test`
+and `npm run deploy` fail if it drifts.
+
 **Demo data** — `seed/demo-donations.sql` fills the board with
 prototype-style numbers on the real roster ($127,450 raised, 311
 gifts, full honor roll). Apply/remove commands are in the file header;
@@ -85,7 +92,9 @@ charges real money. To flip to live:
   Stripe's checkout page — useful for thank-you notes and future
   outreach. This is the only place student names, emails, and
   addresses ever leave the backend; don't share the key.
-- **Update goals/copy/tiers** — edit `site/js/data.js`, redeploy.
+- **Update goals/copy/tiers** — edit `site/js/data.js`; if the
+  classroom roster changed, run `node scripts/board-skeleton.js
+  --write`; redeploy.
 - **Ad-hoc questions** — the donations live in D1:
   `npx wrangler d1 execute red-hill-rally --remote --command "SELECT ..."`
   (or the D1 console in the Cloudflare dashboard).

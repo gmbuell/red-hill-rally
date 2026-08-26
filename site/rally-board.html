@@ -8,6 +8,8 @@
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="preload" href="/fonts/nunitosans-var.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/oswald-600.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/kaushanscript-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/nunitosans-400-italic.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="css/styles.css">
 </head>
 <body class="board-page">
@@ -49,11 +51,594 @@
   <h1 class="board-title">The Rally Board</h1>
   <p class="board-lede">Here&rsquo;s how the Rally is flying.</p>
 
-  <div class="board-totals" id="board-totals"></div>
+  <div class="board-totals" id="board-totals"><!-- skeleton:totals -->
+      <div class="total"><span class="num money">$0</span><span class="label">raised of $205,000</span></div>
+      <div class="total"><span class="num money">0</span><span class="label">family gifts so far</span></div>
+      <div class="total"><span class="num money">20</span><span class="label">classrooms flying</span></div><!-- /skeleton:totals --></div>
 
   <section aria-labelledby="race-head">
     <h2 class="display" id="race-head" style="font-size:1.6rem;margin-bottom:0.4rem;">The Classroom Race</h2>
-    <ol class="race" id="race"></ol>
+    <ol class="race" id="race"><!-- skeleton:race -->
+      <li class="">
+        <span class="rank">1</span>
+        <span class="room">Mrs. Hesseltine<span class="grade">Transitional K</span></span>
+        <span class="trail-holder trail">
+    <svg class="trail" viewBox="0 0 220 32" aria-hidden="true">
+      <line x1="8.0" y1="16" x2="196" y2="16"
+        stroke="#5A6474" stroke-opacity="0.5" stroke-width="3.25"
+        stroke-linecap="round" stroke-dasharray="0 9"/>
+      <line x1="8" y1="16" x2="8.0" y2="16"
+        stroke="#0A2B4E" stroke-width="3.25"
+        stroke-linecap="round" stroke-dasharray="0 9"/>
+      <g transform="translate(201.4,9.4) scale(0.55)">
+        <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z" fill="#F5B70F" stroke="#0A2B4E" stroke-width="1.8"/>
+      </g>
+      <g transform="translate(8.0,16) rotate(90) scale(0.55) translate(-32,-29)">
+        
+    <path d="M27 31 C24.5 33.5 23.2 36.5 23 40 C25 38.2 26 37.6 27 37.2 Z" fill="#B92025"/>
+    <path d="M37 31 C39.5 33.5 40.8 36.5 41 40 C39 38.2 38 37.6 37 37.2 Z" fill="#B92025"/>
+    <path d="M32 8 C35.5 13 37 19 37 26 L37 36 L27 36 L27 26 C27 19 28.5 13 32 8 Z" fill="#0A2B4E"/>
+    <circle cx="32" cy="20" r="3" fill="#FFFFFF"/>
+    <g stroke-linecap="round">
+      <path d="M32 40 L32 50" stroke="#B92025" stroke-width="2.5"/>
+      <path d="M27.5 39 L27.5 45.5" stroke="#0A2B4E" stroke-width="2"/>
+      <path d="M36.5 39 L36.5 45.5" stroke="#0A2B4E" stroke-width="2"/>
+    </g>
+      </g>
+    </svg></span>
+        <span class="pct">0%<span class="families">0 of 20 students</span></span>
+      </li>
+      <li class="">
+        <span class="rank">2</span>
+        <span class="room">Mrs. Wass<span class="grade">Transitional K</span></span>
+        <span class="trail-holder trail">
+    <svg class="trail" viewBox="0 0 220 32" aria-hidden="true">
+      <line x1="8.0" y1="16" x2="196" y2="16"
+        stroke="#5A6474" stroke-opacity="0.5" stroke-width="3.25"
+        stroke-linecap="round" stroke-dasharray="0 9"/>
+      <line x1="8" y1="16" x2="8.0" y2="16"
+        stroke="#0A2B4E" stroke-width="3.25"
+        stroke-linecap="round" stroke-dasharray="0 9"/>
+      <g transform="translate(201.4,9.4) scale(0.55)">
+        <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z" fill="#F5B70F" stroke="#0A2B4E" stroke-width="1.8"/>
+      </g>
+      <g transform="translate(8.0,16) rotate(90) scale(0.55) translate(-32,-29)">
+        
+    <path d="M27 31 C24.5 33.5 23.2 36.5 23 40 C25 38.2 26 37.6 27 37.2 Z" fill="#B92025"/>
+    <path d="M37 31 C39.5 33.5 40.8 36.5 41 40 C39 38.2 38 37.6 37 37.2 Z" fill="#B92025"/>
+    <path d="M32 8 C35.5 13 37 19 37 26 L37 36 L27 36 L27 26 C27 19 28.5 13 32 8 Z" fill="#0A2B4E"/>
+    <circle cx="32" cy="20" r="3" fill="#FFFFFF"/>
+    <g stroke-linecap="round">
+      <path d="M32 40 L32 50" stroke="#B92025" stroke-width="2.5"/>
+      <path d="M27.5 39 L27.5 45.5" stroke="#0A2B4E" stroke-width="2"/>
+      <path d="M36.5 39 L36.5 45.5" stroke="#0A2B4E" stroke-width="2"/>
+    </g>
+      </g>
+    </svg></span>
+        <span class="pct">0%<span class="families">0 of 20 students</span></span>
+      </li>
+      <li class="">
+        <span class="rank">3</span>
+        <span class="room">Mrs. Montgomery<span class="grade">Transitional K</span></span>
+        <span class="trail-holder trail">
+    <svg class="trail" viewBox="0 0 220 32" aria-hidden="true">
+      <line x1="8.0" y1="16" x2="196" y2="16"
+        stroke="#5A6474" stroke-opacity="0.5" stroke-width="3.25"
+        stroke-linecap="round" stroke-dasharray="0 9"/>
+      <line x1="8" y1="16" x2="8.0" y2="16"
+        stroke="#0A2B4E" stroke-width="3.25"
+        stroke-linecap="round" stroke-dasharray="0 9"/>
+      <g transform="translate(201.4,9.4) scale(0.55)">
+        <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z" fill="#F5B70F" stroke="#0A2B4E" stroke-width="1.8"/>
+      </g>
+      <g transform="translate(8.0,16) rotate(90) scale(0.55) translate(-32,-29)">
+        
+    <path d="M27 31 C24.5 33.5 23.2 36.5 23 40 C25 38.2 26 37.6 27 37.2 Z" fill="#B92025"/>
+    <path d="M37 31 C39.5 33.5 40.8 36.5 41 40 C39 38.2 38 37.6 37 37.2 Z" fill="#B92025"/>
+    <path d="M32 8 C35.5 13 37 19 37 26 L37 36 L27 36 L27 26 C27 19 28.5 13 32 8 Z" fill="#0A2B4E"/>
+    <circle cx="32" cy="20" r="3" fill="#FFFFFF"/>
+    <g stroke-linecap="round">
+      <path d="M32 40 L32 50" stroke="#B92025" stroke-width="2.5"/>
+      <path d="M27.5 39 L27.5 45.5" stroke="#0A2B4E" stroke-width="2"/>
+      <path d="M36.5 39 L36.5 45.5" stroke="#0A2B4E" stroke-width="2"/>
+    </g>
+      </g>
+    </svg></span>
+        <span class="pct">0%<span class="families">0 of 20 students</span></span>
+      </li>
+      <li class="">
+        <span class="rank">4</span>
+        <span class="room">Mrs. Michel<span class="grade">Kindergarten</span></span>
+        <span class="trail-holder trail">
+    <svg class="trail" viewBox="0 0 220 32" aria-hidden="true">
+      <line x1="8.0" y1="16" x2="196" y2="16"
+        stroke="#5A6474" stroke-opacity="0.5" stroke-width="3.25"
+        stroke-linecap="round" stroke-dasharray="0 9"/>
+      <line x1="8" y1="16" x2="8.0" y2="16"
+        stroke="#0A2B4E" stroke-width="3.25"
+        stroke-linecap="round" stroke-dasharray="0 9"/>
+      <g transform="translate(201.4,9.4) scale(0.55)">
+        <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z" fill="#F5B70F" stroke="#0A2B4E" stroke-width="1.8"/>
+      </g>
+      <g transform="translate(8.0,16) rotate(90) scale(0.55) translate(-32,-29)">
+        
+    <path d="M27 31 C24.5 33.5 23.2 36.5 23 40 C25 38.2 26 37.6 27 37.2 Z" fill="#B92025"/>
+    <path d="M37 31 C39.5 33.5 40.8 36.5 41 40 C39 38.2 38 37.6 37 37.2 Z" fill="#B92025"/>
+    <path d="M32 8 C35.5 13 37 19 37 26 L37 36 L27 36 L27 26 C27 19 28.5 13 32 8 Z" fill="#0A2B4E"/>
+    <circle cx="32" cy="20" r="3" fill="#FFFFFF"/>
+    <g stroke-linecap="round">
+      <path d="M32 40 L32 50" stroke="#B92025" stroke-width="2.5"/>
+      <path d="M27.5 39 L27.5 45.5" stroke="#0A2B4E" stroke-width="2"/>
+      <path d="M36.5 39 L36.5 45.5" stroke="#0A2B4E" stroke-width="2"/>
+    </g>
+      </g>
+    </svg></span>
+        <span class="pct">0%<span class="families">0 of 27 students</span></span>
+      </li>
+      <li class="">
+        <span class="rank">5</span>
+        <span class="room">Ms. Convery<span class="grade">Kindergarten</span></span>
+        <span class="trail-holder trail">
+    <svg class="trail" viewBox="0 0 220 32" aria-hidden="true">
+      <line x1="8.0" y1="16" x2="196" y2="16"
+        stroke="#5A6474" stroke-opacity="0.5" stroke-width="3.25"
+        stroke-linecap="round" stroke-dasharray="0 9"/>
+      <line x1="8" y1="16" x2="8.0" y2="16"
+        stroke="#0A2B4E" stroke-width="3.25"
+        stroke-linecap="round" stroke-dasharray="0 9"/>
+      <g transform="translate(201.4,9.4) scale(0.55)">
+        <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z" fill="#F5B70F" stroke="#0A2B4E" stroke-width="1.8"/>
+      </g>
+      <g transform="translate(8.0,16) rotate(90) scale(0.55) translate(-32,-29)">
+        
+    <path d="M27 31 C24.5 33.5 23.2 36.5 23 40 C25 38.2 26 37.6 27 37.2 Z" fill="#B92025"/>
+    <path d="M37 31 C39.5 33.5 40.8 36.5 41 40 C39 38.2 38 37.6 37 37.2 Z" fill="#B92025"/>
+    <path d="M32 8 C35.5 13 37 19 37 26 L37 36 L27 36 L27 26 C27 19 28.5 13 32 8 Z" fill="#0A2B4E"/>
+    <circle cx="32" cy="20" r="3" fill="#FFFFFF"/>
+    <g stroke-linecap="round">
+      <path d="M32 40 L32 50" stroke="#B92025" stroke-width="2.5"/>
+      <path d="M27.5 39 L27.5 45.5" stroke="#0A2B4E" stroke-width="2"/>
+      <path d="M36.5 39 L36.5 45.5" stroke="#0A2B4E" stroke-width="2"/>
+    </g>
+      </g>
+    </svg></span>
+        <span class="pct">0%<span class="families">0 of 29 students</span></span>
+      </li>
+      <li class="">
+        <span class="rank">6</span>
+        <span class="room">Ms. Marshall<span class="grade">Kindergarten</span></span>
+        <span class="trail-holder trail">
+    <svg class="trail" viewBox="0 0 220 32" aria-hidden="true">
+      <line x1="8.0" y1="16" x2="196" y2="16"
+        stroke="#5A6474" stroke-opacity="0.5" stroke-width="3.25"
+        stroke-linecap="round" stroke-dasharray="0 9"/>
+      <line x1="8" y1="16" x2="8.0" y2="16"
+        stroke="#0A2B4E" stroke-width="3.25"
+        stroke-linecap="round" stroke-dasharray="0 9"/>
+      <g transform="translate(201.4,9.4) scale(0.55)">
+        <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z" fill="#F5B70F" stroke="#0A2B4E" stroke-width="1.8"/>
+      </g>
+      <g transform="translate(8.0,16) rotate(90) scale(0.55) translate(-32,-29)">
+        
+    <path d="M27 31 C24.5 33.5 23.2 36.5 23 40 C25 38.2 26 37.6 27 37.2 Z" fill="#B92025"/>
+    <path d="M37 31 C39.5 33.5 40.8 36.5 41 40 C39 38.2 38 37.6 37 37.2 Z" fill="#B92025"/>
+    <path d="M32 8 C35.5 13 37 19 37 26 L37 36 L27 36 L27 26 C27 19 28.5 13 32 8 Z" fill="#0A2B4E"/>
+    <circle cx="32" cy="20" r="3" fill="#FFFFFF"/>
+    <g stroke-linecap="round">
+      <path d="M32 40 L32 50" stroke="#B92025" stroke-width="2.5"/>
+      <path d="M27.5 39 L27.5 45.5" stroke="#0A2B4E" stroke-width="2"/>
+      <path d="M36.5 39 L36.5 45.5" stroke="#0A2B4E" stroke-width="2"/>
+    </g>
+      </g>
+    </svg></span>
+        <span class="pct">0%<span class="families">0 of 24 students</span></span>
+      </li>
+      <li class="">
+        <span class="rank">7</span>
+        <span class="room">Mrs. Knott<span class="grade">1st grade</span></span>
+        <span class="trail-holder trail">
+    <svg class="trail" viewBox="0 0 220 32" aria-hidden="true">
+      <line x1="8.0" y1="16" x2="196" y2="16"
+        stroke="#5A6474" stroke-opacity="0.5" stroke-width="3.25"
+        stroke-linecap="round" stroke-dasharray="0 9"/>
+      <line x1="8" y1="16" x2="8.0" y2="16"
+        stroke="#0A2B4E" stroke-width="3.25"
+        stroke-linecap="round" stroke-dasharray="0 9"/>
+      <g transform="translate(201.4,9.4) scale(0.55)">
+        <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z" fill="#F5B70F" stroke="#0A2B4E" stroke-width="1.8"/>
+      </g>
+      <g transform="translate(8.0,16) rotate(90) scale(0.55) translate(-32,-29)">
+        
+    <path d="M27 31 C24.5 33.5 23.2 36.5 23 40 C25 38.2 26 37.6 27 37.2 Z" fill="#B92025"/>
+    <path d="M37 31 C39.5 33.5 40.8 36.5 41 40 C39 38.2 38 37.6 37 37.2 Z" fill="#B92025"/>
+    <path d="M32 8 C35.5 13 37 19 37 26 L37 36 L27 36 L27 26 C27 19 28.5 13 32 8 Z" fill="#0A2B4E"/>
+    <circle cx="32" cy="20" r="3" fill="#FFFFFF"/>
+    <g stroke-linecap="round">
+      <path d="M32 40 L32 50" stroke="#B92025" stroke-width="2.5"/>
+      <path d="M27.5 39 L27.5 45.5" stroke="#0A2B4E" stroke-width="2"/>
+      <path d="M36.5 39 L36.5 45.5" stroke="#0A2B4E" stroke-width="2"/>
+    </g>
+      </g>
+    </svg></span>
+        <span class="pct">0%<span class="families">0 of 26 students</span></span>
+      </li>
+      <li class="">
+        <span class="rank">8</span>
+        <span class="room">Mrs. Ludes<span class="grade">1st grade</span></span>
+        <span class="trail-holder trail">
+    <svg class="trail" viewBox="0 0 220 32" aria-hidden="true">
+      <line x1="8.0" y1="16" x2="196" y2="16"
+        stroke="#5A6474" stroke-opacity="0.5" stroke-width="3.25"
+        stroke-linecap="round" stroke-dasharray="0 9"/>
+      <line x1="8" y1="16" x2="8.0" y2="16"
+        stroke="#0A2B4E" stroke-width="3.25"
+        stroke-linecap="round" stroke-dasharray="0 9"/>
+      <g transform="translate(201.4,9.4) scale(0.55)">
+        <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z" fill="#F5B70F" stroke="#0A2B4E" stroke-width="1.8"/>
+      </g>
+      <g transform="translate(8.0,16) rotate(90) scale(0.55) translate(-32,-29)">
+        
+    <path d="M27 31 C24.5 33.5 23.2 36.5 23 40 C25 38.2 26 37.6 27 37.2 Z" fill="#B92025"/>
+    <path d="M37 31 C39.5 33.5 40.8 36.5 41 40 C39 38.2 38 37.6 37 37.2 Z" fill="#B92025"/>
+    <path d="M32 8 C35.5 13 37 19 37 26 L37 36 L27 36 L27 26 C27 19 28.5 13 32 8 Z" fill="#0A2B4E"/>
+    <circle cx="32" cy="20" r="3" fill="#FFFFFF"/>
+    <g stroke-linecap="round">
+      <path d="M32 40 L32 50" stroke="#B92025" stroke-width="2.5"/>
+      <path d="M27.5 39 L27.5 45.5" stroke="#0A2B4E" stroke-width="2"/>
+      <path d="M36.5 39 L36.5 45.5" stroke="#0A2B4E" stroke-width="2"/>
+    </g>
+      </g>
+    </svg></span>
+        <span class="pct">0%<span class="families">0 of 26 students</span></span>
+      </li>
+      <li class="">
+        <span class="rank">9</span>
+        <span class="room">Ms. Miller<span class="grade">1st grade</span></span>
+        <span class="trail-holder trail">
+    <svg class="trail" viewBox="0 0 220 32" aria-hidden="true">
+      <line x1="8.0" y1="16" x2="196" y2="16"
+        stroke="#5A6474" stroke-opacity="0.5" stroke-width="3.25"
+        stroke-linecap="round" stroke-dasharray="0 9"/>
+      <line x1="8" y1="16" x2="8.0" y2="16"
+        stroke="#0A2B4E" stroke-width="3.25"
+        stroke-linecap="round" stroke-dasharray="0 9"/>
+      <g transform="translate(201.4,9.4) scale(0.55)">
+        <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z" fill="#F5B70F" stroke="#0A2B4E" stroke-width="1.8"/>
+      </g>
+      <g transform="translate(8.0,16) rotate(90) scale(0.55) translate(-32,-29)">
+        
+    <path d="M27 31 C24.5 33.5 23.2 36.5 23 40 C25 38.2 26 37.6 27 37.2 Z" fill="#B92025"/>
+    <path d="M37 31 C39.5 33.5 40.8 36.5 41 40 C39 38.2 38 37.6 37 37.2 Z" fill="#B92025"/>
+    <path d="M32 8 C35.5 13 37 19 37 26 L37 36 L27 36 L27 26 C27 19 28.5 13 32 8 Z" fill="#0A2B4E"/>
+    <circle cx="32" cy="20" r="3" fill="#FFFFFF"/>
+    <g stroke-linecap="round">
+      <path d="M32 40 L32 50" stroke="#B92025" stroke-width="2.5"/>
+      <path d="M27.5 39 L27.5 45.5" stroke="#0A2B4E" stroke-width="2"/>
+      <path d="M36.5 39 L36.5 45.5" stroke="#0A2B4E" stroke-width="2"/>
+    </g>
+      </g>
+    </svg></span>
+        <span class="pct">0%<span class="families">0 of 26 students</span></span>
+      </li>
+      <li class="">
+        <span class="rank">10</span>
+        <span class="room">Mrs. Sharp<span class="grade">1st/2nd combo</span></span>
+        <span class="trail-holder trail">
+    <svg class="trail" viewBox="0 0 220 32" aria-hidden="true">
+      <line x1="8.0" y1="16" x2="196" y2="16"
+        stroke="#5A6474" stroke-opacity="0.5" stroke-width="3.25"
+        stroke-linecap="round" stroke-dasharray="0 9"/>
+      <line x1="8" y1="16" x2="8.0" y2="16"
+        stroke="#0A2B4E" stroke-width="3.25"
+        stroke-linecap="round" stroke-dasharray="0 9"/>
+      <g transform="translate(201.4,9.4) scale(0.55)">
+        <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z" fill="#F5B70F" stroke="#0A2B4E" stroke-width="1.8"/>
+      </g>
+      <g transform="translate(8.0,16) rotate(90) scale(0.55) translate(-32,-29)">
+        
+    <path d="M27 31 C24.5 33.5 23.2 36.5 23 40 C25 38.2 26 37.6 27 37.2 Z" fill="#B92025"/>
+    <path d="M37 31 C39.5 33.5 40.8 36.5 41 40 C39 38.2 38 37.6 37 37.2 Z" fill="#B92025"/>
+    <path d="M32 8 C35.5 13 37 19 37 26 L37 36 L27 36 L27 26 C27 19 28.5 13 32 8 Z" fill="#0A2B4E"/>
+    <circle cx="32" cy="20" r="3" fill="#FFFFFF"/>
+    <g stroke-linecap="round">
+      <path d="M32 40 L32 50" stroke="#B92025" stroke-width="2.5"/>
+      <path d="M27.5 39 L27.5 45.5" stroke="#0A2B4E" stroke-width="2"/>
+      <path d="M36.5 39 L36.5 45.5" stroke="#0A2B4E" stroke-width="2"/>
+    </g>
+      </g>
+    </svg></span>
+        <span class="pct">0%<span class="families">0 of 26 students</span></span>
+      </li>
+      <li class="">
+        <span class="rank">11</span>
+        <span class="room">Mrs. Bryan<span class="grade">2nd grade</span></span>
+        <span class="trail-holder trail">
+    <svg class="trail" viewBox="0 0 220 32" aria-hidden="true">
+      <line x1="8.0" y1="16" x2="196" y2="16"
+        stroke="#5A6474" stroke-opacity="0.5" stroke-width="3.25"
+        stroke-linecap="round" stroke-dasharray="0 9"/>
+      <line x1="8" y1="16" x2="8.0" y2="16"
+        stroke="#0A2B4E" stroke-width="3.25"
+        stroke-linecap="round" stroke-dasharray="0 9"/>
+      <g transform="translate(201.4,9.4) scale(0.55)">
+        <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z" fill="#F5B70F" stroke="#0A2B4E" stroke-width="1.8"/>
+      </g>
+      <g transform="translate(8.0,16) rotate(90) scale(0.55) translate(-32,-29)">
+        
+    <path d="M27 31 C24.5 33.5 23.2 36.5 23 40 C25 38.2 26 37.6 27 37.2 Z" fill="#B92025"/>
+    <path d="M37 31 C39.5 33.5 40.8 36.5 41 40 C39 38.2 38 37.6 37 37.2 Z" fill="#B92025"/>
+    <path d="M32 8 C35.5 13 37 19 37 26 L37 36 L27 36 L27 26 C27 19 28.5 13 32 8 Z" fill="#0A2B4E"/>
+    <circle cx="32" cy="20" r="3" fill="#FFFFFF"/>
+    <g stroke-linecap="round">
+      <path d="M32 40 L32 50" stroke="#B92025" stroke-width="2.5"/>
+      <path d="M27.5 39 L27.5 45.5" stroke="#0A2B4E" stroke-width="2"/>
+      <path d="M36.5 39 L36.5 45.5" stroke="#0A2B4E" stroke-width="2"/>
+    </g>
+      </g>
+    </svg></span>
+        <span class="pct">0%<span class="families">0 of 26 students</span></span>
+      </li>
+      <li class="">
+        <span class="rank">12</span>
+        <span class="room">Mrs. Bowers<span class="grade">2nd grade</span></span>
+        <span class="trail-holder trail">
+    <svg class="trail" viewBox="0 0 220 32" aria-hidden="true">
+      <line x1="8.0" y1="16" x2="196" y2="16"
+        stroke="#5A6474" stroke-opacity="0.5" stroke-width="3.25"
+        stroke-linecap="round" stroke-dasharray="0 9"/>
+      <line x1="8" y1="16" x2="8.0" y2="16"
+        stroke="#0A2B4E" stroke-width="3.25"
+        stroke-linecap="round" stroke-dasharray="0 9"/>
+      <g transform="translate(201.4,9.4) scale(0.55)">
+        <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z" fill="#F5B70F" stroke="#0A2B4E" stroke-width="1.8"/>
+      </g>
+      <g transform="translate(8.0,16) rotate(90) scale(0.55) translate(-32,-29)">
+        
+    <path d="M27 31 C24.5 33.5 23.2 36.5 23 40 C25 38.2 26 37.6 27 37.2 Z" fill="#B92025"/>
+    <path d="M37 31 C39.5 33.5 40.8 36.5 41 40 C39 38.2 38 37.6 37 37.2 Z" fill="#B92025"/>
+    <path d="M32 8 C35.5 13 37 19 37 26 L37 36 L27 36 L27 26 C27 19 28.5 13 32 8 Z" fill="#0A2B4E"/>
+    <circle cx="32" cy="20" r="3" fill="#FFFFFF"/>
+    <g stroke-linecap="round">
+      <path d="M32 40 L32 50" stroke="#B92025" stroke-width="2.5"/>
+      <path d="M27.5 39 L27.5 45.5" stroke="#0A2B4E" stroke-width="2"/>
+      <path d="M36.5 39 L36.5 45.5" stroke="#0A2B4E" stroke-width="2"/>
+    </g>
+      </g>
+    </svg></span>
+        <span class="pct">0%<span class="families">0 of 25 students</span></span>
+      </li>
+      <li class="">
+        <span class="rank">13</span>
+        <span class="room">Mr. Zweber<span class="grade">3rd grade</span></span>
+        <span class="trail-holder trail">
+    <svg class="trail" viewBox="0 0 220 32" aria-hidden="true">
+      <line x1="8.0" y1="16" x2="196" y2="16"
+        stroke="#5A6474" stroke-opacity="0.5" stroke-width="3.25"
+        stroke-linecap="round" stroke-dasharray="0 9"/>
+      <line x1="8" y1="16" x2="8.0" y2="16"
+        stroke="#0A2B4E" stroke-width="3.25"
+        stroke-linecap="round" stroke-dasharray="0 9"/>
+      <g transform="translate(201.4,9.4) scale(0.55)">
+        <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z" fill="#F5B70F" stroke="#0A2B4E" stroke-width="1.8"/>
+      </g>
+      <g transform="translate(8.0,16) rotate(90) scale(0.55) translate(-32,-29)">
+        
+    <path d="M27 31 C24.5 33.5 23.2 36.5 23 40 C25 38.2 26 37.6 27 37.2 Z" fill="#B92025"/>
+    <path d="M37 31 C39.5 33.5 40.8 36.5 41 40 C39 38.2 38 37.6 37 37.2 Z" fill="#B92025"/>
+    <path d="M32 8 C35.5 13 37 19 37 26 L37 36 L27 36 L27 26 C27 19 28.5 13 32 8 Z" fill="#0A2B4E"/>
+    <circle cx="32" cy="20" r="3" fill="#FFFFFF"/>
+    <g stroke-linecap="round">
+      <path d="M32 40 L32 50" stroke="#B92025" stroke-width="2.5"/>
+      <path d="M27.5 39 L27.5 45.5" stroke="#0A2B4E" stroke-width="2"/>
+      <path d="M36.5 39 L36.5 45.5" stroke="#0A2B4E" stroke-width="2"/>
+    </g>
+      </g>
+    </svg></span>
+        <span class="pct">0%<span class="families">0 of 32 students</span></span>
+      </li>
+      <li class="">
+        <span class="rank">14</span>
+        <span class="room">Mrs. Harrison<span class="grade">3rd grade</span></span>
+        <span class="trail-holder trail">
+    <svg class="trail" viewBox="0 0 220 32" aria-hidden="true">
+      <line x1="8.0" y1="16" x2="196" y2="16"
+        stroke="#5A6474" stroke-opacity="0.5" stroke-width="3.25"
+        stroke-linecap="round" stroke-dasharray="0 9"/>
+      <line x1="8" y1="16" x2="8.0" y2="16"
+        stroke="#0A2B4E" stroke-width="3.25"
+        stroke-linecap="round" stroke-dasharray="0 9"/>
+      <g transform="translate(201.4,9.4) scale(0.55)">
+        <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z" fill="#F5B70F" stroke="#0A2B4E" stroke-width="1.8"/>
+      </g>
+      <g transform="translate(8.0,16) rotate(90) scale(0.55) translate(-32,-29)">
+        
+    <path d="M27 31 C24.5 33.5 23.2 36.5 23 40 C25 38.2 26 37.6 27 37.2 Z" fill="#B92025"/>
+    <path d="M37 31 C39.5 33.5 40.8 36.5 41 40 C39 38.2 38 37.6 37 37.2 Z" fill="#B92025"/>
+    <path d="M32 8 C35.5 13 37 19 37 26 L37 36 L27 36 L27 26 C27 19 28.5 13 32 8 Z" fill="#0A2B4E"/>
+    <circle cx="32" cy="20" r="3" fill="#FFFFFF"/>
+    <g stroke-linecap="round">
+      <path d="M32 40 L32 50" stroke="#B92025" stroke-width="2.5"/>
+      <path d="M27.5 39 L27.5 45.5" stroke="#0A2B4E" stroke-width="2"/>
+      <path d="M36.5 39 L36.5 45.5" stroke="#0A2B4E" stroke-width="2"/>
+    </g>
+      </g>
+    </svg></span>
+        <span class="pct">0%<span class="families">0 of 31 students</span></span>
+      </li>
+      <li class="">
+        <span class="rank">15</span>
+        <span class="room">Mrs. Sianez<span class="grade">4th grade</span></span>
+        <span class="trail-holder trail">
+    <svg class="trail" viewBox="0 0 220 32" aria-hidden="true">
+      <line x1="8.0" y1="16" x2="196" y2="16"
+        stroke="#5A6474" stroke-opacity="0.5" stroke-width="3.25"
+        stroke-linecap="round" stroke-dasharray="0 9"/>
+      <line x1="8" y1="16" x2="8.0" y2="16"
+        stroke="#0A2B4E" stroke-width="3.25"
+        stroke-linecap="round" stroke-dasharray="0 9"/>
+      <g transform="translate(201.4,9.4) scale(0.55)">
+        <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z" fill="#F5B70F" stroke="#0A2B4E" stroke-width="1.8"/>
+      </g>
+      <g transform="translate(8.0,16) rotate(90) scale(0.55) translate(-32,-29)">
+        
+    <path d="M27 31 C24.5 33.5 23.2 36.5 23 40 C25 38.2 26 37.6 27 37.2 Z" fill="#B92025"/>
+    <path d="M37 31 C39.5 33.5 40.8 36.5 41 40 C39 38.2 38 37.6 37 37.2 Z" fill="#B92025"/>
+    <path d="M32 8 C35.5 13 37 19 37 26 L37 36 L27 36 L27 26 C27 19 28.5 13 32 8 Z" fill="#0A2B4E"/>
+    <circle cx="32" cy="20" r="3" fill="#FFFFFF"/>
+    <g stroke-linecap="round">
+      <path d="M32 40 L32 50" stroke="#B92025" stroke-width="2.5"/>
+      <path d="M27.5 39 L27.5 45.5" stroke="#0A2B4E" stroke-width="2"/>
+      <path d="M36.5 39 L36.5 45.5" stroke="#0A2B4E" stroke-width="2"/>
+    </g>
+      </g>
+    </svg></span>
+        <span class="pct">0%<span class="families">0 of 32 students</span></span>
+      </li>
+      <li class="">
+        <span class="rank">16</span>
+        <span class="room">Mrs. Herman<span class="grade">4th grade</span></span>
+        <span class="trail-holder trail">
+    <svg class="trail" viewBox="0 0 220 32" aria-hidden="true">
+      <line x1="8.0" y1="16" x2="196" y2="16"
+        stroke="#5A6474" stroke-opacity="0.5" stroke-width="3.25"
+        stroke-linecap="round" stroke-dasharray="0 9"/>
+      <line x1="8" y1="16" x2="8.0" y2="16"
+        stroke="#0A2B4E" stroke-width="3.25"
+        stroke-linecap="round" stroke-dasharray="0 9"/>
+      <g transform="translate(201.4,9.4) scale(0.55)">
+        <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z" fill="#F5B70F" stroke="#0A2B4E" stroke-width="1.8"/>
+      </g>
+      <g transform="translate(8.0,16) rotate(90) scale(0.55) translate(-32,-29)">
+        
+    <path d="M27 31 C24.5 33.5 23.2 36.5 23 40 C25 38.2 26 37.6 27 37.2 Z" fill="#B92025"/>
+    <path d="M37 31 C39.5 33.5 40.8 36.5 41 40 C39 38.2 38 37.6 37 37.2 Z" fill="#B92025"/>
+    <path d="M32 8 C35.5 13 37 19 37 26 L37 36 L27 36 L27 26 C27 19 28.5 13 32 8 Z" fill="#0A2B4E"/>
+    <circle cx="32" cy="20" r="3" fill="#FFFFFF"/>
+    <g stroke-linecap="round">
+      <path d="M32 40 L32 50" stroke="#B92025" stroke-width="2.5"/>
+      <path d="M27.5 39 L27.5 45.5" stroke="#0A2B4E" stroke-width="2"/>
+      <path d="M36.5 39 L36.5 45.5" stroke="#0A2B4E" stroke-width="2"/>
+    </g>
+      </g>
+    </svg></span>
+        <span class="pct">0%<span class="families">0 of 32 students</span></span>
+      </li>
+      <li class="">
+        <span class="rank">17</span>
+        <span class="room">Mrs. Crain<span class="grade">5th grade</span></span>
+        <span class="trail-holder trail">
+    <svg class="trail" viewBox="0 0 220 32" aria-hidden="true">
+      <line x1="8.0" y1="16" x2="196" y2="16"
+        stroke="#5A6474" stroke-opacity="0.5" stroke-width="3.25"
+        stroke-linecap="round" stroke-dasharray="0 9"/>
+      <line x1="8" y1="16" x2="8.0" y2="16"
+        stroke="#0A2B4E" stroke-width="3.25"
+        stroke-linecap="round" stroke-dasharray="0 9"/>
+      <g transform="translate(201.4,9.4) scale(0.55)">
+        <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z" fill="#F5B70F" stroke="#0A2B4E" stroke-width="1.8"/>
+      </g>
+      <g transform="translate(8.0,16) rotate(90) scale(0.55) translate(-32,-29)">
+        
+    <path d="M27 31 C24.5 33.5 23.2 36.5 23 40 C25 38.2 26 37.6 27 37.2 Z" fill="#B92025"/>
+    <path d="M37 31 C39.5 33.5 40.8 36.5 41 40 C39 38.2 38 37.6 37 37.2 Z" fill="#B92025"/>
+    <path d="M32 8 C35.5 13 37 19 37 26 L37 36 L27 36 L27 26 C27 19 28.5 13 32 8 Z" fill="#0A2B4E"/>
+    <circle cx="32" cy="20" r="3" fill="#FFFFFF"/>
+    <g stroke-linecap="round">
+      <path d="M32 40 L32 50" stroke="#B92025" stroke-width="2.5"/>
+      <path d="M27.5 39 L27.5 45.5" stroke="#0A2B4E" stroke-width="2"/>
+      <path d="M36.5 39 L36.5 45.5" stroke="#0A2B4E" stroke-width="2"/>
+    </g>
+      </g>
+    </svg></span>
+        <span class="pct">0%<span class="families">0 of 29 students</span></span>
+      </li>
+      <li class="">
+        <span class="rank">18</span>
+        <span class="room">Mr. Knutson<span class="grade">5th grade</span></span>
+        <span class="trail-holder trail">
+    <svg class="trail" viewBox="0 0 220 32" aria-hidden="true">
+      <line x1="8.0" y1="16" x2="196" y2="16"
+        stroke="#5A6474" stroke-opacity="0.5" stroke-width="3.25"
+        stroke-linecap="round" stroke-dasharray="0 9"/>
+      <line x1="8" y1="16" x2="8.0" y2="16"
+        stroke="#0A2B4E" stroke-width="3.25"
+        stroke-linecap="round" stroke-dasharray="0 9"/>
+      <g transform="translate(201.4,9.4) scale(0.55)">
+        <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z" fill="#F5B70F" stroke="#0A2B4E" stroke-width="1.8"/>
+      </g>
+      <g transform="translate(8.0,16) rotate(90) scale(0.55) translate(-32,-29)">
+        
+    <path d="M27 31 C24.5 33.5 23.2 36.5 23 40 C25 38.2 26 37.6 27 37.2 Z" fill="#B92025"/>
+    <path d="M37 31 C39.5 33.5 40.8 36.5 41 40 C39 38.2 38 37.6 37 37.2 Z" fill="#B92025"/>
+    <path d="M32 8 C35.5 13 37 19 37 26 L37 36 L27 36 L27 26 C27 19 28.5 13 32 8 Z" fill="#0A2B4E"/>
+    <circle cx="32" cy="20" r="3" fill="#FFFFFF"/>
+    <g stroke-linecap="round">
+      <path d="M32 40 L32 50" stroke="#B92025" stroke-width="2.5"/>
+      <path d="M27.5 39 L27.5 45.5" stroke="#0A2B4E" stroke-width="2"/>
+      <path d="M36.5 39 L36.5 45.5" stroke="#0A2B4E" stroke-width="2"/>
+    </g>
+      </g>
+    </svg></span>
+        <span class="pct">0%<span class="families">0 of 29 students</span></span>
+      </li>
+      <li class="">
+        <span class="rank">19</span>
+        <span class="room">Mr. Bishop<span class="grade">Special Day Class</span></span>
+        <span class="trail-holder trail">
+    <svg class="trail" viewBox="0 0 220 32" aria-hidden="true">
+      <line x1="8.0" y1="16" x2="196" y2="16"
+        stroke="#5A6474" stroke-opacity="0.5" stroke-width="3.25"
+        stroke-linecap="round" stroke-dasharray="0 9"/>
+      <line x1="8" y1="16" x2="8.0" y2="16"
+        stroke="#0A2B4E" stroke-width="3.25"
+        stroke-linecap="round" stroke-dasharray="0 9"/>
+      <g transform="translate(201.4,9.4) scale(0.55)">
+        <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z" fill="#F5B70F" stroke="#0A2B4E" stroke-width="1.8"/>
+      </g>
+      <g transform="translate(8.0,16) rotate(90) scale(0.55) translate(-32,-29)">
+        
+    <path d="M27 31 C24.5 33.5 23.2 36.5 23 40 C25 38.2 26 37.6 27 37.2 Z" fill="#B92025"/>
+    <path d="M37 31 C39.5 33.5 40.8 36.5 41 40 C39 38.2 38 37.6 37 37.2 Z" fill="#B92025"/>
+    <path d="M32 8 C35.5 13 37 19 37 26 L37 36 L27 36 L27 26 C27 19 28.5 13 32 8 Z" fill="#0A2B4E"/>
+    <circle cx="32" cy="20" r="3" fill="#FFFFFF"/>
+    <g stroke-linecap="round">
+      <path d="M32 40 L32 50" stroke="#B92025" stroke-width="2.5"/>
+      <path d="M27.5 39 L27.5 45.5" stroke="#0A2B4E" stroke-width="2"/>
+      <path d="M36.5 39 L36.5 45.5" stroke="#0A2B4E" stroke-width="2"/>
+    </g>
+      </g>
+    </svg></span>
+        <span class="pct">0%<span class="families">0 of 13 students</span></span>
+      </li>
+      <li class="">
+        <span class="rank">20</span>
+        <span class="room">Mrs. Smith<span class="grade">Special Day Class</span></span>
+        <span class="trail-holder trail">
+    <svg class="trail" viewBox="0 0 220 32" aria-hidden="true">
+      <line x1="8.0" y1="16" x2="196" y2="16"
+        stroke="#5A6474" stroke-opacity="0.5" stroke-width="3.25"
+        stroke-linecap="round" stroke-dasharray="0 9"/>
+      <line x1="8" y1="16" x2="8.0" y2="16"
+        stroke="#0A2B4E" stroke-width="3.25"
+        stroke-linecap="round" stroke-dasharray="0 9"/>
+      <g transform="translate(201.4,9.4) scale(0.55)">
+        <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z" fill="#F5B70F" stroke="#0A2B4E" stroke-width="1.8"/>
+      </g>
+      <g transform="translate(8.0,16) rotate(90) scale(0.55) translate(-32,-29)">
+        
+    <path d="M27 31 C24.5 33.5 23.2 36.5 23 40 C25 38.2 26 37.6 27 37.2 Z" fill="#B92025"/>
+    <path d="M37 31 C39.5 33.5 40.8 36.5 41 40 C39 38.2 38 37.6 37 37.2 Z" fill="#B92025"/>
+    <path d="M32 8 C35.5 13 37 19 37 26 L37 36 L27 36 L27 26 C27 19 28.5 13 32 8 Z" fill="#0A2B4E"/>
+    <circle cx="32" cy="20" r="3" fill="#FFFFFF"/>
+    <g stroke-linecap="round">
+      <path d="M32 40 L32 50" stroke="#B92025" stroke-width="2.5"/>
+      <path d="M27.5 39 L27.5 45.5" stroke="#0A2B4E" stroke-width="2"/>
+      <path d="M36.5 39 L36.5 45.5" stroke="#0A2B4E" stroke-width="2"/>
+    </g>
+      </g>
+    </svg></span>
+        <span class="pct">0%<span class="families">0 of 11 students</span></span>
+      </li><!-- /skeleton:race --></ol>
   </section>
 
   <section aria-labelledby="honor-head">
@@ -61,7 +646,9 @@
       <span class="script red" id="honor-head">Thank you!</span>
       <p>To every name below, and to everyone who gave anonymously &mdash; our whole crew is grateful.</p>
     </div>
-    <ul class="honor-roll" id="honor-roll"></ul>
+    <ul class="honor-roll" id="honor-roll"><!-- skeleton:roll -->
+        <li class="empty-roll">The honor roll is waiting for its first name &mdash;
+          <a href="/donate">be the first family on the board</a>.</li><!-- /skeleton:roll --></ul>
     <p class="thanks-sign">
       <svg width="26" height="24" viewBox="35 38 22 20" aria-hidden="true">
         <path d="M46 56c-5.5-4.5-9-8.5-9-13a5.5 5.5 0 0 1 9-3.5 5.5 5.5 0 0 1 9 3.5c0 4.5-3.5 8.5-9 13z" fill="none" stroke="#B92025" stroke-width="3" stroke-linejoin="round"/>

@@ -150,18 +150,53 @@ const RH = (() => {
     </svg>`;
   };
 
-  /* Hero campaign meter: the red rocket mid-flight on a rising dotted arc. */
+  /* Hero campaign meter: the red rocket mid-flight on a rising dotted
+     arc. The arc is one cubic Bézier, pre-sampled into an arc-length
+     table so progress → point/tangent is plain math — no
+     getPointAtLength on a just-written SVG, which forced a ~70ms
+     layout pass per render. */
+  const TRAJ_D = 'M36 160 C 210 150 470 116 640 34';
+  const TRAJ_PTS = (() => {
+    const bez = (a, b, c, d, t) => {
+      const u = 1 - t;
+      return u * u * u * a + 3 * u * u * t * b + 3 * u * t * t * c + t * t * t * d;
+    };
+    const pts = [];
+    for (let i = 0; i <= 128; i++) {
+      const t = i / 128;
+      const x = bez(36, 210, 470, 640, t);
+      const y = bez(160, 150, 116, 34, t);
+      const dist = i ? pts[i - 1].dist + Math.hypot(x - pts[i - 1].x, y - pts[i - 1].y) : 0;
+      pts.push({ x, y, dist });
+    }
+    return pts;
+  })();
+
+  /* Fraction of the arc's length → {x, y, angle} on the curve. */
+  const trajPointAt = (frac) => {
+    const target = frac * TRAJ_PTS[128].dist;
+    let i = 1;
+    while (i < 128 && TRAJ_PTS[i].dist < target) i++;
+    const a = TRAJ_PTS[i - 1], b = TRAJ_PTS[i];
+    const k = (target - a.dist) / (b.dist - a.dist);
+    return {
+      x: a.x + (b.x - a.x) * k,
+      y: a.y + (b.y - a.y) * k,
+      angle: Math.atan2(b.y - a.y, b.x - a.x) * 180 / Math.PI,
+    };
+  };
+
   const buildTrajectory = (container, pct) => {
-    const p = Math.max(0.02, Math.min(pct, 1));
+    const pt = trajPointAt(Math.max(0.02, Math.min(pct, 1)));
     container.innerHTML = `
     <svg viewBox="0 0 680 190" aria-hidden="true">
       <defs>
-        <clipPath id="traj-clip"><rect x="0" y="0" width="0" height="190"/></clipPath>
+        <clipPath id="traj-clip"><rect x="0" y="0" width="${pt.x.toFixed(1)}" height="190"/></clipPath>
       </defs>
-      <path class="t-rest" d="M36 160 C 210 150 470 116 640 34" fill="none"
+      <path class="t-rest" d="${TRAJ_D}" fill="none"
         stroke="#5A6474" stroke-opacity="0.5" stroke-width="4.5"
         stroke-linecap="round" stroke-dasharray="0 12"/>
-      <path class="t-done" d="M36 160 C 210 150 470 116 640 34" fill="none"
+      <path class="t-done" d="${TRAJ_D}" fill="none"
         stroke="#0A2B4E" stroke-width="4.5" stroke-linecap="round"
         stroke-dasharray="0 12" clip-path="url(#traj-clip)"/>
       <g class="t-star" transform="translate(640,20)">
@@ -169,19 +204,10 @@ const RH = (() => {
           <path d="${STAR}" fill="#F5B70F" stroke="#0A2B4E" stroke-width="1.4"/>
         </g>
       </g>
-    </svg>`;
-    const svg = container.querySelector('svg');
-    const path = svg.querySelector('.t-done');
-    const L = path.getTotalLength();
-    const pt = path.getPointAtLength(L * p);
-    const ahead = path.getPointAtLength(Math.min(L, L * p + 2));
-    const behind = path.getPointAtLength(Math.max(0, L * p - 2));
-    const angle = Math.atan2(ahead.y - behind.y, ahead.x - behind.x) * 180 / Math.PI;
-    svg.querySelector('#traj-clip rect').setAttribute('width', pt.x.toFixed(1));
-    svg.insertAdjacentHTML('beforeend', `
-      <g class="t-rocket" transform="translate(${pt.x.toFixed(1)},${pt.y.toFixed(1)}) rotate(${(angle + 90).toFixed(1)}) scale(0.95) translate(-32,-33)">
+      <g class="t-rocket" transform="translate(${pt.x.toFixed(1)},${pt.y.toFixed(1)}) rotate(${(pt.angle + 90).toFixed(1)}) scale(0.95) translate(-32,-33)">
         ${redRocketUp}
-      </g>`);
+      </g>
+    </svg>`;
   };
 
   /* Star scatter: 2–3 mixed stars clustered near a headline. */
