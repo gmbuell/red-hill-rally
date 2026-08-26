@@ -221,6 +221,10 @@
   RH.qs('#classroom').insertAdjacentHTML('beforeend', RH.classroomOptions());
   RH.qs('#custom-amount').max = MAX_AMOUNT;
   renderPriorities();
+  /* A ?p= arrival (home-page tile, or Stripe's cancel URL) has already
+     chosen a priority — start on the amount step; Back still reaches
+     the priority cards with that choice checked. */
+  if (state.priority) state.step = 2;
   showStep();
 
   /* Resolve a student-link code before trusting it — in the background,
