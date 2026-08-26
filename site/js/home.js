@@ -28,13 +28,5 @@
   };
 
   render(0, {});
-
-  (async () => {
-    try {
-      const res = await fetch('/api/campaign');
-      if (!res.ok) return;
-      const live = await res.json();
-      render(live.campaign.raised, live.priorities || {});
-    } catch (err) { /* the zeros stay up */ }
-  })();
+  RH.loadLive('/api/campaign', (live) => render(live.campaign.raised, live.priorities || {}));
 })();

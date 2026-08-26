@@ -220,23 +220,35 @@ describe('webhook and campaign stats', () => {
   it('records a paid session and reports it, without leaking PII', async () => {
     expect((await deliverWebhook(sessionEvent())).status).toBe(200);
 
-    const res = await SELF.fetch('https://rally.test/api/campaign');
-    expect(res.status).toBe(200);
-    const text = await res.text();
-    const stats = JSON.parse(text);
+    const campaignRes = await SELF.fetch('https://rally.test/api/campaign');
+    expect(campaignRes.status).toBe(200);
+    const campaignText = await campaignRes.text();
+    const stats = JSON.parse(campaignText);
     expect(stats.campaign).toEqual({ raised: 100, goal: 205000, gifts: 1 });
     expect(stats.priorities.stem).toBe(100);
-    expect(stats.classrooms.convery).toBe(1);
-    expect(stats.donors).toEqual([{
+    // The home payload carries no donor rows — those live on /api/board.
+    expect(stats.donors).toBeUndefined();
+    expect(stats.classrooms).toBeUndefined();
+
+    const boardRes = await SELF.fetch('https://rally.test/api/board');
+    expect(boardRes.status).toBe(200);
+    const boardText = await boardRes.text();
+    const board = JSON.parse(boardText);
+    expect(board.campaign).toEqual({ raised: 100, goal: 205000, gifts: 1 });
+    expect(board.classrooms.convery).toBe(1);
+    expect(board.donors).toEqual([{
       name: 'The Rodriguez Family', priority: 'stem', anon: false, circle: false,
     }]);
+
     // The privacy model: student names, emails, and billing contact
     // details never leave the backend.
-    expect(text).not.toContain('Mia');
-    expect(text).not.toContain('example.com');
-    expect(text).not.toContain('Rosa');
-    expect(text).not.toContain('Rocket Way');
-    expect(text).not.toContain('92780');
+    for (const text of [campaignText, boardText]) {
+      expect(text).not.toContain('Mia');
+      expect(text).not.toContain('example.com');
+      expect(text).not.toContain('Rosa');
+      expect(text).not.toContain('Rocket Way');
+      expect(text).not.toContain('92780');
+    }
   });
 
   it('is idempotent across Stripe retries', async () => {
@@ -267,10 +279,10 @@ describe('webhook and campaign stats', () => {
       id: 'cs_circle', amount_total: 250000,
       metadata: { priority: 'people', donor_name: 'The Whitmore Family' },
     }));
-    const stats = await (await SELF.fetch('https://rally.test/api/campaign')).json();
-    const names = stats.donors.map((d) => d.name);
+    const board = await (await SELF.fetch('https://rally.test/api/board')).json();
+    const names = board.donors.map((d) => d.name);
     expect(names).toContain('Anonymous');
-    const circle = stats.donors.find((d) => d.name === 'The Whitmore Family');
+    const circle = board.donors.find((d) => d.name === 'The Whitmore Family');
     expect(circle.circle).toBe(true);
   });
 });

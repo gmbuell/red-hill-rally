@@ -1,7 +1,8 @@
 /* Campaign configuration — the static facts of the Rocket Rally.
-   Live numbers (raised totals, gift counts, the honor roll) come from
-   /api/campaign. The worker imports this same file for validation, so
-   the classroom roster and priorities live in exactly one place. */
+   Live numbers come from /api/campaign (totals) and /api/board (the
+   classroom race and honor roll). The worker imports this same file
+   for validation, so the classroom roster and priorities live in
+   exactly one place. */
 
 const ORG = {
   name: 'Red Hill Elementary PTA',
@@ -10,12 +11,19 @@ const ORG = {
   ein: '33-0973857',
 };
 
+/* Gift limits, enforced by the API and mirrored by the donate form. */
+const MAX_NAME = 80;      // characters, donor and student names
+const MAX_AMOUNT = 50000; // dollars, per gift
+
+/* `circle` marks a priority's named $2,500 recognition tier: gifts of
+   `min` dollars or more are badged with `label` on the honor roll. */
 const PRIORITIES = [
   {
     id: 'people',
     name: 'Student Support Staff',
     goal: 90000,
     blurb: 'The counselor, the PE teacher, and reading & math help that catches kids early — the quiet backbone of the whole school.',
+    circle: { min: 2500, label: 'Counselor Circle' },
     tiers: [
       { amount: 50, impact: 'Joins hundreds of families powering the annual fund' },
       { amount: 250, impact: 'A day of counselor support on campus' },
@@ -61,6 +69,7 @@ const PRIORITIES = [
     name: 'Arts at Red Hill',
     goal: 20000,
     blurb: 'Art Masters, Class Act music, assemblies, and performing arts — the gift that takes a bow on stage.',
+    circle: { min: 2500, label: 'Season Patron' },
     tiers: [
       { amount: 100, impact: "Art supplies for a classroom's Art Masters unit" },
       { amount: 250, impact: 'An enrichment assembly seat-section' },
@@ -110,8 +119,15 @@ const CLASSROOMS = [
   { id: 'smith', teacher: 'Mrs. Smith', grade: 'SDC', students: 11 },
 ];
 
+/* Lookup helpers shared by the worker and every page script. */
+const priorityById = (id) => PRIORITIES.find((p) => p.id === id) || null;
+const classroomById = (id) => CLASSROOMS.find((c) => c.id === id) || null;
+
 /* Worker import — the browser loads this file as a plain script and
    never defines `module`. */
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { ORG, PRIORITIES, CAMPAIGN, CLASSROOMS };
+  module.exports = {
+    ORG, PRIORITIES, CAMPAIGN, CLASSROOMS,
+    MAX_NAME, MAX_AMOUNT, priorityById, classroomById,
+  };
 }

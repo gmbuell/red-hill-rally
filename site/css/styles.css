@@ -117,12 +117,6 @@ select:focus-visible,
 }
 .script.red { color: var(--red); }
 
-.serif-sub {
-  font-family: var(--serif);
-  font-weight: 800;
-  color: var(--navy);
-}
-
 .label {
   font-weight: 800;
   font-size: 0.8125rem;
@@ -130,7 +124,6 @@ select:focus-visible,
   text-transform: uppercase;
   color: var(--grey);
 }
-.label.navy { color: var(--navy); }
 
 .fine-print { font-size: 0.85rem; color: var(--grey); line-height: 1.55; }
 
@@ -280,7 +273,6 @@ select:focus-visible,
 /* ---------- section headers ---------- */
 
 .section { padding: 3.5rem 0; }
-.section.on-sky { background: var(--sky); }
 
 .section-head { text-align: center; margin-bottom: 2.25rem; }
 .section-head .label { display: block; margin-bottom: 0.5rem; }
@@ -323,15 +315,8 @@ select:focus-visible,
   margin-bottom: 0.4rem;
 }
 .hero .arc-title { display: block; margin: 0 auto; max-width: 40rem; }
-.hero .sub {
-  font-family: var(--serif);
-  font-weight: 800;
-  font-size: clamp(1.05rem, 2.6vw, 1.35rem);
-  color: var(--navy);
-  max-width: 34rem;
-  margin: 1rem auto 0;
-}
-.hero .cta-row {
+/* shared by the hero, thanks, and 404 pages */
+.cta-row {
   display: flex;
   justify-content: center;
   align-items: center;
@@ -420,40 +405,6 @@ select:focus-visible,
 /* whole-card click target without nesting links */
 .priority-card .go::before { content: ""; position: absolute; inset: 0; }
 .priority-card:hover { outline: 2px solid var(--navy); outline-offset: 0; }
-
-/* ---------- how-it-works strip ---------- */
-
-.steps-strip {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(12rem, 100%), 1fr));
-  gap: 0;
-  border-top: 2px solid var(--navy);
-  border-bottom: 2px solid var(--navy);
-}
-.steps-strip .step {
-  padding: 1.5rem 1.4rem;
-  text-align: center;
-}
-.steps-strip .step + .step { border-left: 1px solid var(--navy); }
-.steps-strip .n {
-  font-family: var(--display);
-  font-weight: 600;
-  font-size: 1rem;
-  color: var(--navy);
-  display: block;
-  margin-bottom: 0.3rem;
-  letter-spacing: 0.1em;
-}
-.steps-strip h3 {
-  font-family: var(--serif);
-  font-weight: 800;
-  font-size: 1.1rem;
-  margin-bottom: 0.35rem;
-}
-.steps-strip p { margin: 0; font-size: 0.92rem; color: var(--grey); }
-@media (max-width: 44rem) {
-  .steps-strip .step + .step { border-left: 0; border-top: 1px solid var(--navy); }
-}
 
 /* ---------- parent-link callout ---------- */
 
@@ -579,7 +530,7 @@ select:focus-visible,
 }
 .option-card:hover { border-color: var(--navy); }
 .option-card input { accent-color: var(--navy); width: 1.15rem; height: 1.15rem; margin: 0; }
-.option-card.selected { border-color: var(--navy); background: var(--paper); }
+.option-card:has(input:checked) { border-color: var(--navy); background: var(--paper); }
 .option-card .icon { width: 46px; height: 36px; grid-row: span 2; }
 .option-card .name {
   font-family: var(--display);
@@ -635,7 +586,6 @@ select:focus-visible,
 }
 .field .optional { color: var(--grey); font-weight: 700; letter-spacing: 0.08em; }
 .field input[type="text"],
-.field input[type="email"],
 .field input[type="number"],
 .field select {
   width: 100%;
@@ -648,7 +598,6 @@ select:focus-visible,
   padding: 0.65rem 0.8rem;
 }
 .field select { appearance: auto; }
-.field .help { font-size: 0.85rem; color: var(--grey); margin: 0.4rem 0 0; }
 .field.invalid input, .field.invalid select { border-color: var(--red); }
 .field .error {
   display: none;
@@ -711,7 +660,6 @@ select:focus-visible,
 .link-chip .icon { width: 40px; height: 40px; grid-row: span 2; }
 .link-chip .who { font-weight: 800; font-size: 1.05rem; color: var(--navy); }
 .link-chip .meta { font-size: 0.85rem; color: var(--grey); grid-column: 2; }
-.link-chip .meta strong { color: var(--navy); }
 
 .linklike {
   background: none;
@@ -874,7 +822,6 @@ select:focus-visible,
 }
 .honor-roll .who { font-weight: 800; color: var(--navy); }
 .honor-roll .what { display: block; font-size: 0.8125rem; color: var(--grey); }
-.honor-roll .what strong { color: var(--navy); font-weight: 800; }
 .thanks-sign {
   display: flex;
   align-items: center;
@@ -962,11 +909,11 @@ select:focus-visible,
     color: #000;
   }
   .pc-script {
-    font-family: 'Kaushan Script', 'Brush Script MT', cursive;
+    font-family: var(--script);
     font-size: 20pt;
   }
   .pc-name {
-    font-family: 'Oswald', 'Arial Narrow', Impact, sans-serif;
+    font-family: var(--display);
     font-weight: 600;
     text-transform: uppercase;
     font-size: 30pt;
@@ -981,7 +928,7 @@ select:focus-visible,
     margin-bottom: 16pt;
   }
   .pc-cta {
-    font-family: 'Oswald', 'Arial Narrow', Impact, sans-serif;
+    font-family: var(--display);
     font-weight: 600;
     text-transform: uppercase;
     font-size: 13pt;
@@ -1032,13 +979,12 @@ select:focus-visible,
 
   .parent-callout { padding: 1.4rem 1.3rem; }
   .qr-panel { padding: 1.3rem; }
-  .trajectory-stats .stat.goal { text-align: right; }
 }
 
 /* ---------- motion ---------- */
 
 @media (prefers-reduced-motion: no-preference) {
-  .hero .rocket-float { animation: floaty 5s ease-in-out infinite; }
+  .rocket-float { animation: floaty 5s ease-in-out infinite; }
   @keyframes floaty {
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(-7px); }

@@ -10,11 +10,7 @@
     step: 1,
     priority: RH.priorityById(RH.param('p')) || null,
     amount: 0,
-    link: null,        // resolved {n, c} payload, set at boot
-    linkToken: '',     // the short link code, passed through to checkout
-    classroom: '',
-    student: '',
-    visibility: 'public',
+    link: null, // verified {code, n: student name, c: classroom id}
   };
 
   const form = RH.qs('#donate-form');
@@ -22,10 +18,12 @@
   const nextBtn = RH.qs('#next-btn');
   const errorEl = RH.qs('#checkout-error');
 
+  const visibility = () => RH.qs('input[name="visibility"]:checked').value;
+
   /* ---- step 1: priority cards ---- */
   const renderPriorities = () => {
     RH.qs('#priority-options').innerHTML = PRIORITIES.map((p) => `
-      <label class="option-card with-icon ${state.priority && state.priority.id === p.id ? 'selected' : ''}">
+      <label class="option-card with-icon">
         <input type="radio" name="priority" value="${p.id}"
           ${state.priority && state.priority.id === p.id ? 'checked' : ''}>
         ${RH.icon(p.id, 'icon')}
@@ -48,46 +46,33 @@
   const renderDedication = () => {
     const holder = RH.qs('#link-chip-holder');
     const manual = RH.qs('#manual-dedication');
-    if (state.link) {
-      const room = RH.classroomById(state.link.c);
-      holder.hidden = false;
-      manual.hidden = true;
-      holder.innerHTML = `
-        <div class="link-chip">
-          <svg class="icon" viewBox="20 4 24 50" aria-hidden="true">${RH.dartUp}</svg>
-          <span class="who">Supporting ${RH.esc(state.link.n)}</span>
-          <span class="meta">${room ? `${room.teacher} &middot; ${room.grade}` : 'Red Hill Elementary'}</span>
-        </div>
-        <p class="fine-print">Not who you meant to support? <button type="button" class="linklike" id="clear-link">Remove</button></p>`;
-      RH.qs('#clear-link').addEventListener('click', () => {
-        state.link = null;
-        state.linkToken = '';
-        renderDedication();
-      });
-    } else {
-      holder.hidden = true;
-      manual.hidden = false;
-      const sel = RH.qs('#classroom');
-      if (sel.options.length <= 1) {
-        sel.insertAdjacentHTML('beforeend', CLASSROOMS.map((c) =>
-          `<option value="${c.id}">${c.teacher} (${c.grade})</option>`).join(''));
-      }
-      sel.value = state.classroom;
-      RH.qs('#student-name').value = state.student;
-    }
+    holder.hidden = !state.link;
+    manual.hidden = !!state.link;
+    if (!state.link) return;
+    const room = RH.classroomById(state.link.c);
+    holder.innerHTML = `
+      <div class="link-chip">
+        <svg class="icon" viewBox="20 4 24 50" aria-hidden="true">${RH.dartUp}</svg>
+        <span class="who">Supporting ${RH.esc(state.link.n)}</span>
+        <span class="meta">${room ? `${room.teacher} &middot; ${room.grade}` : 'Red Hill Elementary'}</span>
+      </div>
+      <p class="fine-print">Not who you meant to support? <button type="button" class="linklike" id="clear-link">Remove</button></p>`;
+    RH.qs('#clear-link').addEventListener('click', () => {
+      state.link = null;
+      renderDedication();
+    });
   };
 
   /* ---- step 4: summary ---- */
   const renderSummary = () => {
     const p = state.priority;
     let s = `<strong>${RH.money(state.amount)}</strong> to <strong>${p ? p.name : ''}</strong>`;
+    const room = RH.classroomById(state.link ? state.link.c : RH.qs('#classroom').value);
     if (state.link) {
       s += `. Supporting <strong>${RH.esc(state.link.n)}</strong>`;
-      const room = RH.classroomById(state.link.c);
       if (room) s += ` (${room.teacher}&rsquo;s class)`;
       s += '.';
-    } else if (state.classroom) {
-      const room = RH.classroomById(state.classroom);
+    } else if (room) {
       s += `. Credited to <strong>${room.teacher}&rsquo;s class</strong>.`;
     } else {
       s += '.';
@@ -133,11 +118,15 @@
       const custom = Number(RH.qs('#custom-amount').value);
       if (!state.amount && custom > 0) state.amount = custom;
       state.amount = Math.round(state.amount);
-      if (invalid('#custom-field', !(state.amount > 0))) return false;
+      const overMax = state.amount > MAX_AMOUNT;
+      RH.qs('#custom-field .error').textContent = overMax
+        ? `Online gifts max out at $${MAX_AMOUNT.toLocaleString('en-US')}.`
+        : 'Please pick an amount or enter your own.';
+      if (invalid('#custom-field', overMax || !(state.amount > 0))) return false;
     }
     if (state.step === 4) {
       const name = RH.qs('#donor-name').value.trim();
-      const needName = state.visibility === 'public' && !name;
+      const needName = visibility() === 'public' && !name;
       invalid('#donor-name-field', needName);
       if (needName) return false;
     }
@@ -157,22 +146,17 @@
     nextBtn.innerHTML = 'Opening secure checkout…';
     errorEl.hidden = true;
     try {
-      const res = await fetch('/api/checkout', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          priority: state.priority.id,
-          amount: state.amount,
-          link: state.linkToken,
-          classroom: state.classroom,
-          student: state.student,
-          visibility: state.visibility,
-          donorName: RH.qs('#donor-name').value.trim(),
-          match: RH.qs('#match').checked,
-        }),
+      const { ok, data } = await RH.postJson('/api/checkout', {
+        priority: state.priority.id,
+        amount: state.amount,
+        link: state.link ? state.link.code : '',
+        classroom: RH.qs('#classroom').value,
+        student: RH.qs('#student-name').value.trim(),
+        visibility: visibility(),
+        donorName: RH.qs('#donor-name').value.trim(),
+        match: RH.qs('#match').checked,
       });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok && data.url) {
+      if (ok && data.url) {
         location.href = data.url;
         return;
       }
@@ -207,17 +191,10 @@
       state.priority = RH.priorityById(e.target.value);
       state.amount = 0;
       RH.qs('#custom-amount').value = '';
-      form.querySelectorAll('#priority-options .option-card').forEach((c) =>
-        c.classList.toggle('selected', c.querySelector('input').value === e.target.value));
     }
     if (e.target.name === 'visibility') {
-      state.visibility = e.target.value;
-      RH.qs('#donor-name-field').hidden = state.visibility !== 'public';
-      RH.qs('#opt-public').classList.toggle('selected', state.visibility === 'public');
-      RH.qs('#opt-anon').classList.toggle('selected', state.visibility === 'anon');
+      RH.qs('#donor-name-field').hidden = e.target.value !== 'public';
     }
-    if (e.target.id === 'classroom') state.classroom = e.target.value;
-    if (e.target.id === 'student-name') state.student = e.target.value.trim();
   });
 
   form.addEventListener('click', (e) => {
@@ -239,32 +216,24 @@
 
   form.addEventListener('submit', (e) => e.preventDefault());
 
-  /* ---- boot: resolve a student-link code before trusting it ---- */
-  const boot = async () => {
-    RH.qs('#student-name').placeholder =
-      `e.g. ${Math.random() < 0.5 ? 'Teddy' : 'Finn'} Buell`;
-    const code = RH.param('link');
-    if (code) {
-      try {
-        const res = await fetch('/api/link/verify', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ code }),
-        });
-        if (res.ok) {
-          state.link = await res.json();
-          state.linkToken = code;
-        }
-      } catch (err) { /* invalid or unreachable: continue without a link */ }
-    }
-    renderPriorities();
-    RH.qs('#opt-public').classList.add('selected');
-    if (state.link) {
+  /* ---- boot ---- */
+  RH.qs('#student-name').placeholder = RH.samplePlaceholder();
+  RH.qs('#classroom').insertAdjacentHTML('beforeend', RH.classroomOptions());
+  RH.qs('#custom-amount').max = MAX_AMOUNT;
+  renderPriorities();
+  showStep();
+
+  /* Resolve a student-link code before trusting it — in the background,
+     so step 1 paints without waiting on the round trip. */
+  const code = RH.param('link');
+  if (code) {
+    RH.postJson('/api/link/verify', { code }).then(({ ok, data }) => {
+      if (!ok) return;
+      state.link = { code, ...data };
       const room = RH.classroomById(state.link.c);
       RH.qs('.flow-header').insertAdjacentHTML('beforeend',
         `<p class="link-banner">Supporting <strong>${RH.esc(state.link.n)}</strong>${room ? ` &middot; ${room.teacher}&rsquo;s class` : ''}</p>`);
-    }
-    showStep();
-  };
-  boot();
+      if (state.step === 3) renderDedication();
+    }).catch(() => { /* invalid or unreachable: continue without a link */ });
+  }
 })();

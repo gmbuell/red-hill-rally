@@ -3,23 +3,20 @@
 
 import { createLink, resolveLink } from './links.js';
 import { createCheckoutSession, verifyWebhook } from './stripe.js';
-import { recordDonation, campaignStats, exportCsv } from './store.js';
+import { recordDonation, campaignStats, boardStats, exportCsv } from './store.js';
 import data from '../site/js/data.js';
 
-const { ORG, PRIORITIES, CLASSROOMS, CAMPAIGN } = data;
+const { ORG, CAMPAIGN, MAX_NAME, MAX_AMOUNT, priorityById, classroomById } = data;
 
 /* The charge description prints on every Stripe receipt, making it the
    donor's IRS written acknowledgment (Pub 1771): org name + the
    no-goods-or-services statement; amount and date are on the receipt
    itself. Required for donors to deduct gifts of $250+ — edit with
    care. */
-const taxAcknowledgment = () =>
+const TAX_ACKNOWLEDGMENT =
   `Tax-deductible donation to ${ORG.name}` +
   (ORG.ein ? ` (EIN ${ORG.ein})` : '') +
   '. No goods or services were provided in exchange for this contribution.';
-
-const MAX_NAME = 80;
-const MAX_AMOUNT = 50000; // dollars, per gift
 
 const json = (body, status = 200, headers = {}) =>
   new Response(JSON.stringify(body), {
@@ -27,8 +24,7 @@ const json = (body, status = 200, headers = {}) =>
     headers: { 'content-type': 'application/json; charset=utf-8', ...headers },
   });
 
-const priorityById = (id) => PRIORITIES.find((p) => p.id === id) || null;
-const isClassroom = (id) => CLASSROOMS.some((c) => c.id === id);
+const isClassroom = (id) => !!classroomById(id);
 
 /* {n: student name, c: classroom id} — sanity-check resolved links so a
    stale row (say, a classroom removed from the roster) fails cleanly. */
@@ -47,7 +43,7 @@ const timingSafeStringEqual = async (a, b) => {
 async function handleLinkCreate(request, env) {
   const body = await request.json().catch(() => null);
   const name = body && typeof body.n === 'string' ? body.n.trim() : '';
-  if (!name || name.length > MAX_NAME || !body || !isClassroom(body.c)) {
+  if (!body || !name || name.length > MAX_NAME || !isClassroom(body.c)) {
     return json({ error: 'Please give a student name and pick a classroom.' }, 400);
   }
   const code = await createLink(env.DB, name, body.c);
@@ -102,7 +98,7 @@ async function handleCheckout(request, env, url) {
   const session = await createCheckoutSession(env, {
     amountCents: amount * 100,
     productName: `Rocket Rally — ${priority.name}`,
-    description: taxAcknowledgment(),
+    description: TAX_ACKNOWLEDGMENT,
     successUrl: `${url.origin}/thanks?p=${priority.id}&amt=${amount}&sid={CHECKOUT_SESSION_ID}`,
     cancelUrl: `${url.origin}/donate?p=${priority.id}`,
     metadata: {
@@ -178,6 +174,9 @@ export default {
       switch (route) {
         case 'GET /api/campaign':
           return json(await campaignStats(env.DB, { CAMPAIGN }),
+            200, { 'cache-control': 'public, max-age=60' });
+        case 'GET /api/board':
+          return json(await boardStats(env.DB, { CAMPAIGN }),
             200, { 'cache-control': 'public, max-age=60' });
         case 'POST /api/link': return await handleLinkCreate(request, env);
         case 'POST /api/link/verify': return await handleLinkVerify(request, env);

@@ -1,6 +1,6 @@
 /* Rally Board: campaign totals, the classroom race, and the honor roll.
    Renders immediately with zeros so the first paint is complete (no
-   pop-in layout shift), then re-renders with live /api/campaign data —
+   pop-in layout shift), then re-renders with live /api/board data —
    rows are uniform height, so the swap moves nothing. */
 
 (() => {
@@ -54,7 +54,7 @@
     const items = named.map((d) => {
       const p = RH.priorityById(d.priority);
       let what = p ? p.name : '';
-      if (d.circle) what += (what ? ' &middot; ' : '') + (d.priority === 'arts' ? 'Season Patron' : 'Counselor Circle');
+      if (d.circle && p && p.circle) what += (what ? ' &middot; ' : '') + p.circle.label;
       return `
         <li>
           <span class="who">${RH.esc(d.name)}</span>
@@ -72,12 +72,5 @@
   };
 
   render(null);
-
-  (async () => {
-    try {
-      const res = await fetch('/api/campaign');
-      if (!res.ok) return;
-      render(await res.json());
-    } catch (err) { /* the zeros stay up */ }
-  })();
+  RH.loadLive('/api/board', render);
 })();

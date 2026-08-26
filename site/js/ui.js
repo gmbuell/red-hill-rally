@@ -6,9 +6,36 @@ const RH = (() => {
 
   const money = (n) => '$' + Math.round(n).toLocaleString('en-US');
 
-  const qs = (sel, root) => (root || document).querySelector(sel);
+  const qs = (sel) => document.querySelector(sel);
 
   const param = (name) => new URLSearchParams(location.search).get(name);
+
+  /* ---- shared form/data plumbing ---- */
+
+  const classroomOptions = () => CLASSROOMS.map((c) =>
+    `<option value="${c.id}">${c.teacher} (${c.grade})</option>`).join('');
+
+  const samplePlaceholder = () =>
+    `e.g. ${Math.random() < 0.5 ? 'Teddy' : 'Finn'} Buell`;
+
+  /* POST JSON, parse JSON back; {ok, data} — network errors still throw. */
+  const postJson = async (path, body) => {
+    const res = await fetch(path, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    return { ok: res.ok, data: await res.json().catch(() => ({})) };
+  };
+
+  /* Fetch live stats (/api/campaign or /api/board); on any failure the
+     caller's zeros stay up. */
+  const loadLive = async (path, render) => {
+    try {
+      const res = await fetch(path);
+      if (res.ok) render(await res.json());
+    } catch (err) { /* keep the zeros */ }
+  };
 
   /* Escape user-supplied text (donor names, student names) before it
      is interpolated into innerHTML. */
@@ -163,12 +190,11 @@ const RH = (() => {
     <svg class="sparkle" style="top:19%;left:calc(50% + 262px);" width="13" height="13" viewBox="0 0 24 24" aria-hidden="true"><path d="${STAR}" fill="#0A2B4E"/></svg>
     <svg class="sparkle" style="top:7%;left:calc(50% - 252px);" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="${STAR}" fill="#F5B70F"/></svg>`;
 
-  const priorityById = (id) => PRIORITIES.find((p) => p.id === id) || null;
-  const classroomById = (id) => CLASSROOMS.find((c) => c.id === id) || null;
-
+  /* priorityById / classroomById come from data.js, loaded before us. */
   return {
     money, qs, param, esc,
-    badgeRocket, redRocketUp, dartUp, STAR, icon,
+    classroomOptions, samplePlaceholder, postJson, loadLive,
+    badgeRocket, dartUp, icon,
     trailSVG, buildTrajectory, scatter,
     priorityById, classroomById,
   };

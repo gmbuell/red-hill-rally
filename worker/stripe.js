@@ -54,7 +54,8 @@ const hexToBytes = (hex) => {
 };
 
 /* Stripe-Signature: t=<unix>,v1=<hex hmac of "t.payload">[,v1=...] */
-export async function verifyWebhook(payload, sigHeader, secret, nowSec = Math.floor(Date.now() / 1000)) {
+export async function verifyWebhook(payload, sigHeader, secret) {
+  const nowSec = Math.floor(Date.now() / 1000);
   if (!sigHeader) return false;
   let timestamp = null;
   const candidates = [];

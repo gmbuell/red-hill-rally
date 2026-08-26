@@ -3,15 +3,16 @@
    to type straight off a printed flyer. */
 
 (() => {
-  RH.qs('#sl-name').placeholder =
-    `e.g. ${Math.random() < 0.5 ? 'Teddy' : 'Finn'} Buell`;
+  RH.qs('#sl-name').placeholder = RH.samplePlaceholder();
 
   const sel = RH.qs('#sl-class');
-  sel.insertAdjacentHTML('beforeend', CLASSROOMS.map((c) =>
-    `<option value="${c.id}">${c.teacher} (${c.grade})</option>`).join(''));
+  sel.insertAdjacentHTML('beforeend', RH.classroomOptions());
 
   const form = RH.qs('#link-form');
   const errorEl = RH.qs('#link-error');
+
+  window.addEventListener('afterprint', () =>
+    document.body.classList.remove('printing-card'));
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -27,13 +28,8 @@
     let code = '';
     let serverError = '';
     try {
-      const res = await fetch('/api/link', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ n: name, c: classId }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok && data.code) code = data.code;
+      const { ok, data } = await RH.postJson('/api/link', { n: name, c: classId });
+      if (ok && data.code) code = data.code;
       else serverError = data.error || '';
     } catch (err) { /* handled below */ }
     if (!code) {
@@ -54,12 +50,10 @@
     RH.qs('#result-title').textContent = `${name}’s Rally link`;
     RH.qs('#link-line').textContent = link;
 
-    const fill = (sel, fn) =>
-      document.querySelectorAll(sel).forEach((el) => fn(el));
-    fill('.pc-name', (el) => { el.textContent = name; });
-    fill('.pc-class', (el) => { el.textContent = `${room.teacher} · ${room.grade}`; });
-    fill('.pc-qr', (el) => { el.src = dataUrl; });
-    fill('.pc-url', (el) => { el.textContent = link.replace(/^https?:\/\//, ''); });
+    RH.qs('.pc-name').textContent = name;
+    RH.qs('.pc-class').textContent = `${room.teacher} · ${room.grade}`;
+    RH.qs('.pc-qr').src = dataUrl;
+    RH.qs('.pc-url').textContent = link.replace(/^https?:\/\//, '');
 
     const result = RH.qs('#result');
     result.hidden = false;
@@ -88,7 +82,5 @@
       document.body.classList.add('printing-card');
       window.print();
     };
-    window.addEventListener('afterprint', () =>
-      document.body.classList.remove('printing-card'));
   });
 })();
