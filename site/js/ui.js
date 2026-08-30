@@ -258,11 +258,25 @@ const RH = (() => {
   };
   const partnerFriendsLine = (names) => (names.length ? `
       <p class="partner-friends">With thanks to ${nameList(names.map((p) => esc(p.name)))}.</p>` : '');
+  const partnerTierName = (id) => {
+    const t = PARTNER_TIERS.find((pt) => pt.id === id);
+    return t ? t.name : '';
+  };
+  /* The logo-card grid itself — identical on /partners and the Rally
+     Board: full-size logo, business name, tier badge. */
+  const partnerCards = (logos) => `
+    <ul class="partner-grid">${logos.map((p) => `
+      <li class="partner-card">
+        <img src="${p.src}" alt="${esc(p.name)} logo" loading="lazy">
+        <span class="partner-name">${esc(p.name)}</span>
+        ${p.tier ? `<span class="partner-tier">${partnerTierName(p.tier)}</span>` : ''}
+      </li>`).join('')}
+    </ul>`;
 
   /* priorityById / classroomById come from data.js, loaded before us. */
   return {
     money, moneyCents, qs, param, esc, nameList,
-    mergedPartners, partnerGroups, partnerFriendsLine,
+    mergedPartners, partnerGroups, partnerFriendsLine, partnerCards,
     classroomOptions, samplePlaceholder, postJson, loadLive,
     badgeRocket, dartUp, icon,
     trailSVG, buildTrajectory, scatter,

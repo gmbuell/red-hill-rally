@@ -75,24 +75,14 @@
   /* ---- the wall: curated roster immediately (no pop-in for the
      common case), online partners merged in when live data arrives ---- */
   const wall = RH.qs('#partner-wall');
-  const tierName = (id) => {
-    const t = PARTNER_TIERS.find((pt) => pt.id === id);
-    return t ? t.name : '';
-  };
   const renderWall = (online) => {
     const { logos: logoPartners, names: namePartners } = RH.partnerGroups(online);
     if (!logoPartners.length && !namePartners.length) {
       wall.innerHTML = '<p class="hint">Your business could be first &mdash; the Rally launches in September.</p>';
       return;
     }
-    wall.innerHTML = `
-    <ul class="partner-grid">${logoPartners.map((p) => `
-      <li class="partner-card">
-        <img src="${p.src}" alt="${RH.esc(p.name)} logo" loading="lazy">
-        <span class="partner-name">${RH.esc(p.name)}</span>
-        ${p.tier ? `<span class="partner-tier">${tierName(p.tier)}</span>` : ''}
-      </li>`).join('')}
-    </ul>${RH.partnerFriendsLine(namePartners)}`;
+    wall.innerHTML = (logoPartners.length ? RH.partnerCards(logoPartners) : '')
+      + RH.partnerFriendsLine(namePartners);
   };
   renderWall(null);
   RH.loadLive('/api/board', (live) => renderWall(live.partners));

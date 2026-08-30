@@ -1110,19 +1110,6 @@ select:focus-visible,
   color: var(--red);
 }
 
-/* Rally Board strip */
-.partner-strip {
-  list-style: none;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  align-items: center;
-  justify-content: center;
-  margin: 0.4rem 0 0;
-}
-.partner-strip li { background: var(--white); border: 1px solid rgba(10, 43, 78, 0.14); padding: 0.7rem 1rem; }
-.partner-strip img { height: 4.5rem; width: auto; max-width: 15rem; object-fit: contain; display: block; }
 .partner-friends { text-align: center; font-size: 0.9rem; color: var(--grey); margin: 1rem 0 0; }
 
 /* partner tier picking + payment form */

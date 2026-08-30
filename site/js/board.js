@@ -77,11 +77,8 @@ const boardView = (live) => {
     roll = items.join('');
   }
 
-  /* ---- business partner strip ---- */
-  const partners = (logoPartners.length ? `
-      <ul class="partner-strip">${logoPartners.map((p) => `
-        <li><img src="${p.src}" alt="${RH.esc(p.name)}" loading="lazy"></li>`).join('')}
-      </ul>` : `
+  /* ---- business partner cards (same treatment as /partners) ---- */
+  const partners = (logoPartners.length ? RH.partnerCards(logoPartners) : `
       <p class="board-lede">Your business could be up here &mdash; the Rally runs September&ndash;October.</p>`)
     + RH.partnerFriendsLine(namePartners);
 
