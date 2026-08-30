@@ -93,6 +93,8 @@ select:focus-visible,
 .wrap { max-width: var(--wrap); margin: 0 auto; padding: 0 1.25rem; }
 .wrap-narrow { max-width: var(--narrow); margin: 0 auto; padding: 0 1.25rem; }
 
+[hidden] { display: none !important; }
+
 .visually-hidden {
   position: absolute; width: 1px; height: 1px;
   margin: -1px; padding: 0; overflow: hidden;
@@ -188,8 +190,9 @@ select:focus-visible,
 .site-nav a:hover { color: var(--red); }
 .site-nav a[aria-current="page"] { border-bottom-color: var(--navy); }
 
-/* compact two-row header on phones: wordmark + Donate up top, links below */
-@media (max-width: 44rem) {
+/* compact two-row header on phones and mid widths (four nav links no
+   longer fit one row below ~56rem): wordmark + Donate up top, links below */
+@media (max-width: 56rem) {
   .site-header .bar {
     padding: 0.55rem 0 0.4rem;
     gap: 0.15rem 1rem;
@@ -207,6 +210,7 @@ select:focus-visible,
 }
 @media (max-width: 30rem) {
   .wordmark .org { display: none; }
+  .site-nav { gap: 0 1.05rem; }
 }
 
 /* ---------- buttons ---------- */
@@ -1036,7 +1040,8 @@ select:focus-visible,
 }
 .student-row + .student-row { border-top: 1px solid rgba(10, 43, 78, 0.12); padding-top: 1.1rem; }
 .student-row .remove-student { margin-top: 2.2rem; font-size: 0.85rem; color: var(--grey); }
-.add-note { margin: 0.5rem 0 0; }
+#add-student, #add-sibling { display: flex; width: max-content; }
+#add-sibling { margin-bottom: 1.3rem; }
 @media (max-width: 640px) {
   .student-row { grid-template-columns: 1fr; gap: 0; }
   .student-row .remove-student { margin: -0.4rem 0 1rem; justify-self: start; }
@@ -1046,10 +1051,11 @@ select:focus-visible,
 
 .tier-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(15rem, 100%), 1fr));
-  gap: 1rem;
+  grid-template-columns: 1fr;
+  gap: 0.8rem;
   margin: 1.8rem 0 0.8rem;
 }
+.tier-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
 .tier-card { background: var(--sky); padding: 1.3rem 1.4rem 1.2rem; }
 .tier-card h3 {
   font-family: var(--display);
@@ -1064,8 +1070,10 @@ select:focus-visible,
   font-weight: 600;
   font-size: 1.7rem;
   color: var(--red);
-  margin: 0.1rem 0 0.6rem;
+  margin: 0;
 }
+.tier-card ul { margin-top: 0.5rem; }
+.pitch-head { font-family: var(--serif); font-weight: 800; font-size: 1.35rem; margin-bottom: 0.6rem; }
 .tier-card ul { margin: 0; padding-left: 1.1rem; font-size: 0.92rem; }
 .tier-card li { margin-bottom: 0.35rem; }
 .tier-note { margin: 0 0 1rem; }
@@ -1077,7 +1085,7 @@ select:focus-visible,
   list-style: none;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(12rem, 100%), 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(16rem, 100%), 1fr));
   gap: 1rem;
   margin: 1.4rem 0 0;
 }
@@ -1092,7 +1100,7 @@ select:focus-visible,
   gap: 0.6rem;
   text-align: center;
 }
-.partner-card img { max-height: 6.5rem; width: auto; max-width: 100%; object-fit: contain; }
+.partner-card img { max-height: 10rem; width: auto; max-width: 100%; object-fit: contain; }
 .partner-card .partner-name { font-weight: 800; font-size: 0.88rem; color: var(--navy); }
 .partner-card .partner-tier {
   font-size: 0.72rem;
@@ -1114,7 +1122,7 @@ select:focus-visible,
   margin: 0.4rem 0 0;
 }
 .partner-strip li { background: var(--white); border: 1px solid rgba(10, 43, 78, 0.14); padding: 0.7rem 1rem; }
-.partner-strip img { height: 3.2rem; width: auto; max-width: 10rem; object-fit: contain; display: block; }
+.partner-strip img { height: 4.5rem; width: auto; max-width: 15rem; object-fit: contain; display: block; }
 .partner-friends { text-align: center; font-size: 0.9rem; color: var(--grey); margin: 1rem 0 0; }
 
 /* partner tier picking + payment form */

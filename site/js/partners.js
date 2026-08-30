@@ -18,8 +18,10 @@
   /* ---- the ladder ---- */
   RH.qs('#tier-grid').innerHTML = PARTNER_TIERS.map((t) => `
     <div class="tier-card" data-tier="${t.id}">
-      <h3>${t.name}</h3>
-      <p class="tier-amount">${RH.money(t.amount)}</p>
+      <div class="tier-head">
+        <h3>${t.name}</h3>
+        <p class="tier-amount">${RH.money(t.amount)}</p>
+      </div>
       <ul>${t.benefits.map((b) => `<li>${b}</li>`).join('')}</ul>
       <button type="button" class="btn small tier-pick" data-tier="${t.id}">Become a ${t.name}</button>
     </div>`).join('');

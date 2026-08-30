@@ -9,10 +9,15 @@ const boardView = (live) => {
   const gifts = live ? live.campaign.gifts : 0;
   const perClass = (live && live.classrooms) || {};
   const donors = (live && live.donors) || [];
+  /* Business partners: the curated roster (baked into the skeleton)
+     plus online partnerships once live data arrives — used for the
+     totals tile and the strip below. */
+  const { logos: logoPartners, names: namePartners } = RH.partnerGroups(live && live.partners);
 
   const totals = [
     [RH.money(raised), 'raised of ' + RH.money(CAMPAIGN.goal)],
     [gifts, 'family gifts so far'],
+    [logoPartners.length + namePartners.length, 'business partners'],
     [CLASSROOMS.length, 'classrooms flying'],
   ].map(([num, label]) => `
       <div class="total"><span class="num money">${num}</span><span class="label">${label}</span></div>`
@@ -72,9 +77,7 @@ const boardView = (live) => {
     roll = items.join('');
   }
 
-  /* ---- business partners: the curated roster (baked into the
-     skeleton) plus online partnerships once live data arrives ---- */
-  const { logos: logoPartners, names: namePartners } = RH.partnerGroups(live && live.partners);
+  /* ---- business partner strip ---- */
   const partners = (logoPartners.length ? `
       <ul class="partner-strip">${logoPartners.map((p) => `
         <li><img src="${p.src}" alt="${RH.esc(p.name)}" loading="lazy"></li>`).join('')}
