@@ -1,7 +1,10 @@
 /* Short student links: a memorable adjective-animal code (sunny-otter)
-   stored in D1 maps to {student name, classroom} — short enough to
-   type off a printed flyer. Codes are guessable by design; anything a
-   code resolves to is as public as the donate page that shows it. */
+   stored in D1 maps to a list of {student name, classroom} — one kid
+   or the whole family — short enough to type off a printed flyer.
+   Codes are guessable by design; anything a code resolves to is as
+   public as the donate page that shows it. */
+
+import { studentsSignature, legacyStudentsSignature } from './students.js';
 
 const ADJECTIVES = [
   'sunny', 'brave', 'swift', 'cosmic', 'lucky', 'mighty', 'zippy', 'rosy',
@@ -31,41 +34,63 @@ const ANIMALS = [
 const pick = (list) =>
   list[crypto.getRandomValues(new Uint32Array(1))[0] % list.length];
 
-const bySpot = (db, classroom, name) => db
-  .prepare('SELECT code FROM links WHERE classroom = ?1 AND lower(student_name) = lower(?2)')
-  .bind(classroom, name).first();
+const bySignature = (db, signature) => db
+  .prepare('SELECT code FROM links WHERE signature = ?1').bind(signature).first();
 
-/* Returns the code for this student+classroom, creating one if needed.
+/* Returns the code for this set of students, creating one if needed —
+   the same kids (any order, any case) always share a code. `students`
+   is an already-normalized [{c, n}] list, stored in the order entered.
    Null only if the code space is somehow exhausted. */
-export async function createLink(db, name, classroom) {
-  const existing = await bySpot(db, classroom, name);
+export async function createLink(db, students) {
+  const signature = studentsSignature(students);
+  const existing = await bySignature(db, signature);
   if (existing) return existing.code;
+  // Rows backfilled by migration 0005 carry signatures lowered by
+  // SQLite (ASCII-only). Heal them to the modern form on first touch,
+  // so accented names keep the same-kids-same-code invariant.
+  const legacy = legacyStudentsSignature(students);
+  if (legacy !== signature) {
+    const backfilled = await bySignature(db, legacy);
+    if (backfilled) {
+      await db.prepare('UPDATE links SET signature = ?2 WHERE code = ?1')
+        .bind(backfilled.code, signature).run();
+      return backfilled.code;
+    }
+  }
 
+  const json = JSON.stringify(students.map((s) => ({ c: s.c, n: s.n })));
   for (let attempt = 0; attempt < 12; attempt++) {
     let code = `${pick(ADJECTIVES)}-${pick(ANIMALS)}`;
     // If the pair pool ever gets crowded, widen with two digits.
     if (attempt >= 6) code += `-${10 + (crypto.getRandomValues(new Uint32Array(1))[0] % 90)}`;
     // OR IGNORE covers both races: code already taken, or another
-    // request just created this student's link.
+    // request just created this family's link (unique signature).
     const res = await db.prepare(`
-      INSERT OR IGNORE INTO links (code, student_name, classroom, created)
+      INSERT OR IGNORE INTO links (code, students, signature, created)
       VALUES (?1, ?2, ?3, ?4)`)
-      .bind(code, name, classroom, Math.floor(Date.now() / 1000))
+      .bind(code, json, signature, Math.floor(Date.now() / 1000))
       .run();
     if (res.meta.changes === 1) return code;
-    const raced = await bySpot(db, classroom, name);
+    const raced = await bySignature(db, signature);
     if (raced) return raced.code;
   }
   return null;
 }
 
-/* Code -> {n: student name, c: classroom id}, or null. Case- and
-   whitespace-tolerant so hand-typed codes just work. */
+/* Code -> [{c: classroom id, n: student name}], or null. Case- and
+   whitespace-tolerant so hand-typed codes just work. The caller
+   re-validates the list against the roster. */
 export async function resolveLink(db, code) {
   if (typeof code !== 'string') return null;
   const norm = code.trim().toLowerCase();
   if (!/^[a-z]+-[a-z]+(-\d{2})?$/.test(norm)) return null;
-  const row = await db.prepare('SELECT student_name, classroom FROM links WHERE code = ?1')
+  const row = await db.prepare('SELECT students FROM links WHERE code = ?1')
     .bind(norm).first();
-  return row ? { n: row.student_name, c: row.classroom } : null;
+  if (!row) return null;
+  try {
+    const list = JSON.parse(row.students);
+    return Array.isArray(list) ? list : null;
+  } catch {
+    return null;
+  }
 }

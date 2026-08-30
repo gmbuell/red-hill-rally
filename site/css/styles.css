@@ -126,6 +126,7 @@ select:focus-visible,
 }
 
 .fine-print { font-size: 0.85rem; color: var(--grey); line-height: 1.55; }
+.redirect-note { margin: 0; }
 
 .money { font-variant-numeric: tabular-nums; }
 
@@ -990,3 +991,140 @@ select:focus-visible,
     50% { transform: translateY(-7px); }
   }
 }
+
+/* ---------- matching page ---------- */
+
+.how-intro { margin: 0 0 1.8rem; }
+.how-steps {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 0.5rem;
+  counter-reset: step;
+  display: grid;
+  gap: 1.4rem;
+}
+.how-steps li { position: relative; padding-left: 3.1rem; counter-increment: step; }
+.how-steps li::before {
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 50%;
+  background: var(--navy);
+  color: var(--white);
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 1.15rem;
+  display: grid;
+  place-items: center;
+}
+.how-steps h2 { font-family: var(--serif); font-weight: 800; font-size: 1.15rem; margin: 0.2rem 0 0.4rem; }
+.how-steps p { margin: 0 0 0.45rem; }
+.next-panel .btn { margin: 0.4rem 0 1.1rem; }
+.pay-note { margin: 0.6rem 0 0; }
+.site-footer p a { color: inherit; text-decoration: underline; }
+
+/* ---------- student rows (donate step 3, student link page) ---------- */
+
+.student-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 0 1rem;
+  align-items: start;
+}
+.student-row + .student-row { border-top: 1px solid rgba(10, 43, 78, 0.12); padding-top: 1.1rem; }
+.student-row .remove-student { margin-top: 2.2rem; font-size: 0.85rem; color: var(--grey); }
+.add-note { margin: 0.5rem 0 0; }
+@media (max-width: 640px) {
+  .student-row { grid-template-columns: 1fr; gap: 0; }
+  .student-row .remove-student { margin: -0.4rem 0 1rem; justify-self: start; }
+}
+
+/* ---------- business partners ---------- */
+
+.tier-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(15rem, 100%), 1fr));
+  gap: 1rem;
+  margin: 1.8rem 0 0.8rem;
+}
+.tier-card { background: var(--sky); padding: 1.3rem 1.4rem 1.2rem; }
+.tier-card h3 {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 1.05rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--navy);
+}
+.tier-card .tier-amount {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 1.7rem;
+  color: var(--red);
+  margin: 0.1rem 0 0.6rem;
+}
+.tier-card ul { margin: 0; padding-left: 1.1rem; font-size: 0.92rem; }
+.tier-card li { margin-bottom: 0.35rem; }
+.tier-note { margin: 0 0 1rem; }
+
+.partner-wall-head { text-align: center; margin-top: 2.4rem; }
+.partner-wall-head .script { font-size: 2rem; }
+
+.partner-grid {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(12rem, 100%), 1fr));
+  gap: 1rem;
+  margin: 1.4rem 0 0;
+}
+.partner-card {
+  background: var(--white);
+  border: 1px solid rgba(10, 43, 78, 0.14);
+  padding: 1.1rem 1rem 0.9rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  text-align: center;
+}
+.partner-card img { max-height: 6.5rem; width: auto; max-width: 100%; object-fit: contain; }
+.partner-card .partner-name { font-weight: 800; font-size: 0.88rem; color: var(--navy); }
+.partner-card .partner-tier {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--red);
+}
+
+/* Rally Board strip */
+.partner-strip {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+  justify-content: center;
+  margin: 0.4rem 0 0;
+}
+.partner-strip li { background: var(--white); border: 1px solid rgba(10, 43, 78, 0.14); padding: 0.7rem 1rem; }
+.partner-strip img { height: 3.2rem; width: auto; max-width: 10rem; object-fit: contain; display: block; }
+.partner-friends { text-align: center; font-size: 0.9rem; color: var(--grey); margin: 1rem 0 0; }
+
+/* partner tier picking + payment form */
+.tier-card { display: flex; flex-direction: column; }
+.tier-card ul { flex: 1; }
+.tier-card .tier-pick { margin-top: 1rem; align-self: start; }
+.tier-card.selected { outline: 3px solid var(--navy); }
+#partner-form { background: var(--sky); padding: 1.5rem 1.6rem 1.3rem; margin: 1.8rem 0 0.4rem; }
+.partner-form-head { font-family: var(--serif); font-weight: 800; font-size: 1.2rem; margin-bottom: 1rem; }
+
+/* partner logo upload (thanks page) */
+.logo-row { display: flex; flex-wrap: wrap; gap: 0.8rem; align-items: center; margin: 0.6rem 0 0.4rem; }
+#logo-file { font-size: 0.9rem; max-width: 100%; }

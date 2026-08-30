@@ -1,6 +1,7 @@
 import { env, SELF, createExecutionContext, reset } from 'cloudflare:test';
 import { afterEach, describe, it, expect, vi } from 'vitest';
 import worker from '../worker/index.js';
+import data from '../site/js/data.js';
 
 /* Checkout tests run the worker in this isolate so the outbound Stripe
    call can be stubbed at the fetch global. */
@@ -30,6 +31,17 @@ const checkoutDirect = (body, envOverride = {}) =>
     createExecutionContext(),
   );
 
+const partnerDirect = (body, envOverride = {}) =>
+  worker.fetch(
+    new Request('https://rally.test/api/partner/checkout', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    }),
+    { ...env, ...envOverride },
+    createExecutionContext(),
+  );
+
 const post = (path, body) => SELF.fetch(`https://rally.test${path}`, {
   method: 'POST',
   headers: { 'content-type': 'application/json' },
@@ -40,8 +52,7 @@ const validCheckout = {
   priority: 'stem',
   amount: 100,
   link: '',
-  classroom: 'convery',
-  student: 'Mia Rodriguez',
+  students: [{ c: 'convery', n: 'Mia Rodriguez' }],
   visibility: 'public',
   donorName: 'The Rodriguez Family',
   match: true,
@@ -77,8 +88,7 @@ const sessionEvent = (over = {}) => JSON.stringify({
       },
       metadata: {
         priority: 'stem',
-        classroom: 'convery',
-        student_name: 'Mia Rodriguez',
+        students: JSON.stringify([{ c: 'convery', n: 'Mia Rodriguez' }]),
         donor_name: 'The Rodriguez Family',
         visibility: 'public',
         employer_match: '1',
@@ -106,28 +116,45 @@ afterEach(async () => {
 /* ---- student links ---- */
 
 describe('student links', () => {
+  const mia = { n: 'Mia Rodríguez', c: 'convery' };
+  const leo = { n: 'Leo Park', c: 'zweber' };
+
   it('creates a short memorable code and resolves it', async () => {
-    const created = await post('/api/link', { n: 'Mia Rodríguez', c: 'convery' });
+    const created = await post('/api/link', { students: [mia] });
     expect(created.status).toBe(200);
     const { code } = await created.json();
     expect(code).toMatch(/^[a-z]+-[a-z]+(-\d{2})?$/);
 
     const verified = await post('/api/link/verify', { code });
     expect(verified.status).toBe(200);
-    expect(await verified.json()).toEqual({ n: 'Mia Rodríguez', c: 'convery' });
+    expect(await verified.json()).toEqual({ students: [{ c: 'convery', n: 'Mia Rodríguez' }] });
   });
 
   it('reuses the code for the same student and classroom', async () => {
-    const { code } = await (await post('/api/link', { n: 'Leo Park', c: 'zweber' })).json();
-    const { code: again } = await (await post('/api/link', { n: '  leo park ', c: 'zweber' })).json();
+    const { code } = await (await post('/api/link', { students: [leo] })).json();
+    const { code: again } = await (await post('/api/link', { students: [{ n: '  leo park ', c: 'zweber' }] })).json();
     expect(again).toBe(code);
     // Same name in a different classroom is a different link.
-    const { code: other } = await (await post('/api/link', { n: 'Leo Park', c: 'harrison' })).json();
+    const { code: other } = await (await post('/api/link', { students: [{ n: 'Leo Park', c: 'harrison' }] })).json();
     expect(other).not.toBe(code);
   });
 
+  it('one link can name every sibling, in the order entered', async () => {
+    const { code } = await (await post('/api/link', { students: [mia, leo] })).json();
+    const verified = await (await post('/api/link/verify', { code })).json();
+    expect(verified.students).toEqual([{ c: 'convery', n: 'Mia Rodríguez' }, { c: 'zweber', n: 'Leo Park' }]);
+    // The same kids, reversed and recased, is the same family.
+    const { code: again } = await (await post('/api/link', {
+      students: [{ n: 'LEO PARK', c: 'zweber' }, { n: 'mia rodríguez', c: 'convery' }],
+    })).json();
+    expect(again).toBe(code);
+    // A different set is a different link — the single-kid links too.
+    const { code: solo } = await (await post('/api/link', { students: [mia] })).json();
+    expect(solo).not.toBe(code);
+  });
+
   it('resolves hand-typed codes case-insensitively', async () => {
-    const { code } = await (await post('/api/link', { n: 'Zoe F', c: 'hesseltine' })).json();
+    const { code } = await (await post('/api/link', { students: [{ n: 'Zoe F', c: 'hesseltine' }] })).json();
     const res = await post('/api/link/verify', { code: `  ${code.toUpperCase()} ` });
     expect(res.status).toBe(200);
   });
@@ -139,9 +166,28 @@ describe('student links', () => {
   });
 
   it('rejects bad payloads', async () => {
-    expect((await post('/api/link', { n: '', c: 'convery' })).status).toBe(400);
-    expect((await post('/api/link', { n: 'Mia', c: 'r99' })).status).toBe(400);
-    expect((await post('/api/link', { n: 'x'.repeat(200), c: 'convery' })).status).toBe(400);
+    const bad = async (body) => (await post('/api/link', body)).status;
+    expect(await bad({})).toBe(400);
+    expect(await bad({ students: [] })).toBe(400);
+    expect(await bad({ students: [{ n: '', c: 'convery' }] })).toBe(400);
+    expect(await bad({ students: [{ n: 'Mia', c: 'r99' }] })).toBe(400);
+    expect(await bad({ students: [{ n: 'x'.repeat(200), c: 'convery' }] })).toBe(400);
+    expect(await bad({ students: Array.from({ length: 5 }, (_, i) => ({ n: `Kid ${i}`, c: 'convery' })) })).toBe(400);
+    expect(await bad({ n: 'Mia', c: 'convery' })).toBe(400); // the pre-family shape
+  });
+
+  it('heals a migration-backfilled signature for an accented name', async () => {
+    // Migration 0005 backfilled signatures with SQLite's ASCII-only
+    // lower(): 'JOSÉ Rodríguez' became 'josÉ rodríguez'.
+    await env.DB.prepare(`INSERT INTO links (code, students, signature, created)
+      VALUES ('sunny-otter', ?1, ?2, 1787000000)`)
+      .bind(JSON.stringify([{ c: 'convery', n: 'JOSÉ Rodríguez' }]),
+        JSON.stringify([{ c: 'convery', n: 'josÉ rodríguez' }])).run();
+    const { code } = await (await post('/api/link', { students: [{ n: 'JOSÉ Rodríguez', c: 'convery' }] })).json();
+    expect(code).toBe('sunny-otter');
+    // Healed: the modern signature now finds it directly too.
+    const { code: again } = await (await post('/api/link', { students: [{ n: 'josé rodríguez', c: 'convery' }] })).json();
+    expect(again).toBe('sunny-otter');
   });
 
   it('redirects the short /l/ path to the donate page', async () => {
@@ -165,8 +211,9 @@ describe('checkout', () => {
     const sent = new URLSearchParams(String(calls[0].body));
     expect(sent.get('mode')).toBe('payment');
     expect(sent.get('line_items[0][price_data][unit_amount]')).toBe('10000');
-    expect(sent.get('metadata[student_name]')).toBe('Mia Rodriguez');
-    expect(sent.get('metadata[classroom]')).toBe('convery');
+    expect(JSON.parse(sent.get('metadata[students]'))).toEqual([{ c: 'convery', n: 'Mia Rodriguez' }]);
+    expect(sent.has('metadata[classroom]')).toBe(false);
+    expect(sent.has('metadata[student_name]')).toBe(false);
     expect(sent.get('metadata[visibility]')).toBe('public');
     expect(sent.get('metadata[employer_match]')).toBe('1');
     // Stripe's page collects contact details; the wizard sends none.
@@ -180,15 +227,37 @@ describe('checkout', () => {
     expect(sent.get('success_url')).toContain('{CHECKOUT_SESSION_ID}');
   });
 
-  it('a student link overrides hand-typed credit fields', async () => {
-    const { code } = await (await post('/api/link', { n: 'Leo Park', c: 'zweber' })).json();
+  it('a family link credits every sibling and overrides hand-typed rows', async () => {
+    const { code } = await (await post('/api/link', {
+      students: [{ n: 'Leo Park', c: 'zweber' }, { n: 'Ana Park', c: 'michel' }],
+    })).json();
     const calls = stubStripe({ id: 'cs_2', url: 'https://checkout.stripe.com/c/pay/cs_2' });
     const res = await checkoutDirect({ ...validCheckout, link: code });
     expect(res.status).toBe(200);
     const sent = new URLSearchParams(String(calls[0].body));
-    expect(sent.get('metadata[student_name]')).toBe('Leo Park');
-    expect(sent.get('metadata[classroom]')).toBe('zweber');
+    expect(JSON.parse(sent.get('metadata[students]')))
+      .toEqual([{ c: 'zweber', n: 'Leo Park' }, { c: 'michel', n: 'Ana Park' }]);
     expect(sent.get('metadata[via_link]')).toBe('1');
+  });
+
+  it('carries every Rocket, and drops untouched rows', async () => {
+    const calls = stubStripe();
+    const res = await checkoutDirect({ ...validCheckout, students: [
+      { c: 'convery', n: 'Mia Rodriguez' }, { c: '', n: '' }, { c: 'zweber', n: '' },
+    ] });
+    expect(res.status).toBe(200);
+    const sent = new URLSearchParams(String(calls[0].body));
+    expect(JSON.parse(sent.get('metadata[students]')))
+      .toEqual([{ c: 'convery', n: 'Mia Rodriguez' }, { c: 'zweber', n: '' }]);
+    expect(sent.get('metadata[via_link]')).toBe('0');
+  });
+
+  it('accepts a gift with no Rocket at all', async () => {
+    const calls = stubStripe();
+    const res = await checkoutDirect({ ...validCheckout, students: [] });
+    expect(res.status).toBe(200);
+    const sent = new URLSearchParams(String(calls[0].body));
+    expect(sent.get('metadata[students]')).toBe('[]');
   });
 
   it('rejects invalid requests', async () => {
@@ -199,6 +268,9 @@ describe('checkout', () => {
     expect(await bad({ amount: 999999 })).toBe(400);
     expect(await bad({ donorName: '' })).toBe(400);            // public needs a name
     expect(await bad({ link: 'forged.token' })).toBe(400);
+    expect(await bad({ students: [{ c: '', n: 'Mia' }] })).toBe(400);     // name, no classroom
+    expect(await bad({ students: [{ c: 'r99', n: 'Mia' }] })).toBe(400);  // not on the roster
+    expect(await bad({ students: Array.from({ length: 5 }, (_, i) => ({ c: 'convery', n: `K${i}` })) })).toBe(400);
   });
 
   it('adds a fee-cover line item when the donor covers card costs', async () => {
@@ -267,7 +339,7 @@ describe('webhook and campaign stats', () => {
     expect(board.campaign).toEqual({ raised: 100, goal: 205000, gifts: 1 });
     expect(board.classrooms.convery).toBe(1);
     expect(board.donors).toEqual([{
-      name: 'The Rodriguez Family', priority: 'stem', anon: false, circle: false,
+      name: 'The Rodriguez Family', priority: 'stem', anon: false, circle: false, partner: '',
     }]);
 
     // The privacy model: student names, emails, and billing contact
@@ -286,6 +358,34 @@ describe('webhook and campaign stats', () => {
     await deliverWebhook(sessionEvent());
     const stats = await (await SELF.fetch('https://rally.test/api/campaign')).json();
     expect(stats.campaign.gifts).toBe(1);
+  });
+
+  it('credits every listed Rocket\'s classroom, once per Rocket', async () => {
+    const family = sessionEvent({
+      id: 'cs_family',
+      metadata: { students: JSON.stringify([
+        { c: 'convery', n: 'Mia Okafor' },
+        { c: 'zweber', n: 'Leo Okafor' },
+        { c: 'zweber', n: 'Theo Okafor' },
+      ]) },
+    });
+    await deliverWebhook(family);
+    await deliverWebhook(family); // Stripe retry: no double credit
+    const board = await (await SELF.fetch('https://rally.test/api/board')).json();
+    expect(board.classrooms).toEqual({ convery: 1, zweber: 2 });
+    expect(board.campaign.gifts).toBe(1); // one gift, three Rockets
+    expect(JSON.stringify(board)).not.toContain('Okafor'); // student names stay backend-only
+  });
+
+  it('still credits sessions stamped with the old classroom/student_name keys', async () => {
+    await deliverWebhook(sessionEvent({
+      id: 'cs_old',
+      metadata: { students: '', classroom: 'harrison', student_name: 'Ava T' },
+    }));
+    const board = await (await SELF.fetch('https://rally.test/api/board')).json();
+    expect(board.classrooms).toEqual({ harrison: 1 });
+    const csv = await (await SELF.fetch('https://rally.test/api/export.csv?key=test-admin-key')).text();
+    expect(csv).toContain('Ava T — Mrs. Harrison');
   });
 
   it('rejects bad signatures and stale timestamps', async () => {
@@ -311,20 +411,35 @@ describe('webhook and campaign stats', () => {
   });
 
   it('judges circle tiers on the base gift, not gift plus fee', async () => {
-    // $2,500.00 charged, but $75.30 of it is fee cover — the gift
-    // itself is $2,424.70, below the $2,500 circle tier.
+    // $500.00 charged, but $15.24 of it is fee cover — the gift
+    // itself is $484.76, below the $500 circle tier.
     await deliverWebhook(sessionEvent({
-      id: 'cs_fee_edge', amount_total: 250000,
-      metadata: { priority: 'people', fee_cents: '7530' },
+      id: 'cs_fee_edge', amount_total: 50000,
+      metadata: { priority: 'people', fee_cents: '1524' },
     }));
     const board = await (await SELF.fetch('https://rally.test/api/board')).json();
     expect(board.donors[0].circle).toBe(false);
   });
 
+  it('badges the $500+ tier of every priority, not just the named circles', async () => {
+    for (const p of data.PRIORITIES) {
+      const top = p.tiers[p.tiers.length - 1];
+      expect(top.plus, p.id).toBe(true);
+      expect(p.circle?.min, p.id).toBe(top.amount);
+      expect(p.circle?.label, p.id).toBeTruthy();
+    }
+    await deliverWebhook(sessionEvent({
+      id: 'cs_stem_badge', amount_total: 50000,
+      metadata: { priority: 'stem', donor_name: 'The Okafor Family' },
+    }));
+    const board = await (await SELF.fetch('https://rally.test/api/board')).json();
+    expect(board.donors.find((d) => d.name === 'The Okafor Family').circle).toBe(true);
+  });
+
   it('lists anonymous gifts as Anonymous and honors circle tiers', async () => {
     await deliverWebhook(sessionEvent({ id: 'cs_anon', metadata: { visibility: 'anon' } }));
     await deliverWebhook(sessionEvent({
-      id: 'cs_circle', amount_total: 250000,
+      id: 'cs_circle', amount_total: 50000,
       metadata: { priority: 'people', donor_name: 'The Whitmore Family' },
     }));
     const board = await (await SELF.fetch('https://rally.test/api/board')).json();
@@ -332,6 +447,232 @@ describe('webhook and campaign stats', () => {
     expect(names).toContain('Anonymous');
     const circle = board.donors.find((d) => d.name === 'The Whitmore Family');
     expect(circle.circle).toBe(true);
+  });
+});
+
+/* ---- business partner checkout ---- */
+
+describe('business partner checkout', () => {
+  const validPartner = { tier: 'champion', business: '  Galaxy Automotive & Tire ' };
+
+  it('creates a Stripe session at the tier price with partner metadata', async () => {
+    const calls = stubStripe();
+    const res = await partnerDirect(validPartner);
+    expect(res.status).toBe(200);
+    expect((await res.json()).url).toBe('https://checkout.stripe.com/c/pay/cs_1');
+    const sent = new URLSearchParams(String(calls[0].body));
+    expect(sent.get('line_items[0][price_data][unit_amount]')).toBe('75000');
+    expect(sent.get('line_items[0][price_data][product_data][name]')).toBe('Rocket Rally Partnership — Rally Champion');
+    expect(sent.has('line_items[1][price_data][unit_amount]')).toBe(false); // fee cover not requested
+    expect(sent.get('metadata[kind]')).toBe('partner');
+    expect(sent.get('metadata[partner_tier]')).toBe('champion');
+    expect(sent.get('metadata[donor_name]')).toBe('Galaxy Automotive & Tire');
+    // Per PTA decision: partner receipts keep the standard donation
+    // acknowledgment — logos and posts are intangible recognition.
+    expect(sent.get('payment_intent_data[description]')).toContain('No goods or services were provided');
+    // The sid is what unlocks the thank-you page's logo upload.
+    expect(sent.get('success_url')).toContain('/thanks?partner=champion&sid={CHECKOUT_SESSION_ID}');
+    expect(sent.get('cancel_url')).toContain('/partners');
+  });
+
+  it('adds the fee cover when the business opts in', async () => {
+    const calls = stubStripe();
+    const res = await partnerDirect({ ...validPartner, coverFees: true });
+    expect(res.status).toBe(200);
+    const sent = new URLSearchParams(String(calls[0].body));
+    const fee = data.feeCoverCents(75000);
+    expect(sent.get('line_items[0][price_data][unit_amount]')).toBe('75000');
+    expect(sent.get('line_items[1][price_data][unit_amount]')).toBe(String(fee));
+    expect(sent.get('line_items[1][price_data][product_data][name]')).toBe('Covering card processing');
+    expect(sent.get('metadata[fee_cents]')).toBe(String(fee));
+  });
+
+  it('rejects a bad tier or a missing business name', async () => {
+    stubStripe();
+    expect((await partnerDirect({ tier: 'platinum', business: 'Acme' })).status).toBe(400);
+    expect((await partnerDirect({ tier: 'mvp', business: '   ' })).status).toBe(400);
+    expect((await partnerDirect({})).status).toBe(400);
+  });
+
+  it('returns a friendly 503 before Stripe is configured', async () => {
+    const res = await partnerDirect(validPartner, { STRIPE_SECRET_KEY: undefined });
+    expect(res.status).toBe(503);
+  });
+
+  it('records a partnership: campaign dollars, no family-gift count, tier on the roll', async () => {
+    await deliverWebhook(sessionEvent()); // one $100 family gift
+    await deliverWebhook(sessionEvent({
+      id: 'cs_partner', amount_total: 75000,
+      metadata: {
+        kind: 'partner', partner_tier: 'champion', priority: '',
+        donor_name: 'Galaxy Automotive & Tire', students: '', fee_cents: '0',
+      },
+    }));
+    const board = await (await SELF.fetch('https://rally.test/api/board')).json();
+    expect(board.campaign.raised).toBe(850);    // $100 family + $750 partner
+    expect(board.campaign.gifts).toBe(1);       // family gifts only
+    expect(board.classrooms).toEqual({ convery: 1 }); // no classroom credit for partners
+    const partner = board.donors.find((d) => d.name === 'Galaxy Automotive & Tire');
+    expect(partner.partner).toBe('champion');
+    expect(partner.circle).toBe(false);
+    const csv = await (await SELF.fetch('https://rally.test/api/export.csv?key=test-admin-key')).text();
+    expect(csv).toContain('partner_tier');
+    expect(csv).toContain('"champion"');
+  });
+});
+
+/* ---- partner logo upload ---- */
+
+describe('partner logo upload', () => {
+  const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3]);
+  const partnerSession = () => sessionEvent({
+    id: 'cs_partner', amount_total: 75000,
+    metadata: {
+      kind: 'partner', partner_tier: 'champion', priority: '',
+      donor_name: 'Galaxy Automotive & Tire', students: '', fee_cents: '0',
+    },
+  });
+  const upload = (sid, body, name = 'logo.png') => {
+    const fd = new FormData();
+    fd.append('logo', new File([body], name));
+    return SELF.fetch(`https://rally.test/api/partner/logo?sid=${encodeURIComponent(sid)}`, {
+      method: 'POST', body: fd,
+    });
+  };
+
+  it('stores a paid partner\'s logo under an opaque public id and publishes it', async () => {
+    await deliverWebhook(partnerSession());
+    const res = await upload('cs_partner', PNG);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.published).toBe(true);
+    // Opaque id: never the session id, which is the upload capability.
+    expect(body.logo).toMatch(/^[0-9a-f]{24}$/);
+    const obj = await env.LOGOS.get(`partner-logos/${body.logo}`);
+    expect(obj).not.toBeNull();
+    expect(obj.httpMetadata.contentType).toBe('image/png');
+    expect(obj.customMetadata.business).toBe('Galaxy Automotive & Tire');
+
+    // Live on the board payload, addressed by the public id only.
+    const board = await (await SELF.fetch('https://rally.test/api/board')).json();
+    expect(board.partners).toEqual([{ name: 'Galaxy Automotive & Tire', tier: 'champion', logo: body.logo }]);
+    expect(JSON.stringify(board.partners)).not.toContain('cs_partner');
+
+    // And served publicly, locked down against active content.
+    const img = await SELF.fetch(`https://rally.test/logo/${body.logo}`);
+    expect(img.status).toBe(200);
+    expect(img.headers.get('content-type')).toBe('image/png');
+    expect(img.headers.get('content-security-policy')).toContain("default-src 'none'");
+    expect(img.headers.get('x-content-type-options')).toBe('nosniff');
+    expect((await SELF.fetch('https://rally.test/logo/deadbeefdeadbeefdeadbeef')).status).toBe(404);
+  });
+
+  it('holds PDFs for the PTA instead of publishing them', async () => {
+    await deliverWebhook(partnerSession());
+    const res = await upload('cs_partner', new TextEncoder().encode('%PDF-1.4 fake'), 'logo.pdf');
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.published).toBe(false);
+    expect(body.reason).toBe('pdf');
+    const board = await (await SELF.fetch('https://rally.test/api/board')).json();
+    expect(board.partners).toEqual([{ name: 'Galaxy Automotive & Tire', tier: 'champion', logo: '' }]);
+  });
+
+  it('a later PDF upload never clobbers or un-publishes a live logo', async () => {
+    await deliverWebhook(partnerSession());
+    const { logo } = await (await upload('cs_partner', PNG)).json();
+    const res = await upload('cs_partner', new TextEncoder().encode('%PDF-1.4 print file'), 'print.pdf');
+    expect((await res.json()).reason).toBe('pdf');
+    // The PNG is still published and still served; the PDF went to the
+    // held/original slot instead of the display key.
+    const board = await (await SELF.fetch('https://rally.test/api/board')).json();
+    expect(board.partners[0].logo).toBe(logo);
+    const img = await SELF.fetch(`https://rally.test/logo/${logo}`);
+    expect(img.headers.get('content-type')).toBe('image/png');
+    const held = await env.LOGOS.get(`partner-logos/${logo}-original`);
+    expect(held.httpMetadata.contentType).toBe('application/pdf');
+  });
+
+  it('un-publishes when the PTA clears logo_id, even though the file remains', async () => {
+    await deliverWebhook(partnerSession());
+    const { logo } = await (await upload('cs_partner', PNG)).json();
+    expect((await SELF.fetch(`https://rally.test/logo/${logo}`)).status).toBe(200);
+    await env.DB.prepare("UPDATE donations SET logo_id = '' WHERE id = 'cs_partner'").run();
+    expect((await SELF.fetch(`https://rally.test/logo/${logo}`)).status).toBe(404);
+    expect(await env.LOGOS.get(`partner-logos/${logo}`)).not.toBeNull();
+  });
+
+  it('keeps a Rally Friend\'s file but never promises the wall — name-only tier', async () => {
+    await deliverWebhook(sessionEvent({
+      id: 'cs_friend', amount_total: 25000,
+      metadata: {
+        kind: 'partner', partner_tier: 'friend', priority: '',
+        donor_name: 'Friendly LLC', students: '', fee_cents: '0',
+      },
+    }));
+    const res = await upload('cs_friend', PNG);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.published).toBe(false);
+    expect(body.reason).toBe('tier');
+    const board = await (await SELF.fetch('https://rally.test/api/board')).json();
+    expect(board.partners).toEqual([{ name: 'Friendly LLC', tier: 'friend', logo: '' }]);
+  });
+
+  it('accepts an SVG whose <svg> tag sits past a long preamble', async () => {
+    await deliverWebhook(partnerSession());
+    const svg = '<!--' + 'x'.repeat(2000) + '--><svg xmlns="http://www.w3.org/2000/svg"><rect/></svg>';
+    const res = await upload('cs_partner', new TextEncoder().encode(svg), 'logo.svg');
+    expect(res.status).toBe(200);
+    const { logo, published } = await res.json();
+    expect(published).toBe(true);
+    const img = await SELF.fetch(`https://rally.test/logo/${logo}`);
+    expect(img.headers.get('content-type')).toBe('image/svg+xml');
+  });
+
+  it('answers a broken R2 read with a controlled error, not an exception', async () => {
+    await deliverWebhook(partnerSession());
+    const { logo } = await (await upload('cs_partner', PNG)).json();
+    const res = await worker.fetch(
+      new Request(`https://rally.test/logo/${logo}`),
+      { ...env, LOGOS: { get() { throw new Error('r2 down'); } } },
+      createExecutionContext(),
+    );
+    expect(res.status).toBe(503);
+  });
+
+  it('rejects uploads that aren\'t from a paid partnership', async () => {
+    expect((await upload('cs_unknown', PNG)).status).toBe(404);
+    await deliverWebhook(sessionEvent()); // a family gift, not a partnership
+    expect((await upload('cs_test_abc', PNG)).status).toBe(404);
+    expect((await upload('DROP TABLE donations', PNG)).status).toBe(400);
+  });
+
+  it('stores the print original alongside a browser-converted logo', async () => {
+    await deliverWebhook(partnerSession());
+    const send = (orig) => {
+      const fd = new FormData();
+      fd.append('logo', new File([PNG], 'logo.png'));
+      fd.append('original', new File([orig], 'logo.pdf'));
+      return SELF.fetch('https://rally.test/api/partner/logo?sid=cs_partner', { method: 'POST', body: fd });
+    };
+    // A junk "original" is quietly skipped; the logo still publishes.
+    expect((await send(new TextEncoder().encode('#!/bin/sh'))).status).toBe(200);
+    const { logo } = await (await send(new TextEncoder().encode('%PDF-1.4 original'))).json();
+    // (first request stored nothing under -original; second did)
+    const orig = await env.LOGOS.get(`partner-logos/${logo}-original`);
+    expect(orig).not.toBeNull();
+    expect(orig.httpMetadata.contentType).toBe('application/pdf');
+    expect(orig.customMetadata.business).toBe('Galaxy Automotive & Tire');
+    // The published logo is still the PNG, not the PDF.
+    const img = await SELF.fetch(`https://rally.test/logo/${logo}`);
+    expect(img.headers.get('content-type')).toBe('image/png');
+  });
+
+  it('rejects files that aren\'t logo formats', async () => {
+    await deliverWebhook(partnerSession());
+    const res = await upload('cs_partner', new TextEncoder().encode('#!/bin/sh\nevil'));
+    expect(res.status).toBe(415);
   });
 });
 
@@ -362,6 +703,9 @@ describe('admin export', () => {
     expect([...bytes.slice(0, 3)]).toEqual([0xef, 0xbb, 0xbf]); // Excel UTF-8 BOM
     const csv = new TextDecoder().decode(bytes);
     expect(csv).toContain('Mia Rodriguez');
+    expect(csv).toContain('priority,partner_tier,students,donor_name');
+    expect(csv).toContain('"Mia Rodriguez — Ms. Convery"');
+    expect(csv).not.toContain('student_name');
     expect(csv).toContain('fam@example.com');
     expect(csv).toContain('"100.00"');
     // Billing contact details captured from Stripe's checkout page.
@@ -382,11 +726,14 @@ describe('admin export', () => {
   it('neutralizes spreadsheet formulas in exported names', async () => {
     await deliverWebhook(sessionEvent({
       id: 'cs_evil',
-      metadata: { donor_name: '=HYPERLINK("http://evil")', student_name: '@SUM(A1)' },
+      metadata: {
+        donor_name: '=HYPERLINK("http://evil")',
+        students: JSON.stringify([{ c: 'convery', n: '@SUM(A1)' }]),
+      },
     }));
     const res = await SELF.fetch('https://rally.test/api/export.csv?key=test-admin-key');
     const csv = await res.text();
     expect(csv).toContain('"\'=HYPERLINK(""http://evil"")"');
-    expect(csv).toContain('"\'@SUM(A1)"');
+    expect(csv).toContain('"\'@SUM(A1) — Ms. Convery"');
   });
 });

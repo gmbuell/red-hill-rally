@@ -27,7 +27,7 @@ const boardView = new Function(
 )();
 
 const v = boardView(null);
-const sections = { totals: v.totals, race: v.race, roll: v.roll };
+const sections = { totals: v.totals, race: v.race, roll: v.roll, partners: v.partners };
 
 const htmlPath = 'site/rally-board.html';
 const html = read(htmlPath);

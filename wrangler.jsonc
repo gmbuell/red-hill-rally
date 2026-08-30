@@ -12,12 +12,17 @@
     "not_found_handling": "404-page",
     // Browser navigations to unmatched paths are otherwise answered by
     // the asset layer's 404 page without ever running the worker —
-    // these routes must reach the worker (short links, API-in-browser).
-    "run_worker_first": ["/l/*", "/api/*"]
+    // these routes must reach the worker (short links, API-in-browser,
+    // partner logos served from R2).
+    "run_worker_first": ["/l/*", "/api/*", "/logo/*"]
   },
 
   // Donation records: one row per Stripe checkout session (id = session
   // id, so webhook retries are idempotent), aggregated with SQL.
+  "r2_buckets": [
+    // Partner logo uploads from the thank-you page (POST /api/partner/logo).
+    { "binding": "LOGOS", "bucket_name": "red-hill-rally-logos" }
+  ],
   "d1_databases": [
     {
       "binding": "DB",

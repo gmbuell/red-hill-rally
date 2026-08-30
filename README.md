@@ -95,7 +95,28 @@ charges real money. To flip to live:
 - **Update goals/copy/tiers** — edit `site/js/data.js`; if the
   classroom roster changed, run `node scripts/board-skeleton.js
   --write`; redeploy.
-- **Ad-hoc questions** — the donations live in D1:
+- **Partner logos** — businesses upload their logo on the thank-you
+  page right after paying. Uploads **auto-publish** to /partners and
+  the Rally Board strip; a PDF is converted to PNG in the partner's
+  own browser (vendored pdf.js) and publishes like any image, with the
+  original PDF stored alongside as `…-original` for print. A PDF that
+  fails to convert (or a curl/no-JS upload) is stored and held. Files
+  live in the `red-hill-rally-logos` R2 bucket as
+  `partner-logos/<opaque id>`, with the business name and session id
+  in the object metadata (dashboard → R2). To publish a held PDF or
+  an offline partner: web-sized image into `site/img/partners/`, a
+  `PARTNERS` entry in `site/js/data.js`, then
+  `node scripts/board-skeleton.js --write`. **To pull a published
+  logo** (wrong file, inappropriate content):
+  `npx wrangler d1 execute red-hill-rally --remote --command "UPDATE donations SET logo_id = '' WHERE donor_name = '<business>'"`
+  — the wall, the board strip, and the direct /logo URL all stop
+  within ~5 minutes (image cache); delete the R2 object in the
+  dashboard too if the file itself should go. (One-time
+  setup, already done: `npx wrangler r2 bucket create
+  red-hill-rally-logos`.)
+- **Ad-hoc questions** — the donations live in D1 (`donations`, one row
+  per gift; `donation_students`, one row per Rocket credited — a family
+  gift lists several):
   `npx wrangler d1 execute red-hill-rally --remote --command "SELECT ..."`
   (or the D1 console in the Cloudflare dashboard).
 - **Logs** — `npx wrangler tail red-hill-rally`.

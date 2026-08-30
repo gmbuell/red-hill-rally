@@ -53,7 +53,8 @@ const boardView = (live) => {
     const anonCount = donors.length - named.length;
     const items = named.map((d) => {
       const p = RH.priorityById(d.priority);
-      let what = p ? p.name : '';
+      const tier = d.partner && PARTNER_TIERS.find((t) => t.id === d.partner);
+      let what = tier ? tier.name : (p ? p.name : '');
       if (d.circle && p && p.circle) what += (what ? ' &middot; ' : '') + p.circle.label;
       return `
         <li>
@@ -71,7 +72,17 @@ const boardView = (live) => {
     roll = items.join('');
   }
 
-  return { totals, race, roll };
+  /* ---- business partners: the curated roster (baked into the
+     skeleton) plus online partnerships once live data arrives ---- */
+  const { logos: logoPartners, names: namePartners } = RH.partnerGroups(live && live.partners);
+  const partners = (logoPartners.length ? `
+      <ul class="partner-strip">${logoPartners.map((p) => `
+        <li><img src="${p.src}" alt="${RH.esc(p.name)}" loading="lazy"></li>`).join('')}
+      </ul>` : `
+      <p class="board-lede">Your business could be up here &mdash; the Rally runs September&ndash;October.</p>`)
+    + RH.partnerFriendsLine(namePartners);
+
+  return { totals, race, roll, partners };
 };
 
 /* Browser wiring — absent when scripts/board-skeleton.js evaluates this
@@ -82,5 +93,6 @@ if (typeof document !== 'undefined') {
     RH.qs('#board-totals').innerHTML = v.totals;
     RH.qs('#race').innerHTML = v.race;
     RH.qs('#honor-roll').innerHTML = v.roll;
+    RH.qs('#board-partners').innerHTML = v.partners;
   });
 }

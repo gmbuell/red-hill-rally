@@ -62,6 +62,7 @@
         <input type="checkbox" id="cover-fees" checked>
         <span id="fee-label">Add a little extra to cover card processing &mdash; 100% of my gift reaches the school.</span>
       </label>
+      <p class="fine-print redirect-note" id="redirect-note"></p>
     </section>
 
     <section class="flow-panel" data-panel="3" hidden>
@@ -70,16 +71,9 @@
       <div id="link-chip-holder" hidden></div>
 
       <div id="manual-dedication">
-        <div class="field">
-          <label for="classroom">Classroom</label>
-          <select id="classroom">
-            <option value="">Choose a classroom&hellip;</option>
-          </select>
-        </div>
-        <div class="field">
-          <label for="student-name">Student name <span class="optional">&middot; optional</span></label>
-          <input type="text" id="student-name" autocomplete="off" maxlength="80" placeholder="e.g. Teddy Buell">
-        </div>
+        <div id="student-rows"></div>
+        <button type="button" class="btn secondary small" id="add-student">+ Add another Rocket</button>
+        <p class="fine-print add-note">Siblings at Red Hill? List each one &mdash; every classroom gets credit for this gift.</p>
       </div>
     </section>
 
@@ -115,13 +109,13 @@
         <span class="label">Your gift</span>
         <p id="summary-text"></p>
       </div>
+      <p class="fine-print pay-note">Secure payment by Stripe.</p>
     </section>
 
     <div class="flow-nav">
       <button type="button" class="btn secondary" id="back-btn">Back</button>
       <button type="button" class="btn" id="next-btn">Next <span class="arrow" aria-hidden="true">→</span></button>
     </div>
-    <p class="fine-print" id="stripe-note" hidden>Secure payment by Stripe.</p>
     <p class="form-error" id="checkout-error" role="alert" hidden></p>
   </form>
 </main>
@@ -133,9 +127,10 @@
     <a href="/donate">Donate</a>
     <a href="/rally-board">Rally Board</a>
     <a href="/student-link">Student Link</a>
+    <a href="/partners">Partners</a>
   </nav>
   <p>Red Hill Elementary PTA &middot; Home of the Rockets &middot; Tustin Unified School District</p>
-  <p>Red Hill PTA is a 501(c)(3) nonprofit, EIN 33-0973857 &mdash; donations are tax-deductible. Many employers match gifts; ask us how.</p>
+  <p>Red Hill PTA is a 501(c)(3) nonprofit, EIN 33-0973857 &mdash; donations are tax-deductible. Many employers match gifts &mdash; <a href="/matching">here&rsquo;s how</a>.</p>
 </footer>
 
 <script src="js/data.js" defer></script>

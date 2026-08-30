@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Business Partners · Red Hill Elementary PTA</title>
+<meta name="description" content="Partner your business with the Rocket Rally — Red Hill Elementary PTA's fall fundraiser. Four partnership levels from $250 to $1,500, September through October.">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preload" href="/fonts/nunitosans-var.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/oswald-600.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/kaushanscript-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap bar">
+    <a class="wordmark" href="/">
+      <span class="rh">Red Hill</span>
+      <span class="org">Elementary PTA</span>
+    </a>
+    <nav class="site-nav" aria-label="Site">
+      <a href="/">Home</a>
+      <a href="/rally-board">Rally Board</a>
+      <a href="/student-link">Student Link</a>
+    </nav>
+    <a class="btn secondary small donate-cta" href="/donate">Donate <span class="arrow" aria-hidden="true">→</span></a>
+  </div>
+</header>
+
+<main>
+  <div class="flow-header wrap-narrow">
+    <h1>Business Partners</h1>
+    <span class="script">Local business, hometown Rally.</span>
+    <p class="assurance">Rocket Rally partnership levels &middot; September&ndash;October</p>
+  </div>
+
+  <div class="wrap-narrow">
+    <p class="how-intro">The Rocket Rally is Red Hill Elementary PTA&rsquo;s one fall fundraiser &mdash; 510 students, hundreds of families, and a walk-to-school celebration to cap it off. Partnering puts your business in front of that whole crew, and every dollar funds the counselor, STEM lab, arts, sports, garden, and campus upgrades our families are racing toward.</p>
+
+    <div class="tier-grid" id="tier-grid"></div>
+    <p class="fine-print tier-note">Each tier includes all the benefits of the tiers above it. Partnerships are tax-deductible &mdash; Red Hill PTA is a 501(c)(3) nonprofit, EIN 33-0973857.</p>
+
+    <form id="partner-form" hidden novalidate>
+      <h2 class="partner-form-head">Become a <span id="chosen-tier"></span></h2>
+      <div class="field" id="biz-field">
+        <label for="biz-name">Business name <span class="optional">&middot; as it should appear</span></label>
+        <input type="text" id="biz-name" maxlength="80" autocomplete="organization" placeholder="e.g. Galaxy Automotive &amp; Tire">
+        <p class="error">Please tell us your business name.</p>
+      </div>
+      <label class="check-row" id="partner-fee-row">
+        <input type="checkbox" id="partner-cover-fees" checked>
+        <span id="partner-fee-label">Add a little extra to cover card processing &mdash; 100% of our partnership reaches the school.</span>
+      </label>
+      <button type="submit" class="btn">Continue to payment <span class="arrow" aria-hidden="true">→</span></button>
+      <p class="fine-print" style="margin-top:0.8rem;">Secure payment by Stripe. You&rsquo;ll add your logo right after payment. Prefer a check, or have a question? <a href="mailto:fundraising@redhillpta.org">fundraising@redhillpta.org</a>.</p>
+      <p class="form-error" id="partner-error" role="alert" hidden></p>
+    </form>
+
+    <div class="partner-wall-head">
+      <span class="script red">Thank you!</span>
+      <p>To the businesses already backing this year&rsquo;s Rally.</p>
+    </div>
+    <div id="partner-wall"></div>
+
+    <div class="cta-row">
+      <a class="btn secondary" href="/rally-board">See the Rally Board <span class="arrow" aria-hidden="true">→</span></a>
+      <a class="btn secondary" href="/">Back to the Rally</a>
+    </div>
+  </div>
+</main>
+
+<footer class="site-footer on-navy">
+  <span class="script">Thank you for investing in our students, staff &amp; school.</span>
+  <nav aria-label="Footer">
+    <a href="/">Home</a>
+    <a href="/donate">Donate</a>
+    <a href="/rally-board">Rally Board</a>
+    <a href="/student-link">Student Link</a>
+    <a href="/partners">Partners</a>
+  </nav>
+  <p>Red Hill Elementary PTA &middot; Home of the Rockets &middot; Tustin Unified School District</p>
+  <p>Red Hill PTA is a 501(c)(3) nonprofit, EIN 33-0973857 &mdash; donations are tax-deductible. Many employers match gifts &mdash; <a href="/matching">here&rsquo;s how</a>.</p>
+</footer>
+
+<script src="js/data.js" defer></script>
+<script src="js/ui.js" defer></script>
+<script src="js/partners.js" defer></script>
+
+</body>
+</html>

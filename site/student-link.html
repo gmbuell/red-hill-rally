@@ -32,23 +32,14 @@
   <div class="flow-header wrap-narrow">
     <h1>Your Student&rsquo;s Rally Link</h1>
     <span class="script">Their whole crew, cheering.</span>
-    <p class="assurance">A personal giving link &amp; QR code for your student</p>
+    <p class="assurance">A personal giving link &amp; QR code for your student &mdash; or the whole family</p>
   </div>
 
   <div class="wrap-narrow">
     <form id="link-form" novalidate>
-      <div class="field" id="f-name">
-        <label for="sl-name">Student name</label>
-        <input type="text" id="sl-name" autocomplete="off" maxlength="80" placeholder="e.g. Finn Buell">
-        <p class="error">Please enter your student&rsquo;s name.</p>
-      </div>
-      <div class="field" id="f-class">
-        <label for="sl-class">Classroom</label>
-        <select id="sl-class">
-          <option value="">Choose a classroom&hellip;</option>
-        </select>
-        <p class="error">Please choose your student&rsquo;s classroom.</p>
-      </div>
+      <div id="sibling-rows"></div>
+      <button type="button" class="btn secondary small" id="add-sibling">+ Add a sibling</button>
+      <p class="fine-print add-note" style="margin-bottom:1.2rem;">One link for the whole family &mdash; every gift through it credits each Rocket&rsquo;s classroom.</p>
       <button type="submit" class="btn">Create the link <span class="arrow" aria-hidden="true">→</span></button>
       <p class="form-error" id="link-error" role="alert" hidden></p>
     </form>
@@ -89,9 +80,10 @@
     <a href="/donate">Donate</a>
     <a href="/rally-board">Rally Board</a>
     <a href="/student-link">Student Link</a>
+    <a href="/partners">Partners</a>
   </nav>
   <p>Red Hill Elementary PTA &middot; Home of the Rockets &middot; Tustin Unified School District</p>
-  <p>Red Hill PTA is a 501(c)(3) nonprofit, EIN 33-0973857 &mdash; donations are tax-deductible. Many employers match gifts; ask us how.</p>
+  <p>Red Hill PTA is a 501(c)(3) nonprofit, EIN 33-0973857 &mdash; donations are tax-deductible. Many employers match gifts &mdash; <a href="/matching">here&rsquo;s how</a>.</p>
 </footer>
 
 <script src="js/vendor/qrcode.js" defer></script>

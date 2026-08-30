@@ -6,6 +6,9 @@ const RH = (() => {
 
   const money = (n) => '$' + Math.round(n).toLocaleString('en-US');
 
+  const moneyCents = (cents) => '$' + (cents / 100)
+    .toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
   const qs = (sel) => document.querySelector(sel);
 
   const param = (name) => new URLSearchParams(location.search).get(name);
@@ -216,9 +219,50 @@ const RH = (() => {
     <svg class="sparkle" style="top:19%;left:calc(50% + 262px);" width="13" height="13" viewBox="0 0 24 24" aria-hidden="true"><path d="${STAR}" fill="#0A2B4E"/></svg>
     <svg class="sparkle" style="top:7%;left:calc(50% - 252px);" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="${STAR}" fill="#F5B70F"/></svg>`;
 
+  /* "Mia", "Mia & Leo", "Mia, Leo & Sam". */
+  const nameList = (names) => names.length <= 1
+    ? names.join('')
+    : `${names.slice(0, -1).join(', ')} & ${names[names.length - 1]}`;
+
+  /* The public partner list: the curated PARTNERS roster from data.js
+     merged with online partnerships (the board payload's `partners`).
+     A paid online row is the fresher record, so on a name match it
+     wins the tier — keeping the curated logo until an upload replaces
+     it. `src` is the logo URL, or '' for name-only recognition (the
+     'friend' tier, or no logo at all). */
+  const mergedPartners = (online) => {
+    const key = (name) => name.trim().toLowerCase();
+    const entry = (name, tier, src) => ({ name, tier: tier || '', src: tier === 'friend' ? '' : src });
+    const live = (online || []).filter((p) => p && p.name);
+    const liveKeys = new Set(live.map((p) => key(p.name)));
+    const merged = PARTNERS
+      .filter((p) => !liveKeys.has(key(p.name)))
+      .map((p) => entry(p.name, p.tier, p.logo ? `/img/partners/${p.logo}` : ''));
+    const seen = new Set(merged.map((p) => key(p.name)));
+    for (const p of live) {
+      if (seen.has(key(p.name))) continue;
+      seen.add(key(p.name));
+      const curated = PARTNERS.find((c) => key(c.name) === key(p.name));
+      const src = p.logo ? `/logo/${p.logo}`
+        : (curated && curated.logo ? `/img/partners/${curated.logo}` : '');
+      merged.push(entry(p.name, p.tier, src));
+    }
+    return merged;
+  };
+
+  /* Display split shared by the /partners wall and the board strip:
+     logo cards vs name-only recognition, plus the common thanks line. */
+  const partnerGroups = (online) => {
+    const all = mergedPartners(online);
+    return { logos: all.filter((p) => p.src), names: all.filter((p) => !p.src) };
+  };
+  const partnerFriendsLine = (names) => (names.length ? `
+      <p class="partner-friends">With thanks to ${nameList(names.map((p) => esc(p.name)))}.</p>` : '');
+
   /* priorityById / classroomById come from data.js, loaded before us. */
   return {
-    money, qs, param, esc,
+    money, moneyCents, qs, param, esc, nameList,
+    mergedPartners, partnerGroups, partnerFriendsLine,
     classroomOptions, samplePlaceholder, postJson, loadLive,
     badgeRocket, dartUp, icon,
     trailSVG, buildTrajectory, scatter,

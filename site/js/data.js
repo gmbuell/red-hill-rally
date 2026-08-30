@@ -14,6 +14,7 @@ const ORG = {
 /* Gift limits, enforced by the API and mirrored by the donate form. */
 const MAX_NAME = 80;      // characters, donor and student names
 const MAX_AMOUNT = 50000; // dollars, per gift
+const MAX_STUDENTS = 4;   // Rockets credited per gift, and per family link
 
 /* Optional donor-paid fee cover, shared by the worker (authoritative)
    and the donate form (display). The gross-up finds the extra cents so
@@ -24,77 +25,87 @@ const FEE_FLAT_CENTS = 30;
 const feeCoverCents = (amountCents) =>
   Math.round((amountCents + FEE_FLAT_CENTS) / (1 - FEE_RATE)) - amountCents;
 
-/* `circle` marks a priority's named $2,500 recognition tier: gifts of
-   `min` dollars or more are badged with `label` on the honor roll. */
+/* `circle` is a priority's named recognition tier: gifts of `min`
+   dollars or more are badged with `label` on the honor roll. Every
+   priority badges its open-ended top tier, which `plus` flags and the
+   donate form shows as "$500+". */
 const PRIORITIES = [
   {
     id: 'people',
-    name: 'Student Support Staff',
+    name: 'Fund the Rocket',
     goal: 90000,
-    blurb: 'The heart of our campus. Unlike most elementary schools, Red Hill directly funds key personnel: a full-time school counselor, a dedicated physical education teacher, and Tier II academic intervention specialists who catch struggling readers and mathematicians before they fall behind.',
-    circle: { min: 2500, label: 'Counselor Circle' },
+    blurb: 'Red Hill’s PTA funds what district budgets don’t: a school counselor for every child navigating a hard moment, a dedicated PE teacher, and Tier II academic support that catches struggling readers and mathematicians early. About $90,000 a year — the quiet backbone of the whole school.',
+    circle: { min: 500, label: 'Counselor Circle' },
     tiers: [
-      { amount: 50, impact: 'Joins hundreds of families powering the annual fund' },
-      { amount: 250, impact: 'A day of counselor support on campus' },
-      { amount: 1000, impact: 'A week of the people programs' },
-      { amount: 2500, impact: 'Counselor Circle — a personal impact briefing' },
+      { amount: 25, impact: 'Joins hundreds of families powering the annual fund' },
+      { amount: 100, impact: 'A day of academic support on campus' },
+      { amount: 250, impact: 'A week of the people programs' },
+      { amount: 500, plus: true, impact: 'Counselor Circle — personal impact briefing from the VP of Ways and Means' },
     ],
   },
   {
     id: 'stem',
-    name: 'Hands-On STEM Lab',
+    name: 'The STEM Lab',
     goal: 25000,
-    blurb: 'Weekly, interactive science for every student. Led by All Things Science, our lab provides hands-on experiments in coding, engineering, chemistry, and circuits — building scientific confidence early.',
+    blurb: 'New this year: a hands-on STEM enrichment lab in our library run by All Things Science — circuits, chemistry, coding, and engineering challenges for every class, TK through 5th. The kind of science one teacher with thirty kids can’t stage alone, made routine. The program costs $25,000 a year and scales directly with support: your gift literally buys lab time for all 510 Rockets.',
+    circle: { min: 500, label: 'Lab Sponsor' },
     tiers: [
-      { amount: 100, impact: "Materials for a classroom's experiment day" },
-      { amount: 500, impact: 'One full week of STEM Lab, every class' },
-      { amount: 2500, impact: 'A whole month of STEM Lab' },
+      { amount: 25, impact: 'Materials for a classroom’s experiment day' },
+      { amount: 100, impact: 'Co-sponsors a STEM Lab visit for one class' },
+      { amount: 250, impact: 'Co-sponsors a STEM Lab visit for an entire grade level' },
+      { amount: 500, plus: true, impact: 'Co-sponsors a class’s STEM Lab visits for the entire school year' },
     ],
   },
   {
     id: 'sports',
-    name: 'Organized Sports at Lunch Recess',
+    name: 'Play With Purpose',
     goal: 15000,
-    blurb: 'Active, inclusive play. Partnering with Beyond Athletics, professional coaches turn lunchtime recess into structured games that teach teamwork, resolve conflicts, and ensure every child is included.',
+    blurb: 'Recess is a third of a kid’s social day, and the hardest part for many. Beyond Athletics coaches now turn lunch recess into organized games where everyone plays, sportsmanship is taught, and energy gets burned — teachers see it instantly in calmer, more focused afternoons.',
+    circle: { min: 500, label: 'Season Sponsor' },
     tiers: [
-      { amount: 50, impact: 'Equipment: balls, cones, pinnies' },
-      { amount: 250, impact: 'A full week of coached recess play' },
-      { amount: 1000, impact: 'A month of coached recess play' },
+      { amount: 25, impact: 'Equipment: balls, cones, pinnies' },
+      { amount: 100, impact: 'A full month of coached recess play for one class' },
+      { amount: 250, impact: 'A full month of coached recess play for one grade level' },
+      { amount: 500, plus: true, impact: 'Season sponsor — recognized at Friday Flag' },
     ],
   },
   {
     id: 'garden',
-    name: 'School Garden Program',
+    name: 'The Red Hill Garden',
     goal: 15000,
-    blurb: 'Outdoor, hands-on learning. Provides hands-on nutrition and environmental science lessons, garden maintenance, and supply upkeep that enrich science curriculum across all grade levels.',
+    blurb: 'The garden is Red Hill’s outdoor classroom — planting, patience, nutrition, and the joy of eating something you grew. This year we’re funding repairs, supplies, and improvements, with a possible curriculum refresh ($15,000 budgeted; every donated dollar and seedling reduces that cost).',
+    circle: { min: 500, label: 'Garden Bed Sponsor' },
     tiers: [
-      { amount: 100, impact: 'Soil, seeds, and tools for a season' },
-      { amount: 250, impact: 'Sponsor a garden bed — your family name on it' },
-      { amount: 1000, impact: 'A season of garden programming' },
+      { amount: 25, impact: 'Soil, seeds, and tools' },
+      { amount: 100, impact: 'Sponsors 1 full garden visit for a class (plus extra supplies)' },
+      { amount: 250, impact: 'Sponsors 3 garden visits for a class (a full trimester)' },
+      { amount: 500, plus: true, impact: 'Sponsors 1 garden visit for an entire grade level — named garden bed' },
     ],
   },
   {
     id: 'arts',
-    name: 'Arts & Cultural Enrichment',
+    name: 'Arts at Red Hill',
     goal: 20000,
-    blurb: 'Inspiring creativity and performance. Fully funds visual arts instruction (Art Masters), classical music education (Class Act in partnership with Pacific Symphony), Red Hill performing arts, and visiting educational assemblies.',
-    circle: { min: 2500, label: 'Season Patron' },
+    blurb: 'Every Rocket gets visual art instruction, classical music education, enrichment assemblies, and access to a thriving performing-arts program — more than $20,000 a year of arts, nearly all of it PTA-funded and almost none of it, until now, ever presented to donors as something they could choose to support.',
+    circle: { min: 500, label: 'Season Patron' },
     tiers: [
-      { amount: 100, impact: "Art supplies for a classroom's Art Masters unit" },
-      { amount: 250, impact: 'An enrichment assembly seat-section' },
-      { amount: 1000, impact: 'A full school assembly, recognized in the program' },
-      { amount: 2500, impact: 'Season Patron — recognized at every performance' },
+      { amount: 25, impact: 'Art supplies for a classroom’s Art Masters unit' },
+      { amount: 100, impact: 'An enrichment assembly seat-section (or co-sponsors Class Act workshops)' },
+      { amount: 250, impact: 'Fully sponsors 1 class for the Annual School Performance or 1 full Art Masters unit' },
+      { amount: 500, plus: true, impact: 'Season Patron — sponsors Class Act workshops for a full grade level (includes recognition + 2 tickets to this year’s RHPA performance)' },
     ],
   },
   {
     id: 'safety',
-    name: 'Campus Safety & Facility Upgrades',
+    name: 'A Safer, Brighter Campus',
     goal: 40000,
-    blurb: 'Protecting and improving our learning spaces. A one-time capital investment to install classroom window tinting for enhanced campus security, alongside multi-purpose room (MPR) enhancements used by the entire school community.',
+    blurb: 'Most Red Hill classrooms have broken blinds. The fix is security window tinting in every classroom — letting staff block visibility into rooms when needed — plus improvements to the multi-purpose room our whole community uses. Total one-time cost: $40,000.',
+    circle: { min: 500, label: 'Wing Sponsor' },
     tiers: [
-      { amount: 250, impact: 'Tints one classroom window' },
-      { amount: 1000, impact: 'Completes a full classroom' },
-      { amount: 5000, impact: 'Completes a whole wing' },
+      { amount: 25, impact: 'Joins hundreds of families powering the goal' },
+      { amount: 100, impact: 'Upgrades or tints window glass for 1 classroom' },
+      { amount: 250, impact: 'Co-sponsors full security/facility upgrades for 1 classroom' },
+      { amount: 500, plus: true, impact: 'Fully upgrades a row/wing of classrooms — recognized in the annual impact report' },
     ],
   },
 ];
@@ -128,6 +139,47 @@ const CLASSROOMS = [
   { id: 'smith', teacher: 'Mrs. Smith', grade: 'SDC', students: 11 },
 ];
 
+/* Business partnership ladder (September–October). Each tier includes
+   every benefit of the tiers above it in this list — mirror the
+   one-pager when editing. */
+const PARTNER_TIERS = [
+  { id: 'friend', name: 'Rally Friend', amount: 250, benefits: [
+    'Name on the Rocket Rally webpage',
+    'Social media thank-you during Rally week',
+  ] },
+  { id: 'supporter', name: 'Rally Supporter', amount: 500, benefits: [
+    'Digital marquee rotation (1 week, Rally week only)',
+    'Logo on the Rocket Rally webpage',
+  ] },
+  { id: 'champion', name: 'Rally Champion', amount: 750, benefits: [
+    'Logo on the Rocket Rally event shirt',
+    'Featured Instagram post',
+    'Mention in the Rally newsletter issue',
+  ] },
+  { id: 'mvp', name: 'Rally MVP', amount: 1500, benefits: [
+    'Instagram Story added alongside the featured post',
+    'Mid-size logo on the Rocket Rally walk-to-school sponsor boards (route and arrival gates)',
+  ] },
+];
+
+/* Businesses backing this year's Rally, shown on /partners and the
+   Rally Board. `tier` is a PARTNER_TIERS id — fill it in as each gift
+   arrives — these six came in before tiers were tracked and sit at
+   'supporter', the lowest logo tier, until confirmed (null shows a
+   logo without a tier label; 'friend' lists
+   the name instead of a logo, per the ladder). Web logos live in
+   site/img/partners/; print-quality originals in assets/partner-logos/.
+   The board bakes this list — run `node scripts/board-skeleton.js
+   --write` after editing. */
+const PARTNERS = [
+  { name: 'Black Gold Pump & Supply', logo: 'black-gold-pump-supply.png', tier: 'supporter' },
+  { name: 'Earthco Landscape Services', logo: 'earthco-landscape.png', tier: 'supporter' },
+  { name: 'Felton Ninja Academy', logo: 'felton-ninja-academy.png', tier: 'supporter' },
+  { name: 'Galaxy Automotive & Tire', logo: 'galaxy-automotive.png', tier: 'supporter' },
+  { name: 'Sports Ambassadors of Quan', logo: 'aoq-sports.png', tier: 'supporter' },
+  { name: 'The O’Dell Group Real Estate', logo: 'odell-group.png', tier: 'supporter' },
+];
+
 /* Lookup helpers shared by the worker and every page script. */
 const priorityById = (id) => PRIORITIES.find((p) => p.id === id) || null;
 const classroomById = (id) => CLASSROOMS.find((c) => c.id === id) || null;
@@ -136,7 +188,7 @@ const classroomById = (id) => CLASSROOMS.find((c) => c.id === id) || null;
    never defines `module`. */
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
-    ORG, PRIORITIES, CAMPAIGN, CLASSROOMS,
-    MAX_NAME, MAX_AMOUNT, feeCoverCents, priorityById, classroomById,
+    ORG, PRIORITIES, CAMPAIGN, CLASSROOMS, PARTNER_TIERS, PARTNERS,
+    MAX_NAME, MAX_AMOUNT, MAX_STUDENTS, feeCoverCents, priorityById, classroomById,
   };
 }
