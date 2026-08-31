@@ -31,17 +31,10 @@ const boardView = (live) => {
     })
     .sort((a, b) => b.pct - a.pct);
 
-  const gradeLabel = (g) =>
-    g === 'TK' ? 'Transitional K'
-      : g === 'K' ? 'Kindergarten'
-      : g === 'SDC' ? 'Special Day Class'
-      : g === '1st/2nd' ? '1st/2nd combo'
-      : g + ' grade';
-
   const race = ranked.map((c, i) => `
       <li class="${i < 3 && c.gifts > 0 ? 'leader' : ''}">
         <span class="rank">${i + 1}</span>
-        <span class="room">${c.teacher}<span class="grade">${gradeLabel(c.grade)}</span></span>
+        <span class="room">${c.teacher}<span class="grade">${gradeName(c.grade)}</span></span>
         <span class="trail-holder trail">${RH.trailSVG(c.pct)}</span>
         <span class="pct">${Math.round(c.pct * 100)}%<span class="families">${c.gifts} gift${c.gifts === 1 ? '' : 's'} &middot; class of ${c.students}</span></span>
       </li>`).join('');
@@ -57,8 +50,8 @@ const boardView = (live) => {
     const named = donors.filter((d) => !d.anon);
     const anonCount = donors.length - named.length;
     const items = named.map((d) => {
-      const p = RH.priorityById(d.priority);
-      const tier = d.partner && PARTNER_TIERS.find((t) => t.id === d.partner);
+      const p = priorityById(d.priority);
+      const tier = partnerTierById(d.partner);
       let what = tier ? tier.name : (p ? p.name : '');
       if (d.circle && p && p.circle) what += (what ? ' &middot; ' : '') + p.circle.label;
       return `
@@ -78,9 +71,8 @@ const boardView = (live) => {
   }
 
   /* ---- business partner cards (same treatment as /partners) ---- */
-  const partners = (logoPartners.length ? RH.partnerCards(logoPartners) : `
-      <p class="board-lede">Your business could be up here &mdash; the Rally runs September&ndash;October.</p>`)
-    + RH.partnerFriendsLine(namePartners);
+  const partners = RH.partnerWall(live && live.partners, `
+      <p class="board-lede">Your business could be up here &mdash; the Rally runs September&ndash;October.</p>`);
 
   return { totals, race, roll, partners };
 };

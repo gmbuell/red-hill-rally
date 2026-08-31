@@ -3,9 +3,9 @@
 (() => {
   RH.qs('#thanks-rocket').innerHTML = RH.badgeRocket('rocket-float');
 
-  const p = RH.priorityById(RH.param('p'));
+  const p = priorityById(RH.param('p'));
   const amt = Number(RH.param('amt')) || 0;
-  const partnerTier = PARTNER_TIERS.find((t) => t.id === RH.param('partner'));
+  const partnerTier = partnerTierById(RH.param('partner'));
   const line = RH.qs('#impact-line');
 
   if (partnerTier) {
@@ -29,9 +29,8 @@
      Stripe session (the sid Stripe fills into the success URL). */
   const sid = RH.param('sid') || '';
   const logoPanel = RH.qs('#logo-panel');
-  // Logo placement starts at Rally Supporter; a Friend isn't shown an
-  // uploader whose promise the site can't keep.
-  if (partnerTier && partnerTier.id !== 'friend' && /^cs_[A-Za-z0-9_]+$/.test(sid) && logoPanel) {
+  // Only a tier that earns a logo is shown the uploader.
+  if (partnerTier && partnerTier.logo && /^cs_[A-Za-z0-9_]+$/.test(sid) && logoPanel) {
     logoPanel.hidden = false;
     const status = RH.qs('#logo-status');
     const say = (msg) => { status.textContent = msg; status.hidden = false; };

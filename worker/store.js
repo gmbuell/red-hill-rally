@@ -7,25 +7,22 @@
 
 import data from '../site/js/data.js';
 
-const { priorityById, classroomById, MAX_STUDENTS } = data;
+const { CAMPAIGN, priorityById, classroomById, MAX_STUDENTS } = data;
 
 /* A session's Rockets: the `students` JSON our checkout stamps into
-   metadata, or — for a session created before that existed and paid
-   after the deploy — the old single classroom/student_name pair. */
+   metadata (a partnership carries none). */
 const studentsFromMetadata = (md) => {
-  if (typeof md.students === 'string' && md.students) {
-    try {
-      const list = JSON.parse(md.students);
-      if (Array.isArray(list)) {
-        return list
-          .filter((s) => s && typeof s.c === 'string' && s.c)
-          .slice(0, MAX_STUDENTS)
-          .map((s) => ({ c: s.c, n: typeof s.n === 'string' ? s.n : '' }));
-      }
-    } catch { /* malformed: record the gift with no classroom credit */ }
-    return [];
-  }
-  return md.classroom ? [{ c: md.classroom, n: md.student_name || '' }] : [];
+  if (typeof md.students !== 'string' || !md.students) return [];
+  try {
+    const list = JSON.parse(md.students);
+    if (Array.isArray(list)) {
+      return list
+        .filter((s) => s && typeof s.c === 'string' && s.c)
+        .slice(0, MAX_STUDENTS)
+        .map((s) => ({ c: s.c, n: typeof s.n === 'string' ? s.n : '' }));
+    }
+  } catch { /* malformed: record the gift with no classroom credit */ }
+  return [];
 };
 
 export async function recordDonation(db, session, createdSec) {
@@ -81,28 +78,39 @@ const totalsStmt = (db) =>
   db.prepare(`SELECT COALESCE(SUM(amount_cents), 0) AS cents,
     COALESCE(SUM(CASE WHEN partner_tier = '' THEN 1 ELSE 0 END), 0) AS gifts FROM donations`);
 
-const campaignShape = (totals, CAMPAIGN) => ({
+const campaignShape = (totals) => ({
   raised: Math.round(totals.results[0].cents / 100),
   goal: CAMPAIGN.goal,
   gifts: totals.results[0].gifts,
 });
 
-/* Home-page payload: campaign progress and per-priority totals only —
-   no donor rows, so it stays a few hundred bytes for the life of the
-   campaign. */
-export async function campaignStats(db, { CAMPAIGN }) {
-  const [totals, byPriority] = await db.batch([
+/* Online business partners for the public wall and board: name, tier,
+   and the opaque logo id (set once an image is uploaded, cleared to
+   un-publish). The curated data.js roster merges in client-side. */
+const partnersStmt = (db) =>
+  db.prepare(`SELECT donor_name, partner_tier, logo_id FROM donations
+              WHERE partner_tier != '' AND visibility = 'public' ORDER BY created`);
+const partnerShape = (rows) => rows.results.map((row) => ({
+  name: row.donor_name, tier: row.partner_tier, logo: row.logo_id || '',
+}));
+
+/* Home and /partners payload: campaign progress, per-priority totals,
+   and the partner list — no donor rows, so it stays a few hundred
+   bytes for the life of the campaign. */
+export async function campaignStats(db) {
+  const [totals, byPriority, partnerRows] = await db.batch([
     totalsStmt(db),
     db.prepare("SELECT priority, SUM(amount_cents) AS cents FROM donations WHERE priority != '' GROUP BY priority"),
+    partnersStmt(db),
   ]);
   const priorities = {};
   for (const row of byPriority.results) priorities[row.priority] = Math.round(row.cents / 100);
-  return { campaign: campaignShape(totals, CAMPAIGN), priorities };
+  return { campaign: campaignShape(totals), priorities, partners: partnerShape(partnerRows) };
 }
 
 /* Rally Board payload: campaign progress plus the classroom race and
    the full honor roll (one row per gift, newest first). */
-export async function boardStats(db, { CAMPAIGN }) {
+export async function boardStats(db) {
   const [totals, byClassroom, roll, partnerRows] = await db.batch([
     totalsStmt(db),
     // Joined so a gift deleted by hand (refund, the go-live wipe)
@@ -111,8 +119,7 @@ export async function boardStats(db, { CAMPAIGN }) {
                 JOIN donations d ON d.id = s.donation_id GROUP BY s.classroom`),
     db.prepare(`SELECT donor_name, priority, partner_tier, amount_cents, visibility
                 FROM donations ORDER BY created DESC, id DESC`),
-    db.prepare(`SELECT donor_name, partner_tier, logo_id FROM donations
-                WHERE partner_tier != '' AND visibility = 'public' ORDER BY created`),
+    partnersStmt(db),
   ]);
 
   const classrooms = {};
@@ -130,15 +137,7 @@ export async function boardStats(db, { CAMPAIGN }) {
     };
   });
 
-  // Online business partners for the public wall and board strip:
-  // name, tier, and the opaque logo id (set once an image is uploaded,
-  // cleared to un-publish). The curated data.js roster merges in
-  // client-side.
-  const partners = partnerRows.results.map((row) => ({
-    name: row.donor_name, tier: row.partner_tier, logo: row.logo_id || '',
-  }));
-
-  return { campaign: campaignShape(totals, CAMPAIGN), classrooms, donors, partners };
+  return { campaign: campaignShape(totals), classrooms, donors, partners: partnerShape(partnerRows) };
 }
 
 /* Full records for the PTA (admin-only): the backend view where student

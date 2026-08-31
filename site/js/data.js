@@ -141,22 +141,24 @@ const CLASSROOMS = [
 
 /* Business partnership ladder (September–October). Each tier includes
    every benefit of the tiers above it in this list — mirror the
-   one-pager when editing. */
+   one-pager when editing. `logo` is whether the tier earns a logo on
+   the site (the wall, the board, the thank-you uploader) — a tier
+   without it is listed by name. */
 const PARTNER_TIERS = [
-  { id: 'friend', name: 'Rally Friend', amount: 250, benefits: [
+  { id: 'friend', name: 'Rally Friend', amount: 250, logo: false, benefits: [
     'Name on the Rocket Rally webpage',
     'Social media thank-you during Rally week',
   ] },
-  { id: 'supporter', name: 'Rally Supporter', amount: 500, benefits: [
+  { id: 'supporter', name: 'Rally Supporter', amount: 500, logo: true, benefits: [
     'Digital marquee rotation (1 week, Rally week only)',
     'Logo on the Rocket Rally webpage',
   ] },
-  { id: 'champion', name: 'Rally Champion', amount: 750, benefits: [
+  { id: 'champion', name: 'Rally Champion', amount: 750, logo: true, benefits: [
     'Logo on the Rocket Rally event shirt',
     'Featured Instagram post',
     'Mention in the Rally newsletter issue',
   ] },
-  { id: 'mvp', name: 'Rally MVP', amount: 1500, benefits: [
+  { id: 'mvp', name: 'Rally MVP', amount: 1500, logo: true, benefits: [
     'Instagram Story added alongside the featured post',
     'Mid-size logo on the Rocket Rally walk-to-school sponsor boards (route and arrival gates)',
   ] },
@@ -172,23 +174,30 @@ const PARTNER_TIERS = [
    The board bakes this list — run `node scripts/board-skeleton.js
    --write` after editing. */
 const PARTNERS = [
-  { name: 'Black Gold Pump & Supply', logo: 'black-gold-pump-supply.png', tier: 'supporter' },
-  { name: 'Earthco Landscape Services', logo: 'earthco-landscape.png', tier: 'supporter' },
-  { name: 'Felton Ninja Academy', logo: 'felton-ninja-academy.png', tier: 'supporter' },
-  { name: 'Galaxy Automotive & Tire', logo: 'galaxy-automotive.png', tier: 'supporter' },
-  { name: 'Sports Ambassadors of Quan', logo: 'aoq-sports.png', tier: 'supporter' },
-  { name: 'The O’Dell Group Real Estate', logo: 'odell-group.png', tier: 'supporter' },
+  { name: 'Black Gold Pump & Supply', logo: 'black-gold-pump-supply.webp', tier: 'supporter' },
+  { name: 'Earthco Landscape Services', logo: 'earthco-landscape.webp', tier: 'supporter' },
+  { name: 'Felton Ninja Academy', logo: 'felton-ninja-academy.webp', tier: 'supporter' },
+  { name: 'Galaxy Automotive & Tire', logo: 'galaxy-automotive.webp', tier: 'supporter' },
+  { name: 'Sports Ambassadors of Quan', logo: 'aoq-sports.webp', tier: 'supporter' },
+  { name: 'The O’Dell Group Real Estate', logo: 'odell-group.webp', tier: 'supporter' },
 ];
 
 /* Lookup helpers shared by the worker and every page script. */
 const priorityById = (id) => PRIORITIES.find((p) => p.id === id) || null;
 const classroomById = (id) => CLASSROOMS.find((c) => c.id === id) || null;
+const partnerTierById = (id) => PARTNER_TIERS.find((t) => t.id === id) || null;
+
+/* Display names for the roster's grade codes; any other code reads
+   "<code> grade". */
+const GRADE_NAMES = { TK: 'Transitional K', K: 'Kindergarten', SDC: 'Special Day Class', '1st/2nd': '1st/2nd combo' };
+const gradeName = (g) => GRADE_NAMES[g] || `${g} grade`;
 
 /* Worker import — the browser loads this file as a plain script and
    never defines `module`. */
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     ORG, PRIORITIES, CAMPAIGN, CLASSROOMS, PARTNER_TIERS, PARTNERS,
-    MAX_NAME, MAX_AMOUNT, MAX_STUDENTS, feeCoverCents, priorityById, classroomById,
+    MAX_NAME, MAX_AMOUNT, MAX_STUDENTS, feeCoverCents,
+    priorityById, classroomById, partnerTierById,
   };
 }

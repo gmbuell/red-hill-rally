@@ -7,7 +7,7 @@ import { createCheckoutSession, verifyWebhook } from './stripe.js';
 import { recordDonation, campaignStats, boardStats, exportCsv } from './store.js';
 import data from '../site/js/data.js';
 
-const { ORG, CAMPAIGN, MAX_NAME, MAX_AMOUNT, MAX_STUDENTS, PARTNER_TIERS, feeCoverCents, priorityById, classroomById } = data;
+const { ORG, MAX_NAME, MAX_AMOUNT, feeCoverCents, priorityById, partnerTierById } = data;
 
 /* The charge description prints on every Stripe receipt, making it the
    donor's IRS written acknowledgment (Pub 1771): org name + the
@@ -25,14 +25,13 @@ const json = (body, status = 200, headers = {}) =>
     headers: { 'content-type': 'application/json; charset=utf-8', ...headers },
   });
 
-const isClassroom = (id) => !!classroomById(id);
-
-/* A link's stored students, sanity-checked so a stale row (say, a
-   classroom removed from the roster) fails cleanly. */
-const validLinkStudents = (list) =>
-  Array.isArray(list) && list.length >= 1 && list.length <= MAX_STUDENTS &&
-  list.every((s) => s && typeof s.n === 'string' && s.n.trim() && s.n.length <= MAX_NAME
-    && typeof s.c === 'string' && isClassroom(s.c));
+/* A link's stored students, re-validated against today's roster so a
+   stale row (say, a classroom removed) fails cleanly. Null when the
+   code is unknown or its list no longer passes. */
+const linkStudents = async (db, code) => {
+  const norm = normalizeStudents(await resolveLink(db, code), { nameRequired: true });
+  return norm.error || !norm.students.length ? null : norm.students;
+};
 
 const timingSafeStringEqual = async (a, b) => {
   const enc = new TextEncoder();
@@ -56,12 +55,37 @@ async function handleLinkCreate(request, env) {
 
 async function handleLinkVerify(request, env) {
   const body = await request.json().catch(() => null);
-  const students = await resolveLink(env.DB, body && body.code);
-  if (!validLinkStudents(students)) {
-    return json({ error: 'This link is not valid.' }, 400);
-  }
-  return json({ students: students.map((s) => ({ c: s.c, n: s.n })) });
+  const students = await linkStudents(env.DB, body && body.code);
+  if (!students) return json({ error: 'This link is not valid.' }, 400);
+  return json({ students });
 }
+
+/* The half of checkout both flows share: the Stripe key guard, the
+   voluntary fee cover (computed here, never client-side — the webhook
+   subtracts fee_cents back out so stats count the gift), the receipt
+   description, and the hand-off to Stripe's page. PTA decision:
+   partner receipts carry the same acknowledgment — logo placement and
+   posts are intangible recognition, not goods or services. */
+const startCheckout = async (env, { amountCents, coverFees, productName, successUrl, cancelUrl, metadata }) => {
+  if (!env.STRIPE_SECRET_KEY) {
+    return json({ error: 'Online giving isn’t quite open yet — please check back soon!' }, 503);
+  }
+  const feeCents = coverFees === true ? feeCoverCents(amountCents) : 0;
+  const session = await createCheckoutSession(env, {
+    amountCents,
+    productName,
+    feeCents,
+    feeName: 'Covering card processing',
+    description: TAX_ACKNOWLEDGMENT,
+    successUrl,
+    cancelUrl,
+    metadata: { ...metadata, fee_cents: String(feeCents) },
+  });
+  if (!session) {
+    return json({ error: 'Our payment processor had a hiccup — nothing was charged. Please try again in a minute.' }, 502);
+  }
+  return json({ url: session.url });
+};
 
 async function handleCheckout(request, env, url) {
   const body = await request.json().catch(() => null);
@@ -86,12 +110,11 @@ async function handleCheckout(request, env, url) {
   let students;
   let viaLink = false;
   if (body.link) {
-    const linked = await resolveLink(env.DB, body.link);
-    if (!validLinkStudents(linked)) {
+    students = await linkStudents(env.DB, body.link);
+    if (!students) {
       // `reason` lets the wizard drop the dead link and show the rows.
       return json({ error: 'That student link is no longer valid — you can still type the student’s name on the previous step.', reason: 'link' }, 400);
     }
-    students = linked.map((s) => ({ c: s.c, n: s.n }));
     viaLink = true;
   } else {
     const norm = normalizeStudents(body.students);
@@ -105,20 +128,10 @@ async function handleCheckout(request, env, url) {
     return json({ error: 'Please shorten the student names.' }, 400);
   }
 
-  if (!env.STRIPE_SECRET_KEY) {
-    return json({ error: 'Online giving isn’t quite open yet — please check back soon!' }, 503);
-  }
-
-  // The fee cover is voluntary and computed here, never client-side;
-  // the webhook subtracts fee_cents back out so stats count the gift.
-  const feeCents = body.coverFees === true ? feeCoverCents(amount * 100) : 0;
-
-  const session = await createCheckoutSession(env, {
+  return startCheckout(env, {
     amountCents: amount * 100,
+    coverFees: body.coverFees,
     productName: `Rocket Rally — ${priority.name}`,
-    feeCents,
-    feeName: 'Covering card processing',
-    description: TAX_ACKNOWLEDGMENT,
     successUrl: `${url.origin}/thanks?p=${priority.id}&amt=${amount}&sid={CHECKOUT_SESSION_ID}`,
     // Backing out of Stripe returns to the wizard with the link intact.
     cancelUrl: `${url.origin}/donate?p=${priority.id}${viaLink ? `&link=${encodeURIComponent(body.link)}` : ''}`,
@@ -129,39 +142,23 @@ async function handleCheckout(request, env, url) {
       visibility,
       employer_match: body.match ? '1' : '0',
       via_link: viaLink ? '1' : '0',
-      fee_cents: String(feeCents),
     },
   });
-  if (!session) {
-    return json({ error: 'Our payment processor had a hiccup — nothing was charged. Please try again in a minute.' }, 502);
-  }
-  return json({ url: session.url });
 }
 
-/* A business picks a tier on /partners and pays its fixed price —
-   no fee cover, no classroom credit; the tier rides in metadata. */
+/* A business picks a tier on /partners and pays its fixed price — no
+   classroom credit; the tier rides in metadata. */
 async function handlePartnerCheckout(request, env, url) {
   const body = await request.json().catch(() => null);
   if (!body) return json({ error: 'Please try that again.' }, 400);
-  const tier = PARTNER_TIERS.find((t) => t.id === body.tier);
+  const tier = partnerTierById(body.tier);
   if (!tier) return json({ error: 'Please pick a partnership level.' }, 400);
   const business = typeof body.business === 'string' ? body.business.trim().slice(0, MAX_NAME) : '';
   if (!business) return json({ error: 'Please tell us your business name.' }, 400);
-  if (!env.STRIPE_SECRET_KEY) {
-    return json({ error: 'Online giving isn’t quite open yet — please check back soon!' }, 503);
-  }
-  // Same voluntary fee cover as family gifts; the webhook subtracts
-  // fee_cents so the partnership counts at its tier price.
-  const feeCents = body.coverFees === true ? feeCoverCents(tier.amount * 100) : 0;
-  const session = await createCheckoutSession(env, {
+  return startCheckout(env, {
     amountCents: tier.amount * 100,
+    coverFees: body.coverFees,
     productName: `Rocket Rally Partnership — ${tier.name}`,
-    feeCents,
-    feeName: 'Covering card processing',
-    // PTA decision: partner receipts carry the standard acknowledgment
-    // — logo placement and posts are intangible recognition, not goods
-    // or services.
-    description: TAX_ACKNOWLEDGMENT,
     successUrl: `${url.origin}/thanks?partner=${tier.id}&sid={CHECKOUT_SESSION_ID}`,
     cancelUrl: `${url.origin}/partners`,
     metadata: {
@@ -169,13 +166,8 @@ async function handlePartnerCheckout(request, env, url) {
       partner_tier: tier.id,
       donor_name: business,
       visibility: 'public',
-      fee_cents: String(feeCents),
     },
   });
-  if (!session) {
-    return json({ error: 'Our payment processor had a hiccup — nothing was charged. Please try again in a minute.' }, 502);
-  }
-  return json({ url: session.url });
 }
 
 /* A partner's logo, uploaded from the thank-you page. The Stripe
@@ -221,46 +213,46 @@ async function handleLogoUpload(request, env, url) {
   const file = form && form.get('logo');
   if (!file || typeof file === 'string') return json({ error: 'Please choose a logo file.' }, 400);
   if (file.size > LOGO_MAX_BYTES) return json({ error: 'That file is over 15 MB — a smaller export works great.' }, 413);
-  const bytes = await file.arrayBuffer();
-  const type = sniffLogoType(bytes);
+  // Sniffing needs only the head; the file itself streams to R2.
+  const sniff = (blob) => blob.slice(0, 8192).arrayBuffer().then(sniffLogoType);
+  const type = await sniff(file);
   if (!type) return json({ error: 'Please upload a PNG, JPG, WebP, SVG, or PDF.' }, 415);
 
   const publicId = await logoPublicId(sid);
   const meta = (name) => ({
     business: row.donor_name, sid, filename: String(name || '').slice(0, 120),
   });
-  // The ladder: logo placement starts at Rally Supporter. A Friend's
-  // file is kept for the PTA but never published or promised.
-  const tierAllowsLogo = row.partner_tier !== 'friend';
+  // The ladder decides: a tier without `logo` (Rally Friend) has its
+  // file kept for the PTA but never published or promised.
+  const tierAllowsLogo = !!partnerTierById(row.partner_tier)?.logo;
 
   // <img> can render everything but PDF. A PDF (browser conversion
   // failed, or a direct upload) goes to the held/original slot so it
   // can never clobber a published image or be served from /logo/ —
   // any logo already live stays live.
   if (type === 'application/pdf') {
-    await env.LOGOS.put(`partner-logos/${publicId}-original`, bytes, {
+    await env.LOGOS.put(`partner-logos/${publicId}-original`, file, {
       httpMetadata: { contentType: type },
       customMetadata: meta(file.name),
     });
     return json({ ok: true, published: false, reason: tierAllowsLogo ? 'pdf' : 'tier', logo: '' });
   }
 
-  await env.LOGOS.put(`partner-logos/${publicId}`, bytes, {
+  const puts = [env.LOGOS.put(`partner-logos/${publicId}`, file, {
     httpMetadata: { contentType: type },
     customMetadata: meta(file.name),
-  });
+  })];
   // A browser-side PDF conversion sends the print-quality original
   // along too — stored for the shirt/banner printers, never served.
   const orig = form.get('original');
-  if (orig && typeof orig !== 'string' && orig.size > 0 && orig.size <= LOGO_MAX_BYTES) {
-    const origBytes = await orig.arrayBuffer();
-    if (sniffLogoType(origBytes) === 'application/pdf') {
-      await env.LOGOS.put(`partner-logos/${publicId}-original`, origBytes, {
-        httpMetadata: { contentType: 'application/pdf' },
-        customMetadata: meta(orig.name),
-      });
-    }
+  if (orig && typeof orig !== 'string' && orig.size > 0 && orig.size <= LOGO_MAX_BYTES
+      && await sniff(orig) === 'application/pdf') {
+    puts.push(env.LOGOS.put(`partner-logos/${publicId}-original`, orig, {
+      httpMetadata: { contentType: 'application/pdf' },
+      customMetadata: meta(orig.name),
+    }));
   }
+  await Promise.all(puts);
   if (!tierAllowsLogo) {
     return json({ ok: true, published: false, reason: 'tier', logo: '' });
   }
@@ -360,11 +352,9 @@ export default {
     try {
       switch (route) {
         case 'GET /api/campaign':
-          return json(await campaignStats(env.DB, { CAMPAIGN }),
-            200, { 'cache-control': 'public, max-age=60' });
+          return json(await campaignStats(env.DB), 200, { 'cache-control': 'public, max-age=60' });
         case 'GET /api/board':
-          return json(await boardStats(env.DB, { CAMPAIGN }),
-            200, { 'cache-control': 'public, max-age=60' });
+          return json(await boardStats(env.DB), 200, { 'cache-control': 'public, max-age=60' });
         case 'POST /api/link': return await handleLinkCreate(request, env);
         case 'POST /api/link/verify': return await handleLinkVerify(request, env);
         case 'POST /api/checkout': return await handleCheckout(request, env, url);

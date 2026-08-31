@@ -20,33 +20,20 @@ const stubStripe = (reply = { id: 'cs_1', url: 'https://checkout.stripe.com/c/pa
   return calls;
 };
 
-const checkoutDirect = (body, envOverride = {}) =>
-  worker.fetch(
-    new Request('https://rally.test/api/checkout', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(body),
-    }),
-    { ...env, ...envOverride },
-    createExecutionContext(),
-  );
-
-const partnerDirect = (body, envOverride = {}) =>
-  worker.fetch(
-    new Request('https://rally.test/api/partner/checkout', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(body),
-    }),
-    { ...env, ...envOverride },
-    createExecutionContext(),
-  );
-
-const post = (path, body) => SELF.fetch(`https://rally.test${path}`, {
+const jsonRequest = (path, body) => new Request(`https://rally.test${path}`, {
   method: 'POST',
   headers: { 'content-type': 'application/json' },
   body: JSON.stringify(body),
 });
+/* Call a handler in this isolate (so stubbed fetch applies), with
+   optional env overrides. */
+const direct = (path) => (body, envOverride = {}) =>
+  worker.fetch(jsonRequest(path, body), { ...env, ...envOverride }, createExecutionContext());
+const checkoutDirect = direct('/api/checkout');
+const partnerDirect = direct('/api/partner/checkout');
+
+const post = (path, body) => SELF.fetch(jsonRequest(path, body));
+const getJson = async (path) => (await SELF.fetch(`https://rally.test${path}`)).json();
 
 const validCheckout = {
   priority: 'stem',
@@ -96,6 +83,17 @@ const sessionEvent = (over = {}) => JSON.stringify({
         ...(over.metadata || {}),
       },
     },
+  },
+});
+
+/* A paid Rally Champion partnership, as the webhook sees it. */
+const partnerSession = (over = {}) => sessionEvent({
+  id: 'cs_partner', amount_total: 75000,
+  ...over,
+  metadata: {
+    kind: 'partner', partner_tier: 'champion', priority: '',
+    donor_name: 'Galaxy Automotive & Tire', students: '', fee_cents: '0',
+    ...(over.metadata || {}),
   },
 });
 
@@ -269,7 +267,7 @@ describe('checkout', () => {
     expect(await bad({ amount: 10.5 })).toBe(400);
     expect(await bad({ amount: 999999 })).toBe(400);
     expect(await bad({ donorName: '' })).toBe(400);            // public needs a name
-    expect(await bad({ link: 'forged.token' })).toBe(400);
+    expect(await bad({ link: 'nope-nope' })).toBe(400);           // no such link
     expect(await bad({ students: [{ c: '', n: 'Mia' }] })).toBe(400);     // name, no classroom
     expect(await bad({ students: [{ c: 'r99', n: 'Mia' }] })).toBe(400);  // not on the roster
     expect(await bad({ students: Array.from({ length: 5 }, (_, i) => ({ c: 'convery', n: `K${i}` })) })).toBe(400);
@@ -358,7 +356,7 @@ describe('webhook and campaign stats', () => {
   it('is idempotent across Stripe retries', async () => {
     await deliverWebhook(sessionEvent());
     await deliverWebhook(sessionEvent());
-    const stats = await (await SELF.fetch('https://rally.test/api/campaign')).json();
+    const stats = await getJson('/api/campaign');
     expect(stats.campaign.gifts).toBe(1);
   });
 
@@ -373,21 +371,10 @@ describe('webhook and campaign stats', () => {
     });
     await deliverWebhook(family);
     await deliverWebhook(family); // Stripe retry: no double credit
-    const board = await (await SELF.fetch('https://rally.test/api/board')).json();
+    const board = await getJson('/api/board');
     expect(board.classrooms).toEqual({ convery: 1, zweber: 2 });
     expect(board.campaign.gifts).toBe(1); // one gift, three Rockets
     expect(JSON.stringify(board)).not.toContain('Okafor'); // student names stay backend-only
-  });
-
-  it('still credits sessions stamped with the old classroom/student_name keys', async () => {
-    await deliverWebhook(sessionEvent({
-      id: 'cs_old',
-      metadata: { students: '', classroom: 'harrison', student_name: 'Ava T' },
-    }));
-    const board = await (await SELF.fetch('https://rally.test/api/board')).json();
-    expect(board.classrooms).toEqual({ harrison: 1 });
-    const csv = await (await SELF.fetch('https://rally.test/api/export.csv?key=test-admin-key')).text();
-    expect(csv).toContain('Ava T — Mrs. Harrison');
   });
 
   it('stops counting a classroom credit once its gift row is deleted', async () => {
@@ -395,7 +382,7 @@ describe('webhook and campaign stats', () => {
     // hand; the race must not keep counting the orphaned credits.
     await deliverWebhook(sessionEvent({ id: 'cs_gone' }));
     await env.DB.prepare("DELETE FROM donations WHERE id = 'cs_gone'").run();
-    const board = await (await SELF.fetch('https://rally.test/api/board')).json();
+    const board = await getJson('/api/board');
     expect(board.classrooms).toEqual({});
     expect(board.campaign.gifts).toBe(0);
   });
@@ -407,7 +394,7 @@ describe('webhook and campaign stats', () => {
       id: 'cs_spiritwear',
       metadata: { priority: '', students: '', donor_name: '', visibility: '', employer_match: '', via_link: '' },
     }));
-    const stats = await (await SELF.fetch('https://rally.test/api/campaign')).json();
+    const stats = await getJson('/api/campaign');
     expect(stats.campaign).toEqual({ raised: 0, goal: 205000, gifts: 0 });
   });
 
@@ -424,13 +411,13 @@ describe('webhook and campaign stats', () => {
 
   it('ignores unpaid sessions', async () => {
     await deliverWebhook(sessionEvent({ payment_status: 'unpaid' }));
-    const stats = await (await SELF.fetch('https://rally.test/api/campaign')).json();
+    const stats = await getJson('/api/campaign');
     expect(stats.campaign.gifts).toBe(0);
   });
 
   it('credits the base gift, not the fee cover, to campaign totals', async () => {
     await deliverWebhook(sessionEvent({ amount_total: 10330, metadata: { fee_cents: '330' } }));
-    const stats = await (await SELF.fetch('https://rally.test/api/campaign')).json();
+    const stats = await getJson('/api/campaign');
     expect(stats.campaign.raised).toBe(100);
     expect(stats.priorities.stem).toBe(100);
   });
@@ -442,7 +429,7 @@ describe('webhook and campaign stats', () => {
       id: 'cs_fee_edge', amount_total: 50000,
       metadata: { priority: 'people', fee_cents: '1524' },
     }));
-    const board = await (await SELF.fetch('https://rally.test/api/board')).json();
+    const board = await getJson('/api/board');
     expect(board.donors[0].circle).toBe(false);
   });
 
@@ -457,7 +444,7 @@ describe('webhook and campaign stats', () => {
       id: 'cs_stem_badge', amount_total: 50000,
       metadata: { priority: 'stem', donor_name: 'The Okafor Family' },
     }));
-    const board = await (await SELF.fetch('https://rally.test/api/board')).json();
+    const board = await getJson('/api/board');
     expect(board.donors.find((d) => d.name === 'The Okafor Family').circle).toBe(true);
   });
 
@@ -467,7 +454,7 @@ describe('webhook and campaign stats', () => {
       id: 'cs_circle', amount_total: 50000,
       metadata: { priority: 'people', donor_name: 'The Whitmore Family' },
     }));
-    const board = await (await SELF.fetch('https://rally.test/api/board')).json();
+    const board = await getJson('/api/board');
     const names = board.donors.map((d) => d.name);
     expect(names).toContain('Anonymous');
     const circle = board.donors.find((d) => d.name === 'The Whitmore Family');
@@ -526,20 +513,18 @@ describe('business partner checkout', () => {
 
   it('records a partnership: campaign dollars, no family-gift count, tier on the roll', async () => {
     await deliverWebhook(sessionEvent()); // one $100 family gift
-    await deliverWebhook(sessionEvent({
-      id: 'cs_partner', amount_total: 75000,
-      metadata: {
-        kind: 'partner', partner_tier: 'champion', priority: '',
-        donor_name: 'Galaxy Automotive & Tire', students: '', fee_cents: '0',
-      },
-    }));
-    const board = await (await SELF.fetch('https://rally.test/api/board')).json();
+    await deliverWebhook(partnerSession());
+    const board = await getJson('/api/board');
     expect(board.campaign.raised).toBe(850);    // $100 family + $750 partner
     expect(board.campaign.gifts).toBe(1);       // family gifts only
     expect(board.classrooms).toEqual({ convery: 1 }); // no classroom credit for partners
     const partner = board.donors.find((d) => d.name === 'Galaxy Automotive & Tire');
     expect(partner.partner).toBe('champion');
     expect(partner.circle).toBe(false);
+    // The wall reads the light payload too — same rows on both.
+    const wall = { name: 'Galaxy Automotive & Tire', tier: 'champion', logo: '' };
+    expect(board.partners).toEqual([wall]);
+    expect((await getJson('/api/campaign')).partners).toEqual([wall]);
     const csv = await (await SELF.fetch('https://rally.test/api/export.csv?key=test-admin-key')).text();
     expect(csv).toContain('partner_tier');
     expect(csv).toContain('"champion"');
@@ -550,14 +535,7 @@ describe('business partner checkout', () => {
 
 describe('partner logo upload', () => {
   const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3]);
-  const partnerSession = () => sessionEvent({
-    id: 'cs_partner', amount_total: 75000,
-    metadata: {
-      kind: 'partner', partner_tier: 'champion', priority: '',
-      donor_name: 'Galaxy Automotive & Tire', students: '', fee_cents: '0',
-    },
-  });
-  const upload = (sid, body, name = 'logo.png') => {
+  const upload =(sid, body, name = 'logo.png') => {
     const fd = new FormData();
     fd.append('logo', new File([body], name));
     return SELF.fetch(`https://rally.test/api/partner/logo?sid=${encodeURIComponent(sid)}`, {
@@ -579,7 +557,7 @@ describe('partner logo upload', () => {
     expect(obj.customMetadata.business).toBe('Galaxy Automotive & Tire');
 
     // Live on the board payload, addressed by the public id only.
-    const board = await (await SELF.fetch('https://rally.test/api/board')).json();
+    const board = await getJson('/api/board');
     expect(board.partners).toEqual([{ name: 'Galaxy Automotive & Tire', tier: 'champion', logo: body.logo }]);
     expect(JSON.stringify(board.partners)).not.toContain('cs_partner');
 
@@ -599,7 +577,7 @@ describe('partner logo upload', () => {
     const body = await res.json();
     expect(body.published).toBe(false);
     expect(body.reason).toBe('pdf');
-    const board = await (await SELF.fetch('https://rally.test/api/board')).json();
+    const board = await getJson('/api/board');
     expect(board.partners).toEqual([{ name: 'Galaxy Automotive & Tire', tier: 'champion', logo: '' }]);
   });
 
@@ -610,7 +588,7 @@ describe('partner logo upload', () => {
     expect((await res.json()).reason).toBe('pdf');
     // The PNG is still published and still served; the PDF went to the
     // held/original slot instead of the display key.
-    const board = await (await SELF.fetch('https://rally.test/api/board')).json();
+    const board = await getJson('/api/board');
     expect(board.partners[0].logo).toBe(logo);
     const img = await SELF.fetch(`https://rally.test/logo/${logo}`);
     expect(img.headers.get('content-type')).toBe('image/png');
@@ -640,7 +618,7 @@ describe('partner logo upload', () => {
     const body = await res.json();
     expect(body.published).toBe(false);
     expect(body.reason).toBe('tier');
-    const board = await (await SELF.fetch('https://rally.test/api/board')).json();
+    const board = await getJson('/api/board');
     expect(board.partners).toEqual([{ name: 'Friendly LLC', tier: 'friend', logo: '' }]);
   });
 

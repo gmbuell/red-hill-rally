@@ -28,7 +28,7 @@
   RH.qs('#tier-grid').addEventListener('click', (e) => {
     const btn = e.target.closest('.tier-pick');
     if (!btn) return;
-    chosen = PARTNER_TIERS.find((t) => t.id === btn.dataset.tier);
+    chosen = partnerTierById(btn.dataset.tier);
     document.querySelectorAll('.tier-card').forEach((card) =>
       card.classList.toggle('selected', card.dataset.tier === chosen.id));
     RH.qs('#chosen-tier').textContent = `${chosen.name} — ${RH.money(chosen.amount)}`;
@@ -46,50 +46,25 @@
     const business = RH.qs('#biz-name').value.trim();
     RH.qs('#biz-field').classList.toggle('invalid', !business);
     if (!business) return;
-    const btn = form.querySelector('button[type="submit"]');
-    const label = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = 'Opening secure checkout…';
-    errorEl.hidden = true;
-    try {
-      // The fee-cover box is read live: browsers restore a reload's
-      // checkbox state without firing 'change'. The server recomputes.
-      const coverFees = RH.qs('#partner-cover-fees').checked;
-      const { ok, data } = await RH.postJson('/api/partner/checkout', { tier: chosen.id, business, coverFees });
-      if (ok && data.url) {
-        location.href = data.url;
-        return;
-      }
-      errorEl.textContent = data.error || 'We couldn’t start checkout — please try again.';
-    } catch (err) {
-      errorEl.textContent = 'We couldn’t reach the Rally — check your connection and try again.';
-    }
-    errorEl.hidden = false;
-    btn.disabled = false;
-    btn.innerHTML = label;
+    RH.checkout(form.querySelector('button[type="submit"]'), errorEl, '/api/partner/checkout', {
+      tier: chosen.id,
+      business,
+      // Read live: browsers restore a reload's checkbox state without
+      // firing 'change'. The server recomputes the amount.
+      coverFees: RH.qs('#partner-cover-fees').checked,
+    });
   });
+  RH.qs('#biz-name').maxLength = MAX_NAME;
   RH.qs('#biz-name').addEventListener('input', () =>
     RH.qs('#biz-field').classList.remove('invalid'));
-  /* Browser Back from Stripe can restore this page from the bfcache
-     exactly as it was left — with the button disabled mid-handoff. */
-  const submitBtn = form.querySelector('button[type="submit"]');
-  const submitLabel = submitBtn.innerHTML;
-  window.addEventListener('pageshow', (e) => {
-    if (e.persisted) { submitBtn.disabled = false; submitBtn.innerHTML = submitLabel; }
-  });
 
   /* ---- the wall: curated roster immediately (no pop-in for the
      common case), online partners merged in when live data arrives ---- */
   const wall = RH.qs('#partner-wall');
   const renderWall = (online) => {
-    const { logos: logoPartners, names: namePartners } = RH.partnerGroups(online);
-    if (!logoPartners.length && !namePartners.length) {
-      wall.innerHTML = '<p class="hint">Your business could be first &mdash; the Rally launches in September.</p>';
-      return;
-    }
-    wall.innerHTML = (logoPartners.length ? RH.partnerCards(logoPartners) : '')
-      + RH.partnerFriendsLine(namePartners);
+    wall.innerHTML = RH.partnerWall(online,
+      '<p class="hint">Your business could be first &mdash; the Rally launches in September.</p>');
   };
   renderWall(null);
-  RH.loadLive('/api/board', (live) => renderWall(live.partners));
+  RH.loadLive('/api/campaign', (live) => renderWall(live.partners));
 })();

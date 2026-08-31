@@ -1,6 +1,5 @@
-/* Shared UI helpers: brand motifs and the flight-trail progress
-   vocabulary. (Student links are signed tokens issued by /api/link —
-   the site only carries them, never decodes them itself.) */
+/* Shared UI helpers: brand motifs, the flight-trail progress
+   vocabulary, and the form plumbing the page scripts have in common. */
 
 const RH = (() => {
 
@@ -45,6 +44,118 @@ const RH = (() => {
   const esc = (s) => String(s == null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+  /* "Mrs. Hesseltine · TK" for each distinct classroom in a student
+     list — plain text; callers esc it. */
+  const roomLabels = (students) => [...new Set(students.map((st) => {
+    const room = classroomById(st.c);
+    return room ? `${room.teacher} · ${room.grade}` : 'Red Hill Elementary';
+  }))];
+
+  /* A list of Rocket rows — classroom + name — shared by the donate
+     wizard (classroom first, name optional) and the Student Link page
+     (name first, required). Owns the array, renders into rowsEl, wires
+     edit/remove/add, and hides the add button at MAX_STUDENTS.
+     `validate(check)` marks fields invalid per `check(st) -> {c, n}`
+     and returns whether every row passed. */
+  const studentRows = ({ rowsEl, addBtn, prefix, nameFirst = false, classError, nameError = '' }) => {
+    const students = [{ c: '', n: '' }];
+    const classId = (i) => `${prefix}-class-${i}`;
+    const nameId = (i) => `${prefix}-name-${i}`;
+    const classField = (i) => `
+        <div class="field">
+          <label for="${classId(i)}">Classroom</label>
+          <select id="${classId(i)}" data-field="c">
+            <option value="">Choose a classroom&hellip;</option>
+            ${classroomOptions()}
+          </select>
+          <p class="error">${classError}</p>
+        </div>`;
+    const nameField = (i) => `
+        <div class="field">
+          <label for="${nameId(i)}">Student name${nameError ? '' : ' <span class="optional">&middot; optional</span>'}</label>
+          <input type="text" id="${nameId(i)}" data-field="n" autocomplete="off" maxlength="${MAX_NAME}" placeholder="${esc(samplePlaceholder())}">
+          ${nameError ? `<p class="error">${nameError}</p>` : ''}
+        </div>`;
+    const render = () => {
+      rowsEl.innerHTML = students.map((st, i) => `
+      <div class="student-row" data-row="${i}">
+        ${nameFirst ? nameField(i) + classField(i) : classField(i) + nameField(i)}
+        ${students.length > 1 ? '<button type="button" class="linklike remove-student">Remove</button>' : ''}
+      </div>`).join('');
+      students.forEach((st, i) => {
+        qs(`#${classId(i)}`).value = st.c;
+        qs(`#${nameId(i)}`).value = st.n;
+      });
+      addBtn.hidden = students.length >= MAX_STUDENTS;
+    };
+    const onEdit = (e) => {
+      const row = e.target.closest('.student-row');
+      const field = e.target.dataset.field;
+      if (!row || !field) return;
+      students[Number(row.dataset.row)][field] = e.target.value;
+      e.target.closest('.field').classList.remove('invalid');
+    };
+    rowsEl.addEventListener('input', onEdit);
+    rowsEl.addEventListener('change', onEdit);
+    rowsEl.addEventListener('click', (e) => {
+      const btn = e.target.closest('.remove-student');
+      if (!btn) return;
+      students.splice(Number(btn.closest('.student-row').dataset.row), 1);
+      render();
+    });
+    addBtn.addEventListener('click', () => {
+      if (students.length >= MAX_STUDENTS) return;
+      students.push({ c: '', n: '' });
+      render();
+      qs(`#${(nameFirst ? nameId : classId)(students.length - 1)}`).focus();
+    });
+    const validate = (check) => students.reduce((ok, st, i) => {
+      const bad = check(st);
+      qs(`#${classId(i)}`).closest('.field').classList.toggle('invalid', !!bad.c);
+      qs(`#${nameId(i)}`).closest('.field').classList.toggle('invalid', !!bad.n);
+      return ok && !bad.c && !bad.n;
+    }, true);
+    return { students, render, validate };
+  };
+
+  /* Hand a form off to Stripe: hold the button while the session is
+     created, follow the payment URL, or restore the button, show the
+     failure in errorEl, and return it for the page to act on. Browser
+     Back from Stripe can restore a page from the bfcache exactly as it
+     was left, so pageshow revives whichever button was mid-handoff. */
+  let handoff = null;
+  if (typeof window !== 'undefined') {
+    window.addEventListener('pageshow', (e) => {
+      if (e.persisted && handoff) {
+        handoff.btn.disabled = false;
+        handoff.btn.innerHTML = handoff.label;
+      }
+    });
+  }
+  const checkout = async (btn, errorEl, path, body) => {
+    handoff = { btn, label: btn.innerHTML };
+    btn.disabled = true;
+    btn.innerHTML = 'Opening secure checkout…';
+    errorEl.hidden = true;
+    let result;
+    try {
+      result = await postJson(path, body);
+      if (result.ok && result.data.url) {
+        location.href = result.data.url;
+        return result;
+      }
+      result.data.error = result.data.error || 'We couldn’t start checkout — please try again.';
+    } catch (err) {
+      result = { ok: false, data: { error: 'We couldn’t reach the Rally — check your connection and try again.' } };
+    }
+    errorEl.textContent = result.data.error;
+    errorEl.hidden = false;
+    btn.disabled = false;
+    btn.innerHTML = handoff.label;
+    handoff = null;
+    return result;
+  };
 
   /* ---- motifs (from the brand guide's Spirit Kit) -------------------- */
 
@@ -225,12 +336,12 @@ const RH = (() => {
     : `${names.slice(0, -1).join(', ')} & ${names[names.length - 1]}`;
 
   /* The public partner list: the curated PARTNERS roster from data.js
-     merged with online partnerships (the board payload's `partners`).
-     Names match loosely (case, punctuation, "&" vs "and"), and a
-     business seen more than once keeps its highest tier and the last
-     logo it uploaded — an upgrade or re-purchase can raise a listing,
-     never demote it. `src` is the logo URL, or '' for name-only
-     recognition (the 'friend' tier, or no logo at all). */
+     merged with online partnerships (the `partners` rows of the API
+     payloads). Names match loosely (case, punctuation, "&" vs "and"),
+     and a business seen more than once keeps its highest tier and the
+     last logo it uploaded — an upgrade or re-purchase can raise a
+     listing, never demote it. `src` is the logo URL, or '' for
+     name-only recognition (a tier without `logo`, or no logo at all). */
   const mergedPartners = (online) => {
     const key = (name) => name.toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]/g, '');
     const rank = (tier) => PARTNER_TIERS.findIndex((t) => t.id === tier);
@@ -244,39 +355,42 @@ const RH = (() => {
       if (p.logo) cur.src = `/logo/${p.logo}`;
       byKey.set(key(p.name), cur);
     }
-    return [...byKey.values()].map((p) => ({ ...p, src: p.tier === 'friend' ? '' : p.src }));
+    return [...byKey.values()].map((p) => {
+      const tier = partnerTierById(p.tier);
+      return { ...p, src: tier && !tier.logo ? '' : p.src };
+    });
   };
 
-  /* Display split shared by the /partners wall and the board strip:
-     logo cards vs name-only recognition, plus the common thanks line. */
+  /* Logo cards vs name-only recognition; the board's partner count
+     reads this too. */
   const partnerGroups = (online) => {
     const all = mergedPartners(online);
     return { logos: all.filter((p) => p.src), names: all.filter((p) => !p.src) };
   };
-  const partnerFriendsLine = (names) => (names.length ? `
-      <p class="partner-friends">With thanks to ${nameList(names.map((p) => esc(p.name)))}.</p>` : '');
-  const partnerTierName = (id) => {
-    const t = PARTNER_TIERS.find((pt) => pt.id === id);
-    return t ? t.name : '';
-  };
-  /* The logo-card grid itself — identical on /partners and the Rally
-     Board: full-size logo, business name, tier badge. */
-  const partnerCards = (logos) => `
+
+  /* The partner wall — identical on /partners and the Rally Board:
+     full-size logo cards (name, tier badge), or `emptyHtml` when
+     nobody is listed yet, plus the thanks line for name-only tiers. */
+  const partnerWall = (online, emptyHtml) => {
+    const { logos, names } = partnerGroups(online);
+    const cards = logos.length ? `
     <ul class="partner-grid">${logos.map((p) => `
       <li class="partner-card">
         <img src="${p.src}" alt="${esc(p.name)} logo" loading="lazy">
         <span class="partner-name">${esc(p.name)}</span>
-        ${p.tier ? `<span class="partner-tier">${partnerTierName(p.tier)}</span>` : ''}
+        ${p.tier ? `<span class="partner-tier">${partnerTierById(p.tier).name}</span>` : ''}
       </li>`).join('')}
-    </ul>`;
+    </ul>` : (names.length ? '' : emptyHtml);
+    const thanks = names.length ? `
+      <p class="partner-friends">With thanks to ${nameList(names.map((p) => esc(p.name)))}.</p>` : '';
+    return cards + thanks;
+  };
 
-  /* priorityById / classroomById come from data.js, loaded before us. */
   return {
-    money, moneyCents, qs, param, esc, nameList,
-    mergedPartners, partnerGroups, partnerFriendsLine, partnerCards,
+    money, moneyCents, qs, param, esc, nameList, roomLabels,
+    partnerGroups, partnerWall, studentRows, checkout,
     classroomOptions, samplePlaceholder, postJson, loadLive,
     badgeRocket, dartUp, icon,
     trailSVG, buildTrajectory, scatter,
-    priorityById, classroomById,
   };
 })();

@@ -38,17 +38,15 @@ export function normalizeStudents(raw, { nameRequired = false } = {}) {
 
 /* Order- and case-insensitive identity of a set of students, so the
    same kids always map to the same family link. */
-export const studentsSignature = (students) => JSON.stringify(
-  students
-    .map((s) => ({ c: s.c, n: s.n.toLowerCase() }))
-    .sort((a, b) => (a.c < b.c ? -1 : a.c > b.c ? 1 : a.n < b.n ? -1 : a.n > b.n ? 1 : 0)),
+const byClassThenName = (a, b) =>
+  (a.c < b.c ? -1 : a.c > b.c ? 1 : a.n < b.n ? -1 : a.n > b.n ? 1 : 0);
+const signatureWith = (lower) => (students) => JSON.stringify(
+  students.map((s) => ({ c: s.c, n: lower(s.n) })).sort(byClassThenName),
 );
+export const studentsSignature = signatureWith((n) => n.toLowerCase());
 
 /* What migration 0005's backfill produced: SQLite's lower() is
    ASCII-only, so accented characters kept their case. Only rows
    created before that migration carry these — see createLink's heal. */
-export const legacyStudentsSignature = (students) => JSON.stringify(
-  students
-    .map((s) => ({ c: s.c, n: s.n.replace(/[A-Z]/g, (ch) => ch.toLowerCase()) }))
-    .sort((a, b) => (a.c < b.c ? -1 : a.c > b.c ? 1 : a.n < b.n ? -1 : a.n > b.n ? 1 : 0)),
-);
+export const legacyStudentsSignature =
+  signatureWith((n) => n.replace(/[A-Z]/g, (ch) => ch.toLowerCase()));

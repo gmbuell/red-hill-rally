@@ -9,9 +9,8 @@
 (() => {
   const state = {
     step: 1,
-    priority: RH.priorityById(RH.param('p')) || null,
+    priority: priorityById(RH.param('p')),
     amount: 0,
-    students: [{ c: '', n: '' }], // step 3 rows: classroom id + optional name
     link: null, // verified {code, students: [{c, n}]}
   };
 
@@ -19,6 +18,14 @@
   const backBtn = RH.qs('#back-btn');
   const nextBtn = RH.qs('#next-btn');
   const errorEl = RH.qs('#checkout-error');
+
+  /* Step 3's rows: classroom first, name optional. */
+  const rows = RH.studentRows({
+    rowsEl: RH.qs('#student-rows'),
+    addBtn: RH.qs('#add-student'),
+    prefix: 'rocket',
+    classError: 'Please pick a classroom for this Rocket.',
+  });
 
   const visibility = () => RH.qs('input[name="visibility"]:checked').value;
 
@@ -37,10 +44,12 @@
   /* ---- step 2: amounts ---- */
   const feeCents = () => feeCoverCents(Math.round(state.amount) * 100);
 
+  const feeLabel = RH.qs('#fee-label');
+  const feeLabelIdle = feeLabel.textContent; // the HTML's no-amount-yet copy
   const renderFeeLabel = () => {
-    RH.qs('#fee-label').textContent = state.amount > 0
+    feeLabel.textContent = state.amount > 0
       ? `Add ${RH.moneyCents(feeCents())} to cover card processing — 100% of my gift reaches the school.`
-      : 'Add a little extra to cover card processing — 100% of my gift reaches the school.';
+      : feeLabelIdle;
   };
 
   /* Designated-gift disclosure, named for the chosen priority. */
@@ -62,35 +71,21 @@
   };
 
   /* ---- step 3: the Rockets this gift credits ---- */
-  const renderStudentRows = () => {
-    RH.qs('#student-rows').innerHTML = state.students.map((st, i) => `
-      <div class="student-row" data-row="${i}">
-        <div class="field">
-          <label for="classroom-${i}">Classroom</label>
-          <select id="classroom-${i}" data-field="c">
-            <option value="">Choose a classroom&hellip;</option>
-            ${RH.classroomOptions()}
-          </select>
-          <p class="error">Please pick a classroom for this Rocket.</p>
-        </div>
-        <div class="field">
-          <label for="student-${i}">Student name <span class="optional">&middot; optional</span></label>
-          <input type="text" id="student-${i}" data-field="n" autocomplete="off" maxlength="${MAX_NAME}" placeholder="${RH.esc(RH.samplePlaceholder())}">
-        </div>
-        ${state.students.length > 1 ? '<button type="button" class="linklike remove-student">Remove</button>' : ''}
-      </div>`).join('');
-    state.students.forEach((st, i) => {
-      RH.qs(`#classroom-${i}`).value = st.c;
-      RH.qs(`#student-${i}`).value = st.n;
-    });
-    RH.qs('#add-student').hidden = state.students.length >= MAX_STUDENTS;
-  };
 
   /* "Ms. Convery's class" / "Ms. Convery's & Mr. Zweber's classes". */
   const classLabel = (ids) => {
-    const teachers = [...new Set(ids.map((id) => RH.classroomById(id)).filter(Boolean).map((r) => r.teacher))];
+    const teachers = [...new Set(ids.map((id) => classroomById(id)).filter(Boolean).map((r) => r.teacher))];
     if (!teachers.length) return '';
     return RH.nameList(teachers.map((t) => `${t}&rsquo;s`)) + (teachers.length > 1 ? ' classes' : ' class');
+  };
+
+  /* Link-mode fragments shared by the chip, the banner, and the summary. */
+  const linkNames = () => RH.nameList(state.link.students.map((st) => RH.esc(st.n)));
+  const linkRooms = () => classLabel(state.link.students.map((st) => st.c));
+  const dropLink = () => {
+    state.link = null;
+    const banner = RH.qs('.link-banner');
+    if (banner) banner.remove();
   };
 
   const renderDedication = () => {
@@ -99,25 +94,18 @@
     holder.hidden = !state.link;
     manual.hidden = !!state.link;
     if (!state.link) {
-      renderStudentRows();
+      rows.render();
       return;
     }
-    const names = RH.nameList(state.link.students.map((st) => RH.esc(st.n)));
-    const rooms = [...new Set(state.link.students.map((st) => {
-      const room = RH.classroomById(st.c);
-      return room ? `${room.teacher} &middot; ${room.grade}` : 'Red Hill Elementary';
-    }))];
     holder.innerHTML = `
       <div class="link-chip">
         <svg class="icon" viewBox="20 4 24 50" aria-hidden="true">${RH.dartUp}</svg>
-        <span class="who">Supporting ${names}</span>
-        <span class="meta">${rooms.join(' &nbsp;&middot;&nbsp; ')}</span>
+        <span class="who">Supporting ${linkNames()}</span>
+        <span class="meta">${RH.roomLabels(state.link.students).map(RH.esc).join(' &nbsp;&middot;&nbsp; ')}</span>
       </div>
       <p class="fine-print">Not who you meant to support? <button type="button" class="linklike" id="clear-link">Remove</button></p>`;
     RH.qs('#clear-link').addEventListener('click', () => {
-      state.link = null;
-      const banner = RH.qs('.link-banner');
-      if (banner) banner.remove();
+      dropLink();
       renderDedication();
     });
   };
@@ -127,11 +115,10 @@
     const p = state.priority;
     let s = `<strong>${RH.money(state.amount)}</strong> to <strong>${p ? p.name : ''}</strong>`;
     if (state.link) {
-      const names = RH.nameList(state.link.students.map((st) => RH.esc(st.n)));
-      const rooms = classLabel(state.link.students.map((st) => st.c));
-      s += `. Supporting <strong>${names}</strong>${rooms ? ` (${rooms})` : ''}.`;
+      const rooms = linkRooms();
+      s += `. Supporting <strong>${linkNames()}</strong>${rooms ? ` (${rooms})` : ''}.`;
     } else {
-      const rooms = classLabel(state.students.map((st) => st.c).filter(Boolean));
+      const rooms = classLabel(rows.students.map((st) => st.c).filter(Boolean));
       s += rooms ? `. Credited to <strong>${rooms}</strong>.` : '.';
     }
     // Full price disclosure before Stripe: the fee cover and the total.
@@ -183,19 +170,13 @@
       if (custom > 0 && state.amount > 0) RH.qs('#custom-amount').value = state.amount;
       const overMax = state.amount > MAX_AMOUNT;
       RH.qs('#custom-field .error').textContent = overMax
-        ? `Online gifts max out at $${MAX_AMOUNT.toLocaleString('en-US')}.`
+        ? `Online gifts max out at ${RH.money(MAX_AMOUNT)}.`
         : 'Please pick an amount or enter your own.';
       if (invalid('#custom-field', overMax || !(state.amount > 0))) return false;
     }
     if (state.step === 3 && !state.link) {
       // A name with no classroom can't be credited — say so, per row.
-      let bad = false;
-      state.students.forEach((st, i) => {
-        const missing = !!st.n.trim() && !st.c;
-        RH.qs(`#classroom-${i}`).closest('.field').classList.toggle('invalid', missing);
-        bad = bad || missing;
-      });
-      if (bad) return false;
+      if (!rows.validate((st) => ({ c: !!st.n.trim() && !st.c }))) return false;
     }
     if (state.step === 4) {
       const name = RH.qs('#donor-name').value.trim();
@@ -210,46 +191,24 @@
      reload's checkbox state without firing 'change'. */
   const coverFees = () => RH.qs('#cover-fees').checked;
 
-  const showError = (message) => {
-    errorEl.textContent = message;
-    errorEl.hidden = false;
-  };
-
   /* Hand the wizard state to the server, which creates the Stripe
      Checkout Session and sends back its payment URL. */
   const startCheckout = async () => {
-    nextBtn.disabled = true;
-    const label = nextBtn.innerHTML;
-    nextBtn.innerHTML = 'Opening secure checkout…';
-    errorEl.hidden = true;
-    try {
-      const { ok, data } = await RH.postJson('/api/checkout', {
-        priority: state.priority.id,
-        amount: state.amount,
-        link: state.link ? state.link.code : '',
-        students: state.students,
-        visibility: visibility(),
-        donorName: RH.qs('#donor-name').value.trim(),
-        match: RH.qs('#match').checked,
-        coverFees: coverFees(),
-      });
-      if (ok && data.url) {
-        location.href = data.url;
-        return;
-      }
-      if (data.reason === 'link' && state.link) {
-        // The link died mid-session: drop it so Back shows the rows.
-        state.link = null;
-        const banner = RH.qs('.link-banner');
-        if (banner) banner.remove();
-        renderSummary();
-      }
-      showError(data.error || 'We couldn’t start checkout — please try again.');
-    } catch (err) {
-      showError('We couldn’t reach the Rally — check your connection and try again.');
+    const { ok, data } = await RH.checkout(nextBtn, errorEl, '/api/checkout', {
+      priority: state.priority.id,
+      amount: state.amount,
+      link: state.link ? state.link.code : '',
+      students: rows.students,
+      visibility: visibility(),
+      donorName: RH.qs('#donor-name').value.trim(),
+      match: RH.qs('#match').checked,
+      coverFees: coverFees(),
+    });
+    if (!ok && data.reason === 'link' && state.link) {
+      // The link died mid-session: drop it so Back shows the rows.
+      dropLink();
+      renderSummary();
     }
-    nextBtn.disabled = false;
-    nextBtn.innerHTML = label;
   };
 
   nextBtn.addEventListener('click', () => {
@@ -269,16 +228,10 @@
     }
   });
 
-  /* Browser Back from Stripe can restore this page from the bfcache
-     exactly as it was left — with the button disabled mid-handoff. */
-  window.addEventListener('pageshow', (e) => {
-    if (e.persisted) { nextBtn.disabled = false; showStep(); }
-  });
-
   /* ---- event wiring ---- */
   form.addEventListener('change', (e) => {
     if (e.target.name === 'priority') {
-      state.priority = RH.priorityById(e.target.value);
+      state.priority = priorityById(e.target.value);
       state.amount = 0;
       RH.qs('#custom-amount').value = '';
     }
@@ -306,33 +259,11 @@
     renderFeeLabel();
   });
 
-  const rowsEl = RH.qs('#student-rows');
-  const onRowEdit = (e) => {
-    const row = e.target.closest('.student-row');
-    const field = e.target.dataset.field;
-    if (!row || !field) return;
-    state.students[Number(row.dataset.row)][field] = e.target.value;
-    e.target.closest('.field').classList.remove('invalid');
-  };
-  rowsEl.addEventListener('input', onRowEdit);
-  rowsEl.addEventListener('change', onRowEdit);
-  rowsEl.addEventListener('click', (e) => {
-    const btn = e.target.closest('.remove-student');
-    if (!btn) return;
-    state.students.splice(Number(btn.closest('.student-row').dataset.row), 1);
-    renderStudentRows();
-  });
-  RH.qs('#add-student').addEventListener('click', () => {
-    if (state.students.length >= MAX_STUDENTS) return;
-    state.students.push({ c: '', n: '' });
-    renderStudentRows();
-    RH.qs(`#classroom-${state.students.length - 1}`).focus();
-  });
-
   form.addEventListener('submit', (e) => e.preventDefault());
 
   /* ---- boot ---- */
   RH.qs('#custom-amount').max = MAX_AMOUNT;
+  RH.qs('#donor-name').maxLength = MAX_NAME;
   renderPriorities();
   /* A ?p= arrival (home-page tile, or Stripe's cancel URL) has already
      chosen a priority — start on the amount step; Back still reaches
@@ -351,10 +282,9 @@
     RH.postJson('/api/link/verify', { code }).then(({ ok, data }) => {
       if (!ok || !Array.isArray(data.students) || !data.students.length) { linkFailed(); return; }
       state.link = { code, students: data.students };
-      const names = RH.nameList(state.link.students.map((st) => RH.esc(st.n)));
-      const rooms = classLabel(state.link.students.map((st) => st.c));
+      const rooms = linkRooms();
       RH.qs('.flow-header').insertAdjacentHTML('beforeend',
-        `<p class="link-banner">Supporting <strong>${names}</strong>${rooms ? ` &middot; ${rooms}` : ''}</p>`);
+        `<p class="link-banner">Supporting <strong>${linkNames()}</strong>${rooms ? ` &middot; ${rooms}` : ''}</p>`);
       if (state.step === 3) renderDedication();
       if (state.step === 4) renderSummary(); // a slow verify can land after the donor advanced
     }).catch(linkFailed);
