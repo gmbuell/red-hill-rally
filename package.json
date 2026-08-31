@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "dev": "wrangler dev",
-    "predeploy": "node scripts/board-skeleton.js --check",
+    "predeploy": "node scripts/board-skeleton.js --check && wrangler d1 migrations apply red-hill-rally --remote",
     "deploy": "wrangler deploy",
     "pretest": "node scripts/board-skeleton.js --check",
     "test": "vitest run",

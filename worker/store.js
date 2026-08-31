@@ -105,7 +105,10 @@ export async function campaignStats(db, { CAMPAIGN }) {
 export async function boardStats(db, { CAMPAIGN }) {
   const [totals, byClassroom, roll, partnerRows] = await db.batch([
     totalsStmt(db),
-    db.prepare('SELECT classroom, COUNT(*) AS gifts FROM donation_students GROUP BY classroom'),
+    // Joined so a gift deleted by hand (refund, the go-live wipe)
+    // takes its classroom credits with it.
+    db.prepare(`SELECT s.classroom, COUNT(*) AS gifts FROM donation_students s
+                JOIN donations d ON d.id = s.donation_id GROUP BY s.classroom`),
     db.prepare(`SELECT donor_name, priority, partner_tier, amount_cents, visibility
                 FROM donations ORDER BY created DESC, id DESC`),
     db.prepare(`SELECT donor_name, partner_tier, logo_id FROM donations

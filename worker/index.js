@@ -88,7 +88,8 @@ async function handleCheckout(request, env, url) {
   if (body.link) {
     const linked = await resolveLink(env.DB, body.link);
     if (!validLinkStudents(linked)) {
-      return json({ error: 'That student link is no longer valid — you can still type the student’s name on the previous step.' }, 400);
+      // `reason` lets the wizard drop the dead link and show the rows.
+      return json({ error: 'That student link is no longer valid — you can still type the student’s name on the previous step.', reason: 'link' }, 400);
     }
     students = linked.map((s) => ({ c: s.c, n: s.n }));
     viaLink = true;
@@ -119,7 +120,8 @@ async function handleCheckout(request, env, url) {
     feeName: 'Covering card processing',
     description: TAX_ACKNOWLEDGMENT,
     successUrl: `${url.origin}/thanks?p=${priority.id}&amt=${amount}&sid={CHECKOUT_SESSION_ID}`,
-    cancelUrl: `${url.origin}/donate?p=${priority.id}`,
+    // Backing out of Stripe returns to the wizard with the link intact.
+    cancelUrl: `${url.origin}/donate?p=${priority.id}${viaLink ? `&link=${encodeURIComponent(body.link)}` : ''}`,
     metadata: {
       priority: priority.id,
       students: studentsJson,
@@ -277,7 +279,12 @@ async function handleWebhook(request, env) {
   if (event.type === 'checkout.session.completed' ||
       event.type === 'checkout.session.async_payment_succeeded') {
     const session = event.data.object;
-    if (session.payment_status === 'paid') {
+    // Only sessions this worker created carry our metadata; anything
+    // else on the account (a Payment Link, a Dashboard sale) is not
+    // a Rally gift.
+    const meta = session.metadata || {};
+    const ours = !!meta.priority || meta.kind === 'partner';
+    if (ours && session.payment_status === 'paid') {
       await recordDonation(env.DB, session, event.created);
     }
   }

@@ -2,6 +2,9 @@
 # Early Hints lets the browser fetch the stylesheet during server think-time.
 /*
   Link: </css/styles.css>; rel=preload; as=style
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
 
 # Fonts are content-stable; let repeat visits skip the network entirely.
 /fonts/*

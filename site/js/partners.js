@@ -4,7 +4,6 @@
 
 (() => {
   let chosen = null;
-  let coverFees = true; // opt-out; the server recomputes the amount
   const form = RH.qs('#partner-form');
   const errorEl = RH.qs('#partner-error');
 
@@ -53,6 +52,9 @@
     btn.innerHTML = 'Opening secure checkout…';
     errorEl.hidden = true;
     try {
+      // The fee-cover box is read live: browsers restore a reload's
+      // checkbox state without firing 'change'. The server recomputes.
+      const coverFees = RH.qs('#partner-cover-fees').checked;
       const { ok, data } = await RH.postJson('/api/partner/checkout', { tier: chosen.id, business, coverFees });
       if (ok && data.url) {
         location.href = data.url;
@@ -68,8 +70,12 @@
   });
   RH.qs('#biz-name').addEventListener('input', () =>
     RH.qs('#biz-field').classList.remove('invalid'));
-  RH.qs('#partner-cover-fees').addEventListener('change', (e) => {
-    coverFees = e.target.checked;
+  /* Browser Back from Stripe can restore this page from the bfcache
+     exactly as it was left — with the button disabled mid-handoff. */
+  const submitBtn = form.querySelector('button[type="submit"]');
+  const submitLabel = submitBtn.innerHTML;
+  window.addEventListener('pageshow', (e) => {
+    if (e.persisted) { submitBtn.disabled = false; submitBtn.innerHTML = submitLabel; }
   });
 
   /* ---- the wall: curated roster immediately (no pop-in for the

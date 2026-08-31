@@ -43,7 +43,7 @@ const boardView = (live) => {
         <span class="rank">${i + 1}</span>
         <span class="room">${c.teacher}<span class="grade">${gradeLabel(c.grade)}</span></span>
         <span class="trail-holder trail">${RH.trailSVG(c.pct)}</span>
-        <span class="pct">${Math.round(c.pct * 100)}%<span class="families">${c.gifts} of ${c.students} students</span></span>
+        <span class="pct">${Math.round(c.pct * 100)}%<span class="families">${c.gifts} gift${c.gifts === 1 ? '' : 's'} &middot; class of ${c.students}</span></span>
       </li>`).join('');
 
   /* ---- honor roll (named gifts newest first; anonymous gifts are

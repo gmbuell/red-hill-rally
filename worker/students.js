@@ -23,11 +23,11 @@ export function normalizeStudents(raw, { nameRequired = false } = {}) {
     if (!c) return { error: 'Please pick a classroom for each Rocket.' };
     if (!n && nameRequired) return { error: 'Please give each Rocket a name.' };
     if (n.length > MAX_NAME) return { error: `Please use a shorter name (${MAX_NAME} characters max).` };
-    const key = n ? `${c}|${n.toLowerCase()}` : '';
-    if (key) {
-      if (seen.has(key)) continue;
-      seen.add(key);
-    }
+    // One credit per classroom per Rocket: a name listed twice, or a
+    // classroom repeated with no name, counts once.
+    const key = `${c}|${n.toLowerCase()}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
     students.push({ c, n });
   }
   if (students.length > MAX_STUDENTS) {

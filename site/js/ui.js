@@ -226,28 +226,25 @@ const RH = (() => {
 
   /* The public partner list: the curated PARTNERS roster from data.js
      merged with online partnerships (the board payload's `partners`).
-     A paid online row is the fresher record, so on a name match it
-     wins the tier — keeping the curated logo until an upload replaces
-     it. `src` is the logo URL, or '' for name-only recognition (the
-     'friend' tier, or no logo at all). */
+     Names match loosely (case, punctuation, "&" vs "and"), and a
+     business seen more than once keeps its highest tier and the last
+     logo it uploaded — an upgrade or re-purchase can raise a listing,
+     never demote it. `src` is the logo URL, or '' for name-only
+     recognition (the 'friend' tier, or no logo at all). */
   const mergedPartners = (online) => {
-    const key = (name) => name.trim().toLowerCase();
-    const entry = (name, tier, src) => ({ name, tier: tier || '', src: tier === 'friend' ? '' : src });
-    const live = (online || []).filter((p) => p && p.name);
-    const liveKeys = new Set(live.map((p) => key(p.name)));
-    const merged = PARTNERS
-      .filter((p) => !liveKeys.has(key(p.name)))
-      .map((p) => entry(p.name, p.tier, p.logo ? `/img/partners/${p.logo}` : ''));
-    const seen = new Set(merged.map((p) => key(p.name)));
-    for (const p of live) {
-      if (seen.has(key(p.name))) continue;
-      seen.add(key(p.name));
-      const curated = PARTNERS.find((c) => key(c.name) === key(p.name));
-      const src = p.logo ? `/logo/${p.logo}`
-        : (curated && curated.logo ? `/img/partners/${curated.logo}` : '');
-      merged.push(entry(p.name, p.tier, src));
+    const key = (name) => name.toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]/g, '');
+    const rank = (tier) => PARTNER_TIERS.findIndex((t) => t.id === tier);
+    const byKey = new Map();
+    for (const p of PARTNERS) {
+      byKey.set(key(p.name), { name: p.name, tier: p.tier || '', src: p.logo ? `/img/partners/${p.logo}` : '' });
     }
-    return merged;
+    for (const p of (online || []).filter((o) => o && o.name)) {
+      const cur = byKey.get(key(p.name)) || { name: p.name, tier: '', src: '' };
+      if (rank(p.tier) > rank(cur.tier)) cur.tier = p.tier;
+      if (p.logo) cur.src = `/logo/${p.logo}`;
+      byKey.set(key(p.name), cur);
+    }
+    return [...byKey.values()].map((p) => ({ ...p, src: p.tier === 'friend' ? '' : p.src }));
   };
 
   /* Display split shared by the /partners wall and the board strip:

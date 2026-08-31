@@ -29,7 +29,9 @@
      Stripe session (the sid Stripe fills into the success URL). */
   const sid = RH.param('sid') || '';
   const logoPanel = RH.qs('#logo-panel');
-  if (partnerTier && /^cs_[A-Za-z0-9_]+$/.test(sid) && logoPanel) {
+  // Logo placement starts at Rally Supporter; a Friend isn't shown an
+  // uploader whose promise the site can't keep.
+  if (partnerTier && partnerTier.id !== 'friend' && /^cs_[A-Za-z0-9_]+$/.test(sid) && logoPanel) {
     logoPanel.hidden = false;
     const status = RH.qs('#logo-status');
     const say = (msg) => { status.textContent = msg; status.hidden = false; };
@@ -67,6 +69,9 @@
           original = file; // the print-quality original rides along
         } catch (err) { /* conversion failed: the PTA converts by hand */ }
       }
+      // The print original rides along only under the 15 MB upload cap.
+      const bigOriginal = !!original && original.size > 15 * 1024 * 1024;
+      if (bigOriginal) original = null;
       say('Uploading…');
       const fd = new FormData();
       fd.append('logo', logoFile);
@@ -79,7 +84,9 @@
           const data = await res.json().catch(() => ({}));
           if (res.ok) {
             logoPanel.innerHTML = data.published
-              ? '<h2>Logo received — you’re on the wall!</h2><p style="margin:0;">Your logo is live on the <a href="/partners">Business Partners page</a> and the Rally Board.</p>'
+              ? `<h2>Logo received — you’re on the wall!</h2><p style="margin:0;">Your logo is live on the <a href="/partners">Business Partners page</a> and the Rally Board.${bigOriginal
+                ? ' Your print-quality PDF was over 15 MB, so only the converted image was kept — please email the PDF to <a href="mailto:fundraising@redhillpta.org">fundraising@redhillpta.org</a>.'
+                : ''}</p>`
               : (data.reason === 'tier'
                 ? '<h2>Logo received — thank you!</h2><p style="margin:0;">Rally Friend includes name recognition on the site; logo placement starts at Rally Supporter ($500). We’ve kept your file in case you upgrade — <a href="mailto:fundraising@redhillpta.org">fundraising@redhillpta.org</a>.</p>'
                 : '<h2>Logo received — thank you!</h2><p style="margin:0;">PDFs get a quick convert by the PTA, then your logo joins the <a href="/partners">Business Partners page</a>.</p>');
@@ -93,7 +100,7 @@
         } catch (err) { /* network hiccup: fall through to retry */ }
         if (attempt < 3) await new Promise((r) => setTimeout(r, 2500));
       }
-      say('We couldn’t confirm the payment yet — wait a moment and try again.');
+      say('We couldn’t confirm the payment yet. If it’s still processing (bank payments can take a few days), bookmark this page and come back once it clears — the upload works any time.');
       btn.disabled = false;
     });
   }

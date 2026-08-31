@@ -238,6 +238,8 @@ describe('checkout', () => {
     expect(JSON.parse(sent.get('metadata[students]')))
       .toEqual([{ c: 'zweber', n: 'Leo Park' }, { c: 'michel', n: 'Ana Park' }]);
     expect(sent.get('metadata[via_link]')).toBe('1');
+    // Backing out of Stripe must land on the wizard with the link intact.
+    expect(sent.get('cancel_url')).toBe(`https://rally.test/donate?p=stem&link=${code}`);
   });
 
   it('carries every Rocket, and drops untouched rows', async () => {
@@ -388,9 +390,32 @@ describe('webhook and campaign stats', () => {
     expect(csv).toContain('Ava T — Mrs. Harrison');
   });
 
+  it('stops counting a classroom credit once its gift row is deleted', async () => {
+    // The go-live wipe and a refund both delete from `donations` by
+    // hand; the race must not keep counting the orphaned credits.
+    await deliverWebhook(sessionEvent({ id: 'cs_gone' }));
+    await env.DB.prepare("DELETE FROM donations WHERE id = 'cs_gone'").run();
+    const board = await (await SELF.fetch('https://rally.test/api/board')).json();
+    expect(board.classrooms).toEqual({});
+    expect(board.campaign.gifts).toBe(0);
+  });
+
+  it('ignores paid sessions this site did not create', async () => {
+    // A Payment Link for spirit wear on the same Stripe account fires
+    // the same webhook, with none of the wizard's metadata.
+    await deliverWebhook(sessionEvent({
+      id: 'cs_spiritwear',
+      metadata: { priority: '', students: '', donor_name: '', visibility: '', employer_match: '', via_link: '' },
+    }));
+    const stats = await (await SELF.fetch('https://rally.test/api/campaign')).json();
+    expect(stats.campaign).toEqual({ raised: 0, goal: 205000, gifts: 0 });
+  });
+
   it('rejects bad signatures and stale timestamps', async () => {
     const payload = sessionEvent();
     expect((await deliverWebhook(payload, 't=1,v1=deadbeef')).status).toBe(400);
+    // A signature part with no '=' is malformed, not a server error.
+    expect((await deliverWebhook(payload, `t=${Math.floor(Date.now() / 1000)},v1`)).status).toBe(400);
     const stale = await signPayload(payload, 'whsec_test_secret', Math.floor(Date.now() / 1000) - 3600);
     expect((await deliverWebhook(payload, stale)).status).toBe(400);
     const wrongKey = await signPayload(payload, 'whsec_wrong');

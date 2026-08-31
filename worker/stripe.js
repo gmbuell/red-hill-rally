@@ -70,7 +70,7 @@ export async function verifyWebhook(payload, sigHeader, secret) {
   for (const part of sigHeader.split(',')) {
     const [key, value] = part.split('=', 2);
     if (key.trim() === 't') timestamp = value;
-    if (key.trim() === 'v1') candidates.push(value);
+    if (key.trim() === 'v1' && value !== undefined) candidates.push(value);
   }
   if (!timestamp || !candidates.length) return false;
   if (Math.abs(nowSec - Number(timestamp)) > 300) return false; // replay window

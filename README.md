@@ -39,7 +39,11 @@ it replaces whatever is in the donations and links tables.
 npm run deploy
 ```
 
-That ships the worker and every file under `site/` in one go.
+That ships the worker and every file under `site/` in one go. The
+`predeploy` step first checks the baked board skeleton and applies any
+pending D1 migrations to the remote database (`wrangler d1 migrations
+apply red-hill-rally --remote`), so schema and code always ship
+together.
 
 ## Before the campaign goes out to families
 
@@ -67,14 +71,15 @@ charges real money. To flip to live:
    doubles as the written acknowledgment donors need to deduct gifts
    of $250+.
 4. **Clear test data** (last, so nothing sneaks in between) —
-   `npx wrangler d1 execute red-hill-rally --remote --command "DELETE FROM donations; DELETE FROM links"`
-   (demo donations and any test student links).
+   `npx wrangler d1 execute red-hill-rally --remote --command "DELETE FROM donation_students; DELETE FROM donations; DELETE FROM links"`
+   (demo donations, their classroom credits, and any test student
+   links).
 5. **Prove it live** — make one small real donation with a real card:
    confirm the tally moves on the Rally Board, the email receipt
    arrives with the acknowledgment line, and the gift appears in the
-   CSV export. Refund it from the Stripe dashboard if you like (the
-   refund won't remove the D1 row — delete it by session id, or just
-   let your own gift open the campaign).
+   CSV export. Refund it from the Stripe dashboard if you like (see
+   **Refunds** below for removing the row — or just let your own gift
+   open the campaign).
 
 ## PTA operations
 
@@ -111,9 +116,17 @@ charges real money. To flip to live:
   `npx wrangler d1 execute red-hill-rally --remote --command "UPDATE donations SET logo_id = '' WHERE donor_name = '<business>'"`
   — the wall, the board strip, and the direct /logo URL all stop
   within ~5 minutes (image cache); delete the R2 object in the
-  dashboard too if the file itself should go. (One-time
-  setup, already done: `npx wrangler r2 bucket create
-  red-hill-rally-logos`.)
+  dashboard too if the file itself should go. Clearing `logo_id` is
+  not permanent — the partner's thank-you link can upload again — so
+  to pull a logo for good, refund the partnership in Stripe and delete
+  its row (see **Refunds**). (One-time setup, already done:
+  `npx wrangler r2 bucket create red-hill-rally-logos`.)
+- **Refunds** — a refund in Stripe does not touch the site's tallies.
+  After refunding, delete the gift's row by its Stripe session id (the
+  `id` column in the export):
+  `npx wrangler d1 execute red-hill-rally --remote --command "DELETE FROM donations WHERE id = 'cs_…'"`
+  — the totals, honor roll, and any classroom credits drop off with
+  it.
 - **Ad-hoc questions** — the donations live in D1 (`donations`, one row
   per gift; `donation_students`, one row per Rocket credited — a family
   gift lists several):

@@ -40,7 +40,8 @@ for (const [name, content] of Object.entries(sections)) {
     console.error(`board-skeleton: markers ${open}…${close} missing from ${htmlPath}`);
     process.exit(1);
   }
-  updated = updated.replace(re, `${open}${content}${close}`);
+  // A function replacer: a '$' in the baked content stays literal.
+  updated = updated.replace(re, () => `${open}${content}${close}`);
 }
 
 if (process.argv.includes('--write')) {

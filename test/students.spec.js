@@ -16,13 +16,16 @@ describe('normalizeStudents', () => {
     expect(normalizeStudents('nope').error).toBeTruthy();
   });
 
-  it('collapses a named student listed twice, but never nameless rows', () => {
+  it('collapses a student listed twice — by name, or nameless in one class', () => {
+    // One gift adds at most one credit per classroom per Rocket; a
+    // classroom repeated without names counts once (two nameless
+    // twins can be told apart by typing their names).
     const { students } = normalizeStudents([
       { c: 'convery', n: 'Mia' }, { c: 'convery', n: 'mia' },
-      { c: 'zweber', n: '' }, { c: 'zweber', n: '' },
+      { c: 'zweber', n: '' }, { c: 'zweber', n: '' }, { c: 'harrison', n: '' },
     ]);
     expect(students).toEqual([
-      { c: 'convery', n: 'Mia' }, { c: 'zweber', n: '' }, { c: 'zweber', n: '' },
+      { c: 'convery', n: 'Mia' }, { c: 'zweber', n: '' }, { c: 'harrison', n: '' },
     ]);
   });
 

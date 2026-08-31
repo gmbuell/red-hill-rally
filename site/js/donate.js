@@ -11,7 +11,6 @@
     step: 1,
     priority: RH.priorityById(RH.param('p')) || null,
     amount: 0,
-    coverFees: true, // opt-out; the server recomputes the amount
     students: [{ c: '', n: '' }], // step 3 rows: classroom id + optional name
     link: null, // verified {code, students: [{c, n}]}
   };
@@ -136,7 +135,7 @@
       s += rooms ? `. Credited to <strong>${rooms}</strong>.` : '.';
     }
     // Full price disclosure before Stripe: the fee cover and the total.
-    if (state.coverFees) {
+    if (coverFees()) {
       const gift = Math.round(state.amount) * 100;
       s += ` You&rsquo;re adding <strong>${RH.moneyCents(feeCents())}</strong> to cover card processing &mdash; <strong>${RH.moneyCents(gift + feeCents())}</strong> total.`;
     }
@@ -180,6 +179,8 @@
       const custom = Number(RH.qs('#custom-amount').value);
       if (!state.amount && custom > 0) state.amount = custom;
       state.amount = Math.round(state.amount);
+      // Show the whole-dollar figure that will actually be charged.
+      if (custom > 0 && state.amount > 0) RH.qs('#custom-amount').value = state.amount;
       const overMax = state.amount > MAX_AMOUNT;
       RH.qs('#custom-field .error').textContent = overMax
         ? `Online gifts max out at $${MAX_AMOUNT.toLocaleString('en-US')}.`
@@ -205,6 +206,10 @@
     return true;
   };
 
+  /* The fee-cover box is read live, never cached: browsers restore a
+     reload's checkbox state without firing 'change'. */
+  const coverFees = () => RH.qs('#cover-fees').checked;
+
   const showError = (message) => {
     errorEl.textContent = message;
     errorEl.hidden = false;
@@ -226,11 +231,18 @@
         visibility: visibility(),
         donorName: RH.qs('#donor-name').value.trim(),
         match: RH.qs('#match').checked,
-        coverFees: state.coverFees,
+        coverFees: coverFees(),
       });
       if (ok && data.url) {
         location.href = data.url;
         return;
+      }
+      if (data.reason === 'link' && state.link) {
+        // The link died mid-session: drop it so Back shows the rows.
+        state.link = null;
+        const banner = RH.qs('.link-banner');
+        if (banner) banner.remove();
+        renderSummary();
       }
       showError(data.error || 'We couldn’t start checkout — please try again.');
     } catch (err) {
@@ -257,6 +269,12 @@
     }
   });
 
+  /* Browser Back from Stripe can restore this page from the bfcache
+     exactly as it was left — with the button disabled mid-handoff. */
+  window.addEventListener('pageshow', (e) => {
+    if (e.persisted) { nextBtn.disabled = false; showStep(); }
+  });
+
   /* ---- event wiring ---- */
   form.addEventListener('change', (e) => {
     if (e.target.name === 'priority') {
@@ -266,9 +284,6 @@
     }
     if (e.target.name === 'visibility') {
       RH.qs('#donor-name-field').hidden = e.target.value !== 'public';
-    }
-    if (e.target.id === 'cover-fees') {
-      state.coverFees = e.target.checked;
     }
   });
 
@@ -329,8 +344,12 @@
      so step 1 paints without waiting on the round trip. */
   const code = RH.param('link');
   if (code) {
+    // A dead or unreachable link must say so — the donor arrived
+    // expecting a student to be credited.
+    const linkFailed = () => RH.qs('.flow-header').insertAdjacentHTML('beforeend',
+      '<p class="link-banner warn">That student link didn’t work &mdash; you can still choose a classroom on step 3.</p>');
     RH.postJson('/api/link/verify', { code }).then(({ ok, data }) => {
-      if (!ok || !Array.isArray(data.students) || !data.students.length) return;
+      if (!ok || !Array.isArray(data.students) || !data.students.length) { linkFailed(); return; }
       state.link = { code, students: data.students };
       const names = RH.nameList(state.link.students.map((st) => RH.esc(st.n)));
       const rooms = classLabel(state.link.students.map((st) => st.c));
@@ -338,6 +357,6 @@
         `<p class="link-banner">Supporting <strong>${names}</strong>${rooms ? ` &middot; ${rooms}` : ''}</p>`);
       if (state.step === 3) renderDedication();
       if (state.step === 4) renderSummary(); // a slow verify can land after the donor advanced
-    }).catch(() => { /* invalid or unreachable: continue without a link */ });
+    }).catch(linkFailed);
   }
 })();

@@ -74,6 +74,9 @@
     });
     if (!valid) return;
     const list = students.map((st) => ({ n: st.n.trim(), c: st.c }));
+    // One request at a time: a double-tap must not race two results.
+    const submitBtn = form.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
 
     let code = '';
     let serverError = '';
@@ -82,6 +85,7 @@
       if (ok && data.code) code = data.code;
       else serverError = data.error || '';
     } catch (err) { /* handled below */ }
+    submitBtn.disabled = false;
     if (!code) {
       errorEl.textContent = serverError || 'We couldn’t create the link just now — please try again.';
       errorEl.hidden = false;
@@ -114,11 +118,12 @@
     result.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 
     const copyBtn = RH.qs('#copy-btn');
+    copyBtn.hidden = !navigator.clipboard; // plain http, some in-app browsers
     copyBtn.onclick = () => {
       navigator.clipboard.writeText(link).then(() => {
         copyBtn.textContent = 'Copied!';
         setTimeout(() => { copyBtn.textContent = 'Copy link'; }, 1600);
-      });
+      }).catch(() => { copyBtn.textContent = 'Select the link above to copy'; });
     };
 
     const shareBtn = RH.qs('#share-btn');
