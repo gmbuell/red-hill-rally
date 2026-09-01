@@ -119,3 +119,13 @@ trail, 13px minimum labels, no horizontal scroll at 390px.
 - Still promised in the UI and owed by operations: email receipts
   (enable in Stripe), the Spring Impact Report, and employer-matching
   follow-up (flagged per gift in `/api/export.csv`).
+
+## Partner logo pipeline
+
+A partner's PDF logo is converted to an image in the partner's own
+browser on the thank-you page (vendored pdf.js renders page 1 to a
+canvas), so vector logos come out crisp with no server-side image
+stack. The web image auto-publishes; the print-quality PDF original
+is stored alongside in R2 for the shirt and banner printers. A PDF
+the browser can't convert (or a no-JS upload) is stored and held for
+the PTA. Ops procedures: README, **Partner logos**.

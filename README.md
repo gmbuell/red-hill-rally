@@ -22,9 +22,8 @@ Where things live:
 - **Page copy** — the HTML pages in `site/` (`index.html`,
   `donate.html`, `matching.html`, …).
 - **Goals, priorities, tier amounts, classroom roster, partner list** —
-  `site/js/data.js`. After roster or partner edits, run
-  `node scripts/board-skeleton.js --write` (see below); tests fail if
-  the baked board markup drifts.
+  `site/js/data.js`. After roster or partner edits, run the
+  board-skeleton step (see **Develop**).
 - **Styles** — `site/css/styles.css`, following the brand guide in
   `docs/brand-guide.html`.
 
@@ -36,12 +35,15 @@ maintainer, who reviews and ships merged PRs.
 
 ```sh
 npm install
+npx wrangler d1 migrations apply red-hill-rally --local  # once: local DB schema
 npm run dev      # wrangler dev on http://localhost:8787
 npm test         # vitest (workers pool) — API, webhook, privacy tests
 npm run audit    # Lighthouse: every page, mobile + desktop
 ```
 
-Local secrets live in `.dev.vars` (gitignored).
+Local secrets live in `.dev.vars` (gitignored). Without Stripe keys,
+checkout answers with its friendly "giving opens soon" message —
+that's expected; everything else works.
 
 **Rally Board skeleton** — rally-board.html ships with the board's
 zero-state markup baked in (no layout shift on first paint; a real
@@ -51,9 +53,9 @@ board for no-JS visitors). After editing the classroom roster in
 and `npm run deploy` fail if it drifts.
 
 **Demo data** — `seed/demo-donations.sql` fills the board with
-prototype-style numbers on the real roster ($127,450 raised, 311
-gifts, full honor roll). Apply/remove commands are in the file header;
-it replaces whatever is in the donations and links tables.
+prototype-scale numbers on the real roster. Apply/remove commands
+are in the file header; it replaces whatever is in the donations and
+links tables.
 
 ## Deploy
 
@@ -87,11 +89,9 @@ charges real money. To flip to live:
    receives sandbox events, and the worker holds one webhook secret at
    a time.)
 3. **Receipts** — turn on email receipts in Stripe settings (live
-   mode); the site promises one. Every receipt already carries the
-   IRS-required donation acknowledgment ("No goods or services were
-   provided…") via the charge description, so each emailed receipt
-   doubles as the written acknowledgment donors need to deduct gifts
-   of $250+.
+   mode); the site promises one, and each receipt's charge
+   description already carries the IRS acknowledgment donors need to
+   deduct gifts of $250+.
 4. **Clear test data** (last, so nothing sneaks in between) —
    `npx wrangler d1 execute red-hill-rally --remote --command "DELETE FROM donation_students; DELETE FROM donations; DELETE FROM links"`
    (demo donations, their classroom credits, and any test student
@@ -119,30 +119,28 @@ charges real money. To flip to live:
   Stripe's checkout page — useful for thank-you notes and future
   outreach. This is the only place student names, emails, and
   addresses ever leave the backend; don't share the key.
-- **Update goals/copy/tiers** — edit `site/js/data.js`; if the
-  classroom roster changed, run `node scripts/board-skeleton.js
-  --write`; redeploy.
-- **Partner logos** — businesses upload their logo on the thank-you
-  page right after paying. Uploads **auto-publish** to /partners and
-  the Rally Board strip; a PDF is converted to PNG in the partner's
-  own browser (vendored pdf.js) and publishes like any image, with the
-  original PDF stored alongside as `…-original` for print. A PDF that
-  fails to convert (or a curl/no-JS upload) is stored and held. Files
-  live in the `red-hill-rally-logos` R2 bucket as
-  `partner-logos/<opaque id>`, with the business name and session id
-  in the object metadata (dashboard → R2). To publish a held PDF or
-  an offline partner: web-sized image into `site/img/partners/`, a
-  `PARTNERS` entry in `site/js/data.js`, then
-  `node scripts/board-skeleton.js --write`. **To pull a published
-  logo** (wrong file, inappropriate content):
-  `npx wrangler d1 execute red-hill-rally --remote --command "UPDATE donations SET logo_id = '' WHERE donor_name = '<business>'"`
-  — the wall, the board strip, and the direct /logo URL all stop
-  within ~5 minutes (image cache); delete the R2 object in the
-  dashboard too if the file itself should go. Clearing `logo_id` is
-  not permanent — the partner's thank-you link can upload again — so
-  to pull a logo for good, refund the partnership in Stripe and delete
-  its row (see **Refunds**). (One-time setup, already done:
-  `npx wrangler r2 bucket create red-hill-rally-logos`.)
+- **Update goals/copy/tiers** — edit `site/js/data.js`; after roster
+  or partner edits run the board-skeleton step (see **Develop**);
+  redeploy.
+- **Partner logos** — businesses upload a logo on the thank-you page
+  right after paying; images **auto-publish** to /partners and the
+  Rally Board (a PDF converts in the partner's browser, print original
+  stored alongside — see `docs/design-decisions.md`). A PDF that fails
+  to convert (or a curl/no-JS upload) is stored and held. Files live
+  in the `red-hill-rally-logos` R2 bucket as
+  `partner-logos/<opaque id>`, business name and session id in the
+  object metadata (dashboard → R2).
+  - *Publish a held PDF or an offline partner*: web-sized image into
+    `site/img/partners/`, a `PARTNERS` entry in `site/js/data.js`,
+    board-skeleton step, redeploy.
+  - *Pull a published logo* (wrong file, inappropriate content):
+    `npx wrangler d1 execute red-hill-rally --remote --command "UPDATE donations SET logo_id = '' WHERE donor_name = '<business>'"`
+    — the wall, the board strip, and the direct /logo URL all stop
+    within ~5 minutes (image cache); delete the R2 object in the
+    dashboard too if the file itself should go. The partner's
+    thank-you link can upload again, so to pull a logo for good,
+    refund the partnership in Stripe and delete its row (see
+    **Refunds**).
 - **Refunds** — a refund in Stripe does not touch the site's tallies.
   After refunding, delete the gift's row by its Stripe session id (the
   `id` column in the export):
