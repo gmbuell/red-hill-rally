@@ -5,7 +5,7 @@
   "compatibility_date": "2026-08-15",
   "compatibility_flags": ["nodejs_compat"],
 
-  // The finished design prototype is served as-is — no build step.
+  // The static site is served as-is — no build step.
   "assets": {
     "directory": "./site",
     "binding": "ASSETS",
@@ -17,8 +17,6 @@
     "run_worker_first": ["/l/*", "/api/*", "/logo/*"]
   },
 
-  // Donation records: one row per Stripe checkout session (id = session
-  // id, so webhook retries are idempotent), aggregated with SQL.
   "r2_buckets": [
     // Partner logo uploads from the thank-you page (POST /api/partner/logo).
     { "binding": "LOGOS", "bucket_name": "red-hill-rally-logos" }

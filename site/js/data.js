@@ -139,9 +139,8 @@ const CLASSROOMS = [
   { id: 'smith', teacher: 'Mrs. Smith', grade: 'SDC', students: 11 },
 ];
 
-/* Business partnership ladder (September–October). Each tier includes
-   every benefit of the tiers above it in this list — mirror the
-   one-pager when editing. `logo` is whether the tier earns a logo on
+/* Business partnership ladder. Each tier includes every benefit of
+   the tiers above it in this list. `logo` is whether the tier earns a logo on
    the site (the wall, the board, the thank-you uploader) — a tier
    without it is listed by name. */
 const PARTNER_TIERS = [
@@ -166,14 +165,13 @@ const PARTNER_TIERS = [
 
 /* Businesses backing this year's Rally, shown on /partners and the
    Rally Board. `tier` is a PARTNER_TIERS id — fill it in as each gift
-   arrives — these six came in before tiers were tracked and sit at
-   'supporter', the lowest logo tier, until confirmed (null shows a
-   logo without a tier label; 'friend' lists
-   the name instead of a logo, per the ladder). Web logos live in
-   site/img/partners/; print-quality originals stay out of the repo
-   (assets/partner-logos/, gitignored).
-   The board bakes this list — run `node scripts/board-skeleton.js
-   --write` after editing. */
+   arrives (null shows a logo without a tier label; 'friend' lists the
+   name instead of a logo, per the ladder). TODO: confirm tiers with
+   the PTA — these six were listed before tiers were tracked and
+   default to 'supporter'. Web logos live in site/img/partners/;
+   print-quality originals stay out of the repo (assets/partner-logos/,
+   gitignored). The board bakes this list — run
+   `node scripts/board-skeleton.js --write` after editing. */
 const PARTNERS = [
   { name: 'Black Gold Pump & Supply', logo: 'black-gold-pump-supply.webp', tier: 'supporter' },
   { name: 'Earthco Landscape Services', logo: 'earthco-landscape.webp', tier: 'supporter' },

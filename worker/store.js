@@ -70,10 +70,10 @@ export async function recordDonation(db, session, createdSec) {
 }
 
 /* Dollars count everything; the gift tally counts families only, so a
-   business partnership doesn't inflate "family gifts so far". Accepted
-   quirk (decided 2026-08-30): partner dollars carry no priority, so
-   the home hero can read higher than the sum of its priority cards —
-   the hero shows everything the Rally brings in. */
+   business partnership doesn't inflate "family gifts so far". Partner
+   dollars carry no priority, so the home hero can read higher than
+   the sum of the priority cards — the hero shows everything the Rally
+   brings in. */
 const totalsStmt = (db) =>
   db.prepare(`SELECT COALESCE(SUM(amount_cents), 0) AS cents,
     COALESCE(SUM(CASE WHEN partner_tier = '' THEN 1 ELSE 0 END), 0) AS gifts FROM donations`);

@@ -1,5 +1,7 @@
-/* Rocket Rally API. Static pages are served from ./site by the assets
-   binding; only /api/* reaches this worker. */
+/* The Rocket Rally worker: /api/*, /l/<code> short links, /logo/<id>
+   serving, and the branded 404 for unmatched paths. Static pages are
+   served from ./site by the assets binding (see run_worker_first in
+   wrangler.jsonc). */
 
 import { createLink, resolveLink } from './links.js';
 import { normalizeStudents } from './students.js';
@@ -63,9 +65,7 @@ async function handleLinkVerify(request, env) {
 /* The half of checkout both flows share: the Stripe key guard, the
    voluntary fee cover (computed here, never client-side — the webhook
    subtracts fee_cents back out so stats count the gift), the receipt
-   description, and the hand-off to Stripe's page. PTA decision:
-   partner receipts carry the same acknowledgment — logo placement and
-   posts are intangible recognition, not goods or services. */
+   description, and the hand-off to Stripe's page. */
 const startCheckout = async (env, { amountCents, coverFees, productName, successUrl, cancelUrl, metadata }) => {
   if (!env.STRIPE_SECRET_KEY) {
     return json({ error: 'Online giving isn’t quite open yet — please check back soon!' }, 503);
@@ -172,10 +172,7 @@ async function handlePartnerCheckout(request, env, url) {
 
 /* A partner's logo, uploaded from the thank-you page. The Stripe
    session id in the success URL is the capability: uploads are only
-   accepted for a session the webhook has recorded as a partnership.
-   Image uploads auto-publish (served at /logo/<opaque id> and merged
-   into the partner wall and board strip); PDFs are stored for the PTA
-   to convert. Clearing donations.logo_id un-publishes a logo. */
+   accepted for a session the webhook has recorded as a partnership. */
 const LOGO_MAX_BYTES = 15 * 1024 * 1024;
 
 /* The public address of a logo is a hash — never the session id
