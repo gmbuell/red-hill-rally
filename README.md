@@ -9,13 +9,11 @@ short student links, and live tallies in a D1 database.
 Design and architecture notes: `docs/design-decisions.md`. Brand
 system: `docs/brand-guide.html`.
 
-## Contributing (PTA members)
+## Contributing
 
-This repo is public so Rally changes don't all have to funnel through
-one person: if you spot a typo, a wrong number, a roster change, or a
-partner to add, open a pull request (or a GitHub issue describing the
-change, if you'd rather not edit files). This is the live site for one
-school, not a general-purpose template.
+Typos, wrong numbers, roster changes, partners to add: open a pull
+request, or a GitHub issue describing the change. This is the live
+site for one school, not a general-purpose template.
 
 Where things live:
 
@@ -34,11 +32,11 @@ maintainer, who reviews and ships merged PRs.
 ## Develop
 
 ```sh
-npm install
+npm install      # Node 22+
 npx wrangler d1 migrations apply red-hill-rally --local  # once: local DB schema
 npm run dev      # wrangler dev on http://localhost:8787
 npm test         # vitest (workers pool) — API, webhook, privacy tests
-npm run audit    # Lighthouse: every page, mobile + desktop
+npm run audit    # Lighthouse: every page, mobile + desktop (needs Chrome)
 ```
 
 Local secrets live in `.dev.vars` (gitignored). Without Stripe keys,
@@ -103,7 +101,7 @@ charges real money. To flip to live:
    **Refunds** below for removing the row — or just let your own gift
    open the campaign).
 
-## PTA operations
+## Operations
 
 - **Donation report** (who gave, which student/classroom to credit,
   employer-match follow-ups) — the key is `ADMIN_KEY` in `.dev.vars`:

@@ -27,7 +27,7 @@ the README for running, deploying, and operations.
 ## The student-name privacy model (load-bearing)
 
 - Student names are **never displayed anywhere on the site** — not on
-  the Rally Board, not in the honor roll. Names go only to the PTA so
+  the Rally Board, not in the honor roll. Names stay backend-only so
   gifts credit the right student and classroom.
 - The site never publishes student rosters and offers no student picker.
 - A donor may **hand-type** student names during donation, or arrive
@@ -44,7 +44,7 @@ the README for running, deploying, and operations.
 
 ## Leaderboard fairness
 
-The classroom race ranks by **participation** (gifts ÷ families), never
+The classroom race ranks by **participation** (gifts ÷ class size), never
 dollars — "a gift of any size moves your classroom's rocket exactly the
 same." Dollar totals appear only in campaign/priority aggregates.
 
@@ -104,7 +104,7 @@ trail, 13px minimum labels, no horizontal scroll at 390px.
 - The wizard does not ask for an email: Stripe's checkout page
   collects it (for the receipt) along with the donor's full billing
   address (required), and the webhook stores both with the donation —
-  PTA backend only, for receipts, employer-match follow-up, and future
+  backend only, for receipts, employer-match follow-up, and future
   outreach. One less form field on mobile, and donors can fix a typo'd
   email right where it matters.
 - Live tallies come from the Stripe webhook feeding a D1 database,
@@ -146,5 +146,5 @@ browser on the thank-you page (vendored pdf.js renders page 1 to a
 canvas), so vector logos come out crisp with no server-side image
 stack. The web image auto-publishes; the print-quality PDF original
 is stored alongside in R2 for the shirt and banner printers. A PDF
-the browser can't convert (or a no-JS upload) is stored and held for
-the PTA. Ops procedures: README, **Partner logos**.
+the browser can't convert (or a no-JS upload) is stored and held.
+Ops procedures: README, **Partner logos**.

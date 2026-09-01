@@ -1,6 +1,7 @@
 {
   "name": "red-hill-rally",
   "private": true,
+  "engines": { "node": ">=22" },
   "scripts": {
     "dev": "wrangler dev",
     "predeploy": "node scripts/board-skeleton.js --check && wrangler d1 migrations apply red-hill-rally --remote",
