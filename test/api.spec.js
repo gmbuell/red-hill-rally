@@ -3,6 +3,17 @@ import { afterEach, describe, it, expect, vi } from 'vitest';
 import worker from '../worker/index.js';
 import data from '../site/js/data.js';
 
+/* Fixture config derives from data.js, so the edits the README invites
+   (rename a tier, change a price, update the roster) don't break the
+   suite: any two priorities, any three classrooms, one logo tier and
+   one name-only tier will do — the tests pin mechanics, not this
+   year's values. Hand-computed fee-math oracles stay literal on
+   purpose, so the gross-up test isn't a tautology. */
+const [P_MAIN, P_ALT] = data.PRIORITIES;
+const [ROOM_A, ROOM_B, ROOM_C] = data.CLASSROOMS.map((c) => c.id);
+const LOGO_TIER = data.PARTNER_TIERS.find((t) => t.logo);
+const NAME_TIER = data.PARTNER_TIERS.find((t) => !t.logo);
+
 /* Checkout tests run the worker in this isolate so the outbound Stripe
    call can be stubbed at the fetch global. */
 const stubStripe = (reply = { id: 'cs_1', url: 'https://checkout.stripe.com/c/pay/cs_1' }) => {
@@ -36,10 +47,10 @@ const post = (path, body) => SELF.fetch(jsonRequest(path, body));
 const getJson = async (path) => (await SELF.fetch(`https://rally.test${path}`)).json();
 
 const validCheckout = {
-  priority: 'stem',
+  priority: P_MAIN.id,
   amount: 100,
   link: '',
-  students: [{ c: 'convery', n: 'Mia Rodriguez' }],
+  students: [{ c: ROOM_A, n: 'Mia Rodriguez' }],
   visibility: 'public',
   donorName: 'The Rodriguez Family',
   match: true,
@@ -74,8 +85,8 @@ const sessionEvent = (over = {}) => JSON.stringify({
         },
       },
       metadata: {
-        priority: 'stem',
-        students: JSON.stringify([{ c: 'convery', n: 'Mia Rodriguez' }]),
+        priority: P_MAIN.id,
+        students: JSON.stringify([{ c: ROOM_A, n: 'Mia Rodriguez' }]),
         donor_name: 'The Rodriguez Family',
         visibility: 'public',
         employer_match: '1',
@@ -88,10 +99,10 @@ const sessionEvent = (over = {}) => JSON.stringify({
 
 /* A paid Rally Champion partnership, as the webhook sees it. */
 const partnerSession = (over = {}) => sessionEvent({
-  id: 'cs_partner', amount_total: 75000,
+  id: 'cs_partner', amount_total: LOGO_TIER.amount * 100,
   ...over,
   metadata: {
-    kind: 'partner', partner_tier: 'champion', priority: '',
+    kind: 'partner', partner_tier: LOGO_TIER.id, priority: '',
     donor_name: 'Galaxy Automotive & Tire', students: '', fee_cents: '0',
     ...(over.metadata || {}),
   },
@@ -114,8 +125,8 @@ afterEach(async () => {
 /* ---- student links ---- */
 
 describe('student links', () => {
-  const mia = { n: 'Mia Rodríguez', c: 'convery' };
-  const leo = { n: 'Leo Park', c: 'zweber' };
+  const mia = { n: 'Mia Rodríguez', c: ROOM_A };
+  const leo = { n: 'Leo Park', c: ROOM_B };
 
   it('creates a short memorable code and resolves it', async () => {
     const created = await post('/api/link', { students: [mia] });
@@ -125,25 +136,25 @@ describe('student links', () => {
 
     const verified = await post('/api/link/verify', { code });
     expect(verified.status).toBe(200);
-    expect(await verified.json()).toEqual({ students: [{ c: 'convery', n: 'Mia Rodríguez' }] });
+    expect(await verified.json()).toEqual({ students: [{ c: ROOM_A, n: 'Mia Rodríguez' }] });
   });
 
   it('reuses the code for the same student and classroom', async () => {
     const { code } = await (await post('/api/link', { students: [leo] })).json();
-    const { code: again } = await (await post('/api/link', { students: [{ n: '  leo park ', c: 'zweber' }] })).json();
+    const { code: again } = await (await post('/api/link', { students: [{ n: '  leo park ', c: ROOM_B }] })).json();
     expect(again).toBe(code);
     // Same name in a different classroom is a different link.
-    const { code: other } = await (await post('/api/link', { students: [{ n: 'Leo Park', c: 'harrison' }] })).json();
+    const { code: other } = await (await post('/api/link', { students: [{ n: 'Leo Park', c: ROOM_C }] })).json();
     expect(other).not.toBe(code);
   });
 
   it('one link can name every sibling, in the order entered', async () => {
     const { code } = await (await post('/api/link', { students: [mia, leo] })).json();
     const verified = await (await post('/api/link/verify', { code })).json();
-    expect(verified.students).toEqual([{ c: 'convery', n: 'Mia Rodríguez' }, { c: 'zweber', n: 'Leo Park' }]);
+    expect(verified.students).toEqual([{ c: ROOM_A, n: 'Mia Rodríguez' }, { c: ROOM_B, n: 'Leo Park' }]);
     // The same kids, reversed and recased, is the same family.
     const { code: again } = await (await post('/api/link', {
-      students: [{ n: 'LEO PARK', c: 'zweber' }, { n: 'mia rodríguez', c: 'convery' }],
+      students: [{ n: 'LEO PARK', c: ROOM_B }, { n: 'mia rodríguez', c: ROOM_A }],
     })).json();
     expect(again).toBe(code);
     // A different set is a different link — the single-kid links too.
@@ -152,7 +163,7 @@ describe('student links', () => {
   });
 
   it('resolves hand-typed codes case-insensitively', async () => {
-    const { code } = await (await post('/api/link', { students: [{ n: 'Zoe F', c: 'hesseltine' }] })).json();
+    const { code } = await (await post('/api/link', { students: [{ n: 'Zoe F', c: ROOM_A }] })).json();
     const res = await post('/api/link/verify', { code: `  ${code.toUpperCase()} ` });
     expect(res.status).toBe(200);
   });
@@ -167,11 +178,11 @@ describe('student links', () => {
     const bad = async (body) => (await post('/api/link', body)).status;
     expect(await bad({})).toBe(400);
     expect(await bad({ students: [] })).toBe(400);
-    expect(await bad({ students: [{ n: '', c: 'convery' }] })).toBe(400);
-    expect(await bad({ students: [{ n: 'Mia', c: 'r99' }] })).toBe(400);
-    expect(await bad({ students: [{ n: 'x'.repeat(200), c: 'convery' }] })).toBe(400);
-    expect(await bad({ students: Array.from({ length: 5 }, (_, i) => ({ n: `Kid ${i}`, c: 'convery' })) })).toBe(400);
-    expect(await bad({ n: 'Mia', c: 'convery' })).toBe(400); // the pre-family shape
+    expect(await bad({ students: [{ n: '', c: ROOM_A }] })).toBe(400);
+    expect(await bad({ students: [{ n: 'Mia', c: 'not-a-room' }] })).toBe(400);
+    expect(await bad({ students: [{ n: 'x'.repeat(data.MAX_NAME + 1), c: ROOM_A }] })).toBe(400);
+    expect(await bad({ students: Array.from({ length: data.MAX_STUDENTS + 1 }, (_, i) => ({ n: `Kid ${i}`, c: ROOM_A })) })).toBe(400);
+    expect(await bad({ n: 'Mia', c: ROOM_A })).toBe(400); // the pre-family shape
   });
 
   it('heals a migration-backfilled signature for an accented name', async () => {
@@ -179,12 +190,12 @@ describe('student links', () => {
     // lower(): 'JOSÉ Rodríguez' became 'josÉ rodríguez'.
     await env.DB.prepare(`INSERT INTO links (code, students, signature, created)
       VALUES ('sunny-otter', ?1, ?2, 1787000000)`)
-      .bind(JSON.stringify([{ c: 'convery', n: 'JOSÉ Rodríguez' }]),
-        JSON.stringify([{ c: 'convery', n: 'josÉ rodríguez' }])).run();
-    const { code } = await (await post('/api/link', { students: [{ n: 'JOSÉ Rodríguez', c: 'convery' }] })).json();
+      .bind(JSON.stringify([{ c: ROOM_A, n: 'JOSÉ Rodríguez' }]),
+        JSON.stringify([{ c: ROOM_A, n: 'josÉ rodríguez' }])).run();
+    const { code } = await (await post('/api/link', { students: [{ n: 'JOSÉ Rodríguez', c: ROOM_A }] })).json();
     expect(code).toBe('sunny-otter');
     // Healed: the modern signature now finds it directly too.
-    const { code: again } = await (await post('/api/link', { students: [{ n: 'josé rodríguez', c: 'convery' }] })).json();
+    const { code: again } = await (await post('/api/link', { students: [{ n: 'josé rodríguez', c: ROOM_A }] })).json();
     expect(again).toBe('sunny-otter');
   });
 
@@ -209,7 +220,7 @@ describe('checkout', () => {
     const sent = new URLSearchParams(String(calls[0].body));
     expect(sent.get('mode')).toBe('payment');
     expect(sent.get('line_items[0][price_data][unit_amount]')).toBe('10000');
-    expect(JSON.parse(sent.get('metadata[students]'))).toEqual([{ c: 'convery', n: 'Mia Rodriguez' }]);
+    expect(JSON.parse(sent.get('metadata[students]'))).toEqual([{ c: ROOM_A, n: 'Mia Rodriguez' }]);
     expect(sent.has('metadata[classroom]')).toBe(false);
     expect(sent.has('metadata[student_name]')).toBe(false);
     expect(sent.get('metadata[visibility]')).toBe('public');
@@ -227,28 +238,28 @@ describe('checkout', () => {
 
   it('a family link credits every sibling and overrides hand-typed rows', async () => {
     const { code } = await (await post('/api/link', {
-      students: [{ n: 'Leo Park', c: 'zweber' }, { n: 'Ana Park', c: 'michel' }],
+      students: [{ n: 'Leo Park', c: ROOM_B }, { n: 'Ana Park', c: 'michel' }],
     })).json();
     const calls = stubStripe({ id: 'cs_2', url: 'https://checkout.stripe.com/c/pay/cs_2' });
     const res = await checkoutDirect({ ...validCheckout, link: code });
     expect(res.status).toBe(200);
     const sent = new URLSearchParams(String(calls[0].body));
     expect(JSON.parse(sent.get('metadata[students]')))
-      .toEqual([{ c: 'zweber', n: 'Leo Park' }, { c: 'michel', n: 'Ana Park' }]);
+      .toEqual([{ c: ROOM_B, n: 'Leo Park' }, { c: 'michel', n: 'Ana Park' }]);
     expect(sent.get('metadata[via_link]')).toBe('1');
     // Backing out of Stripe must land on the wizard with the link intact.
-    expect(sent.get('cancel_url')).toBe(`https://rally.test/donate?p=stem&link=${code}`);
+    expect(sent.get('cancel_url')).toBe(`https://rally.test/donate?p=${P_MAIN.id}&link=${code}`);
   });
 
   it('carries every Rocket, and drops untouched rows', async () => {
     const calls = stubStripe();
     const res = await checkoutDirect({ ...validCheckout, students: [
-      { c: 'convery', n: 'Mia Rodriguez' }, { c: '', n: '' }, { c: 'zweber', n: '' },
+      { c: ROOM_A, n: 'Mia Rodriguez' }, { c: '', n: '' }, { c: ROOM_B, n: '' },
     ] });
     expect(res.status).toBe(200);
     const sent = new URLSearchParams(String(calls[0].body));
     expect(JSON.parse(sent.get('metadata[students]')))
-      .toEqual([{ c: 'convery', n: 'Mia Rodriguez' }, { c: 'zweber', n: '' }]);
+      .toEqual([{ c: ROOM_A, n: 'Mia Rodriguez' }, { c: ROOM_B, n: '' }]);
     expect(sent.get('metadata[via_link]')).toBe('0');
   });
 
@@ -265,12 +276,12 @@ describe('checkout', () => {
     expect(await bad({ priority: 'nope' })).toBe(400);
     expect(await bad({ amount: 0 })).toBe(400);
     expect(await bad({ amount: 10.5 })).toBe(400);
-    expect(await bad({ amount: 999999 })).toBe(400);
+    expect(await bad({ amount: data.MAX_AMOUNT + 1 })).toBe(400);
     expect(await bad({ donorName: '' })).toBe(400);            // public needs a name
     expect(await bad({ link: 'nope-nope' })).toBe(400);           // no such link
     expect(await bad({ students: [{ c: '', n: 'Mia' }] })).toBe(400);     // name, no classroom
-    expect(await bad({ students: [{ c: 'r99', n: 'Mia' }] })).toBe(400);  // not on the roster
-    expect(await bad({ students: Array.from({ length: 5 }, (_, i) => ({ c: 'convery', n: `K${i}` })) })).toBe(400);
+    expect(await bad({ students: [{ c: 'not-a-room', n: 'Mia' }] })).toBe(400);  // not on the roster
+    expect(await bad({ students: Array.from({ length: data.MAX_STUDENTS + 1 }, (_, i) => ({ c: ROOM_A, n: `K${i}` })) })).toBe(400);
   });
 
   it('adds a fee-cover line item when the donor covers card costs', async () => {
@@ -326,8 +337,8 @@ describe('webhook and campaign stats', () => {
     expect(campaignRes.status).toBe(200);
     const campaignText = await campaignRes.text();
     const stats = JSON.parse(campaignText);
-    expect(stats.campaign).toEqual({ raised: 100, goal: 205000, gifts: 1 });
-    expect(stats.priorities.stem).toBe(100);
+    expect(stats.campaign).toEqual({ raised: 100, goal: data.CAMPAIGN.goal, gifts: 1 });
+    expect(stats.priorities[P_MAIN.id]).toBe(100);
     // The home payload carries no donor rows — those live on /api/board.
     expect(stats.donors).toBeUndefined();
     expect(stats.classrooms).toBeUndefined();
@@ -336,10 +347,10 @@ describe('webhook and campaign stats', () => {
     expect(boardRes.status).toBe(200);
     const boardText = await boardRes.text();
     const board = JSON.parse(boardText);
-    expect(board.campaign).toEqual({ raised: 100, goal: 205000, gifts: 1 });
-    expect(board.classrooms.convery).toBe(1);
+    expect(board.campaign).toEqual({ raised: 100, goal: data.CAMPAIGN.goal, gifts: 1 });
+    expect(board.classrooms[ROOM_A]).toBe(1);
     expect(board.donors).toEqual([{
-      name: 'The Rodriguez Family', priority: 'stem', anon: false, circle: false, partner: '',
+      name: 'The Rodriguez Family', priority: P_MAIN.id, anon: false, circle: false, partner: '',
     }]);
 
     // The privacy model: student names, emails, and billing contact
@@ -364,15 +375,15 @@ describe('webhook and campaign stats', () => {
     const family = sessionEvent({
       id: 'cs_family',
       metadata: { students: JSON.stringify([
-        { c: 'convery', n: 'Mia Okafor' },
-        { c: 'zweber', n: 'Leo Okafor' },
-        { c: 'zweber', n: 'Theo Okafor' },
+        { c: ROOM_A, n: 'Mia Okafor' },
+        { c: ROOM_B, n: 'Leo Okafor' },
+        { c: ROOM_B, n: 'Theo Okafor' },
       ]) },
     });
     await deliverWebhook(family);
     await deliverWebhook(family); // Stripe retry: no double credit
     const board = await getJson('/api/board');
-    expect(board.classrooms).toEqual({ convery: 1, zweber: 2 });
+    expect(board.classrooms).toEqual({ [ROOM_A]: 1, [ROOM_B]: 2 });
     expect(board.campaign.gifts).toBe(1); // one gift, three Rockets
     expect(JSON.stringify(board)).not.toContain('Okafor'); // student names stay backend-only
   });
@@ -395,7 +406,7 @@ describe('webhook and campaign stats', () => {
       metadata: { priority: '', students: '', donor_name: '', visibility: '', employer_match: '', via_link: '' },
     }));
     const stats = await getJson('/api/campaign');
-    expect(stats.campaign).toEqual({ raised: 0, goal: 205000, gifts: 0 });
+    expect(stats.campaign).toEqual({ raised: 0, goal: data.CAMPAIGN.goal, gifts: 0 });
   });
 
   it('rejects bad signatures and stale timestamps', async () => {
@@ -419,21 +430,21 @@ describe('webhook and campaign stats', () => {
     await deliverWebhook(sessionEvent({ amount_total: 10330, metadata: { fee_cents: '330' } }));
     const stats = await getJson('/api/campaign');
     expect(stats.campaign.raised).toBe(100);
-    expect(stats.priorities.stem).toBe(100);
+    expect(stats.priorities[P_MAIN.id]).toBe(100);
   });
 
   it('judges circle tiers on the base gift, not gift plus fee', async () => {
-    // $500.00 charged, but $15.24 of it is fee cover — the gift
-    // itself is $484.76, below the $500 circle tier.
+    // Charged exactly the circle minimum, but part of it is fee
+    // cover — the base gift lands just below the tier.
     await deliverWebhook(sessionEvent({
-      id: 'cs_fee_edge', amount_total: 50000,
-      metadata: { priority: 'people', fee_cents: '1524' },
+      id: 'cs_fee_edge', amount_total: P_ALT.circle.min * 100,
+      metadata: { priority: P_ALT.id, fee_cents: '1524' },
     }));
     const board = await getJson('/api/board');
     expect(board.donors[0].circle).toBe(false);
   });
 
-  it('badges the $500+ tier of every priority, not just the named circles', async () => {
+  it('badges the open-ended top tier of every priority, not just the named circles', async () => {
     for (const p of data.PRIORITIES) {
       const top = p.tiers[p.tiers.length - 1];
       expect(top.plus, p.id).toBe(true);
@@ -441,8 +452,8 @@ describe('webhook and campaign stats', () => {
       expect(p.circle?.label, p.id).toBeTruthy();
     }
     await deliverWebhook(sessionEvent({
-      id: 'cs_stem_badge', amount_total: 50000,
-      metadata: { priority: 'stem', donor_name: 'The Okafor Family' },
+      id: 'cs_badge', amount_total: P_MAIN.circle.min * 100,
+      metadata: { priority: P_MAIN.id, donor_name: 'The Okafor Family' },
     }));
     const board = await getJson('/api/board');
     expect(board.donors.find((d) => d.name === 'The Okafor Family').circle).toBe(true);
@@ -451,8 +462,8 @@ describe('webhook and campaign stats', () => {
   it('lists anonymous gifts as Anonymous and honors circle tiers', async () => {
     await deliverWebhook(sessionEvent({ id: 'cs_anon', metadata: { visibility: 'anon' } }));
     await deliverWebhook(sessionEvent({
-      id: 'cs_circle', amount_total: 50000,
-      metadata: { priority: 'people', donor_name: 'The Whitmore Family' },
+      id: 'cs_circle', amount_total: P_ALT.circle.min * 100,
+      metadata: { priority: P_ALT.id, donor_name: 'The Whitmore Family' },
     }));
     const board = await getJson('/api/board');
     const names = board.donors.map((d) => d.name);
@@ -465,7 +476,7 @@ describe('webhook and campaign stats', () => {
 /* ---- business partner checkout ---- */
 
 describe('business partner checkout', () => {
-  const validPartner = { tier: 'champion', business: '  Galaxy Automotive & Tire ' };
+  const validPartner = { tier: LOGO_TIER.id, business: '  Galaxy Automotive & Tire ' };
 
   it('creates a Stripe session at the tier price with partner metadata', async () => {
     const calls = stubStripe();
@@ -473,17 +484,17 @@ describe('business partner checkout', () => {
     expect(res.status).toBe(200);
     expect((await res.json()).url).toBe('https://checkout.stripe.com/c/pay/cs_1');
     const sent = new URLSearchParams(String(calls[0].body));
-    expect(sent.get('line_items[0][price_data][unit_amount]')).toBe('75000');
-    expect(sent.get('line_items[0][price_data][product_data][name]')).toBe('Rocket Rally Partnership — Rally Champion');
+    expect(sent.get('line_items[0][price_data][unit_amount]')).toBe(String(LOGO_TIER.amount * 100));
+    expect(sent.get('line_items[0][price_data][product_data][name]')).toBe(`Rocket Rally Partnership — ${LOGO_TIER.name}`);
     expect(sent.has('line_items[1][price_data][unit_amount]')).toBe(false); // fee cover not requested
     expect(sent.get('metadata[kind]')).toBe('partner');
-    expect(sent.get('metadata[partner_tier]')).toBe('champion');
+    expect(sent.get('metadata[partner_tier]')).toBe(LOGO_TIER.id);
     expect(sent.get('metadata[donor_name]')).toBe('Galaxy Automotive & Tire');
     // Per PTA decision: partner receipts keep the standard donation
     // acknowledgment — logos and posts are intangible recognition.
     expect(sent.get('payment_intent_data[description]')).toContain('No goods or services were provided');
     // The sid is what unlocks the thank-you page's logo upload.
-    expect(sent.get('success_url')).toContain('/thanks?partner=champion&sid={CHECKOUT_SESSION_ID}');
+    expect(sent.get('success_url')).toContain(`/thanks?partner=${LOGO_TIER.id}&sid={CHECKOUT_SESSION_ID}`);
     expect(sent.get('cancel_url')).toContain('/partners');
   });
 
@@ -492,8 +503,8 @@ describe('business partner checkout', () => {
     const res = await partnerDirect({ ...validPartner, coverFees: true });
     expect(res.status).toBe(200);
     const sent = new URLSearchParams(String(calls[0].body));
-    const fee = data.feeCoverCents(75000);
-    expect(sent.get('line_items[0][price_data][unit_amount]')).toBe('75000');
+    const fee = data.feeCoverCents(LOGO_TIER.amount * 100);
+    expect(sent.get('line_items[0][price_data][unit_amount]')).toBe(String(LOGO_TIER.amount * 100));
     expect(sent.get('line_items[1][price_data][unit_amount]')).toBe(String(fee));
     expect(sent.get('line_items[1][price_data][product_data][name]')).toBe('Covering card processing');
     expect(sent.get('metadata[fee_cents]')).toBe(String(fee));
@@ -502,7 +513,7 @@ describe('business partner checkout', () => {
   it('rejects a bad tier or a missing business name', async () => {
     stubStripe();
     expect((await partnerDirect({ tier: 'platinum', business: 'Acme' })).status).toBe(400);
-    expect((await partnerDirect({ tier: 'mvp', business: '   ' })).status).toBe(400);
+    expect((await partnerDirect({ tier: LOGO_TIER.id, business: '   ' })).status).toBe(400);
     expect((await partnerDirect({})).status).toBe(400);
   });
 
@@ -515,19 +526,19 @@ describe('business partner checkout', () => {
     await deliverWebhook(sessionEvent()); // one $100 family gift
     await deliverWebhook(partnerSession());
     const board = await getJson('/api/board');
-    expect(board.campaign.raised).toBe(850);    // $100 family + $750 partner
+    expect(board.campaign.raised).toBe(100 + LOGO_TIER.amount); // the $100 family gift + the partnership
     expect(board.campaign.gifts).toBe(1);       // family gifts only
-    expect(board.classrooms).toEqual({ convery: 1 }); // no classroom credit for partners
+    expect(board.classrooms).toEqual({ [ROOM_A]: 1 }); // no classroom credit for partners
     const partner = board.donors.find((d) => d.name === 'Galaxy Automotive & Tire');
-    expect(partner.partner).toBe('champion');
+    expect(partner.partner).toBe(LOGO_TIER.id);
     expect(partner.circle).toBe(false);
     // The wall reads the light payload too — same rows on both.
-    const wall = { name: 'Galaxy Automotive & Tire', tier: 'champion', logo: '' };
+    const wall = { name: 'Galaxy Automotive & Tire', tier: LOGO_TIER.id, logo: '' };
     expect(board.partners).toEqual([wall]);
     expect((await getJson('/api/campaign')).partners).toEqual([wall]);
     const csv = await (await SELF.fetch('https://rally.test/api/export.csv?key=test-admin-key')).text();
     expect(csv).toContain('partner_tier');
-    expect(csv).toContain('"champion"');
+    expect(csv).toContain(`"${LOGO_TIER.id}"`);
   });
 });
 
@@ -558,7 +569,7 @@ describe('partner logo upload', () => {
 
     // Live on the board payload, addressed by the public id only.
     const board = await getJson('/api/board');
-    expect(board.partners).toEqual([{ name: 'Galaxy Automotive & Tire', tier: 'champion', logo: body.logo }]);
+    expect(board.partners).toEqual([{ name: 'Galaxy Automotive & Tire', tier: LOGO_TIER.id, logo: body.logo }]);
     expect(JSON.stringify(board.partners)).not.toContain('cs_partner');
 
     // And served publicly, locked down against active content.
@@ -578,7 +589,7 @@ describe('partner logo upload', () => {
     expect(body.published).toBe(false);
     expect(body.reason).toBe('pdf');
     const board = await getJson('/api/board');
-    expect(board.partners).toEqual([{ name: 'Galaxy Automotive & Tire', tier: 'champion', logo: '' }]);
+    expect(board.partners).toEqual([{ name: 'Galaxy Automotive & Tire', tier: LOGO_TIER.id, logo: '' }]);
   });
 
   it('a later PDF upload never clobbers or un-publishes a live logo', async () => {
@@ -605,11 +616,11 @@ describe('partner logo upload', () => {
     expect(await env.LOGOS.get(`partner-logos/${logo}`)).not.toBeNull();
   });
 
-  it('keeps a Rally Friend\'s file but never promises the wall — name-only tier', async () => {
+  it('keeps a name-only tier\'s file but never promises the wall', async () => {
     await deliverWebhook(sessionEvent({
-      id: 'cs_friend', amount_total: 25000,
+      id: 'cs_friend', amount_total: NAME_TIER.amount * 100,
       metadata: {
-        kind: 'partner', partner_tier: 'friend', priority: '',
+        kind: 'partner', partner_tier: NAME_TIER.id, priority: '',
         donor_name: 'Friendly LLC', students: '', fee_cents: '0',
       },
     }));
@@ -619,7 +630,7 @@ describe('partner logo upload', () => {
     expect(body.published).toBe(false);
     expect(body.reason).toBe('tier');
     const board = await getJson('/api/board');
-    expect(board.partners).toEqual([{ name: 'Friendly LLC', tier: 'friend', logo: '' }]);
+    expect(board.partners).toEqual([{ name: 'Friendly LLC', tier: NAME_TIER.id, logo: '' }]);
   });
 
   it('accepts an SVG whose <svg> tag sits past a long preamble', async () => {
@@ -707,7 +718,7 @@ describe('admin export', () => {
     const csv = new TextDecoder().decode(bytes);
     expect(csv).toContain('Mia Rodriguez');
     expect(csv).toContain('priority,partner_tier,students,donor_name');
-    expect(csv).toContain('"Mia Rodriguez — Ms. Convery"');
+    expect(csv).toContain(`"Mia Rodriguez — ${data.classroomById(ROOM_A).teacher}"`);
     expect(csv).not.toContain('student_name');
     expect(csv).toContain('fam@example.com');
     expect(csv).toContain('"100.00"');
@@ -731,12 +742,12 @@ describe('admin export', () => {
       id: 'cs_evil',
       metadata: {
         donor_name: '=HYPERLINK("http://evil")',
-        students: JSON.stringify([{ c: 'convery', n: '@SUM(A1)' }]),
+        students: JSON.stringify([{ c: ROOM_A, n: '@SUM(A1)' }]),
       },
     }));
     const res = await SELF.fetch('https://rally.test/api/export.csv?key=test-admin-key');
     const csv = await res.text();
     expect(csv).toContain('"\'=HYPERLINK(""http://evil"")"');
-    expect(csv).toContain('"\'@SUM(A1) — Ms. Convery"');
+    expect(csv).toContain(`"'@SUM(A1) — ${data.classroomById(ROOM_A).teacher}"`);
   });
 });

@@ -2,13 +2,16 @@ import { describe, it, expect } from 'vitest';
 import { normalizeStudents, studentsSignature } from '../worker/students.js';
 import data from '../site/js/data.js';
 
+/* Any three distinct classrooms — the tests pin mechanics, not the roster. */
+const [ROOM_A, ROOM_B, ROOM_C] = data.CLASSROOMS.map((c) => c.id);
+
 describe('normalizeStudents', () => {
   it('keeps valid rows in order, trims names, skips untouched rows', () => {
     expect(normalizeStudents([
-      { c: 'convery', n: '  Mia Rodriguez ' },
+      { c: ROOM_A, n: '  Mia Rodriguez ' },
       { c: '', n: '' },
-      { c: 'zweber', n: '' },
-    ])).toEqual({ students: [{ c: 'convery', n: 'Mia Rodriguez' }, { c: 'zweber', n: '' }] });
+      { c: ROOM_B, n: '' },
+    ])).toEqual({ students: [{ c: ROOM_A, n: 'Mia Rodriguez' }, { c: ROOM_B, n: '' }] });
   });
 
   it('treats a missing list as no students and a non-list as an error', () => {
@@ -21,35 +24,34 @@ describe('normalizeStudents', () => {
     // classroom repeated without names counts once (two nameless
     // twins can be told apart by typing their names).
     const { students } = normalizeStudents([
-      { c: 'convery', n: 'Mia' }, { c: 'convery', n: 'mia' },
-      { c: 'zweber', n: '' }, { c: 'zweber', n: '' }, { c: 'harrison', n: '' },
+      { c: ROOM_A, n: 'Mia' }, { c: ROOM_A, n: 'mia' },
+      { c: ROOM_B, n: '' }, { c: ROOM_B, n: '' }, { c: ROOM_C, n: '' },
     ]);
     expect(students).toEqual([
-      { c: 'convery', n: 'Mia' }, { c: 'zweber', n: '' }, { c: 'harrison', n: '' },
+      { c: ROOM_A, n: 'Mia' }, { c: ROOM_B, n: '' }, { c: ROOM_C, n: '' },
     ]);
   });
 
   it('rejects a name without a classroom, an unknown classroom, a long name, too many rows', () => {
     expect(normalizeStudents([{ c: '', n: 'Mia' }]).error).toMatch(/classroom/);
-    expect(normalizeStudents([{ c: 'r99', n: 'Mia' }]).error).toMatch(/classroom/);
-    expect(normalizeStudents([{ c: 'convery', n: 'x'.repeat(81) }]).error).toMatch(/shorter/);
-    const five = Array.from({ length: 5 }, (_, i) => ({ c: 'convery', n: `Kid ${i}` }));
-    expect(normalizeStudents(five).error).toMatch(/up to 4/);
-    expect(data.MAX_STUDENTS).toBe(4);
+    expect(normalizeStudents([{ c: 'not-a-room', n: 'Mia' }]).error).toMatch(/classroom/);
+    expect(normalizeStudents([{ c: ROOM_A, n: 'x'.repeat(data.MAX_NAME + 1) }]).error).toMatch(/shorter/);
+    const tooMany = Array.from({ length: data.MAX_STUDENTS + 1 }, (_, i) => ({ c: ROOM_A, n: `Kid ${i}` }));
+    expect(normalizeStudents(tooMany).error).toMatch(new RegExp(`up to ${data.MAX_STUDENTS}`));
   });
 
   it('requires a name for every row when asked (links)', () => {
-    expect(normalizeStudents([{ c: 'zweber', n: '' }], { nameRequired: true }).error).toMatch(/name/);
-    expect(normalizeStudents([{ c: 'zweber', n: 'Leo' }], { nameRequired: true }))
-      .toEqual({ students: [{ c: 'zweber', n: 'Leo' }] });
+    expect(normalizeStudents([{ c: ROOM_B, n: '' }], { nameRequired: true }).error).toMatch(/name/);
+    expect(normalizeStudents([{ c: ROOM_B, n: 'Leo' }], { nameRequired: true }))
+      .toEqual({ students: [{ c: ROOM_B, n: 'Leo' }] });
   });
 });
 
 describe('studentsSignature', () => {
   it('ignores order and case, but not classroom', () => {
-    const a = studentsSignature([{ c: 'zweber', n: 'Leo Park' }, { c: 'convery', n: 'Mia' }]);
-    const b = studentsSignature([{ c: 'convery', n: 'MIA' }, { c: 'zweber', n: 'leo park' }]);
+    const a = studentsSignature([{ c: ROOM_B, n: 'Leo Park' }, { c: ROOM_A, n: 'Mia' }]);
+    const b = studentsSignature([{ c: ROOM_A, n: 'MIA' }, { c: ROOM_B, n: 'leo park' }]);
     expect(a).toBe(b);
-    expect(a).not.toBe(studentsSignature([{ c: 'harrison', n: 'Leo Park' }, { c: 'convery', n: 'Mia' }]));
+    expect(a).not.toBe(studentsSignature([{ c: ROOM_C, n: 'Leo Park' }, { c: ROOM_A, n: 'Mia' }]));
   });
 });
