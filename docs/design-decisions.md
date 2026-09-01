@@ -3,9 +3,7 @@
 Design and UX decisions for the Red Hill Elementary PTA fundraising
 site (Rocket Rally campaign). Static HTML/CSS/vanilla JS in `site/`,
 now backed in production by a Cloudflare Worker — see the README for
-running and deploying, and
-`superpowers/specs/2026-08-25-production-cloudflare-design.md` for the
-production architecture.
+running and deploying.
 
 **View it:** `npm run dev`, then open <http://localhost:8787/>.
 **Live:** <https://red-hill-rally.gmbuell.workers.dev>
@@ -51,7 +49,7 @@ same." Dollar totals appear only in campaign/priority aggregates.
 
 ## Design system
 
-Everything follows `red-hill-brand-guide-standalone.html` (palette, Red
+Everything follows `brand-guide.html` (palette, Red
 Rule, motifs, button/focus rules, WCAG 2.2 AA) with one deliberate
 deviation: the site uses three of the guide's four type voices. Fraunces
 was dropped (2026-08-25, to reduce font count) — sub-headlines are set

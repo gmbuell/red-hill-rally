@@ -6,8 +6,31 @@ short student links, and live tallies in a D1 database.
 
 **Live:** <https://red-hill-rally.gmbuell.workers.dev>
 
-Design and architecture notes: `docs/design-decisions.md` and
-`docs/superpowers/specs/2026-08-25-production-cloudflare-design.md`.
+Design and architecture notes: `docs/design-decisions.md`. Brand
+system: `docs/brand-guide.html`.
+
+## Contributing (PTA members)
+
+This repo is public so Rally changes don't all have to funnel through
+one person: if you spot a typo, a wrong number, a roster change, or a
+partner to add, open a pull request (or a GitHub issue describing the
+change, if you'd rather not edit files). This is the live site for one
+school, not a general-purpose template.
+
+Where things live:
+
+- **Page copy** — the HTML pages in `site/` (`index.html`,
+  `donate.html`, `matching.html`, …).
+- **Goals, priorities, tier amounts, classroom roster, partner list** —
+  `site/js/data.js`. After roster or partner edits, run
+  `node scripts/board-skeleton.js --write` (see below); tests fail if
+  the baked board markup drifts.
+- **Styles** — `site/css/styles.css`, following the brand guide in
+  `docs/brand-guide.html`.
+
+`npm test` runs the full suite with fake keys — no secrets needed.
+Deploys, secrets, Stripe, and the production database stay with the
+maintainer, who reviews and ships merged PRs.
 
 ## Develop
 
@@ -18,8 +41,7 @@ npm test         # vitest (workers pool) — API, webhook, privacy tests
 npm run audit    # Lighthouse: every page, mobile + desktop
 ```
 
-Local secrets live in `.dev.vars` (gitignored — currently also holds
-the production `ADMIN_KEY` value).
+Local secrets live in `.dev.vars` (gitignored).
 
 **Rally Board skeleton** — rally-board.html ships with the board's
 zero-state markup baked in (no layout shift on first paint; a real

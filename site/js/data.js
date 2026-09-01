@@ -170,7 +170,8 @@ const PARTNER_TIERS = [
    'supporter', the lowest logo tier, until confirmed (null shows a
    logo without a tier label; 'friend' lists
    the name instead of a logo, per the ladder). Web logos live in
-   site/img/partners/; print-quality originals in assets/partner-logos/.
+   site/img/partners/; print-quality originals stay out of the repo
+   (assets/partner-logos/, gitignored).
    The board bakes this list — run `node scripts/board-skeleton.js
    --write` after editing. */
 const PARTNERS = [

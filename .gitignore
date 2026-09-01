@@ -3,3 +3,5 @@ node_modules/
 .dev.vars
 .playwright-mcp/
 lighthouse-reports/
+assets/partner-logos/
+docs/superpowers/
