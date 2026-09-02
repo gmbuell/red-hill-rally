@@ -822,7 +822,7 @@ describe('static asset headers', () => {
     /* Chrome honors a preload Link header on any response, scripts and
        fonts included; there it re-preloads a stylesheet that is already
        loaded, then warns that the preload went unused. */
-    for (const path of ['/css/styles.css', '/js/data.js', '/fonts/nunitosans-var.woff2', `/img/partners/${data.PARTNERS[0].logo}`, '/favicon.svg']) {
+    for (const path of ['/css/styles.css', '/js/data.js', '/fonts/montserrat-var.woff2', `/img/partners/${data.PARTNERS[0].logo}`, '/favicon.svg']) {
       const res = await env.ASSETS.fetch(`https://rally.test${path}`);
       expect(res.status, path).toBe(200);
       expect(res.headers.get('x-frame-options'), path).toBe('DENY');

@@ -7,47 +7,46 @@
 /* Self-hosted fonts (latin subsets), preloaded from each page's <head>
    so text first paints in the brand faces — no swap, no layout shift. */
 @font-face {
-  font-family: 'Nunito Sans';
+  font-family: 'Montserrat';
   font-style: normal;
-  font-weight: 400 800;
+  font-weight: 400 900;
   font-display: swap;
-  src: url('../fonts/nunitosans-var.woff2') format('woff2');
+  src: url('../fonts/montserrat-var.woff2') format('woff2');
 }
 @font-face {
-  font-family: 'Nunito Sans';
+  font-family: 'Montserrat';
   font-style: italic;
-  font-weight: 400;
+  font-weight: 400 900;
   font-display: swap;
-  src: url('../fonts/nunitosans-400-italic.woff2') format('woff2');
+  src: url('../fonts/montserrat-var-italic.woff2') format('woff2');
 }
 @font-face {
-  font-family: 'Oswald';
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-  src: url('../fonts/oswald-600.woff2') format('woff2');
-}
-@font-face {
-  font-family: 'Kaushan Script';
+  font-family: 'Bebas Neue';
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url('../fonts/kaushanscript-400.woff2') format('woff2');
+  src: url('../fonts/bebasneue-400.woff2') format('woff2');
 }
 
 :root {
-  --navy: #0A2B4E;
-  --red: #B92025;
-  --gold: #F5B70F;
-  --sky: #E9F1F9;
-  --paper: #F7FAFD;
+  /* Rocket Rally 2026: black, white, and one red. The mood board runs
+     on hard edges and heavy condensed caps, so there is no third
+     brand color — `--gold` stays as a token name because the chrome
+     and focus rings reference it, and now resolves to the red. */
+  --navy: #000000;
+  --red: #E31E24;
+  --gold: #E31E24;
+  --sky: #F4F4F2;
+  --paper: #FFFFFF;
   --white: #FFFFFF;
-  --grey: #5A6474;
+  --grey: #6B6B6B;
 
-  --display: 'Oswald', 'Arial Narrow', Impact, sans-serif;
-  --script: 'Kaushan Script', 'Brush Script MT', cursive;
-  --body: 'Nunito Sans', 'Segoe UI', Verdana, sans-serif;
-  /* three voices only: sub-headlines use the body face at 800 */
+  --display: 'Bebas Neue', 'Oswald', 'Arial Narrow', Impact, sans-serif;
+  /* The board has no script face; its accent voice is small heavy
+     caps in red, so `--script` resolves to the body face and the
+     `.script` rule sets the treatment. */
+  --script: 'Montserrat', 'Segoe UI', Verdana, sans-serif;
+  --body: 'Montserrat', 'Segoe UI', Verdana, sans-serif;
   --serif: var(--body);
 
   --wrap: 68rem;
@@ -106,7 +105,7 @@ select:focus-visible,
 
 .display {
   font-family: var(--display);
-  font-weight: 600;
+  font-weight: 400;
   text-transform: uppercase;
   letter-spacing: 0.03em;
   line-height: 1.05;
@@ -115,8 +114,11 @@ select:focus-visible,
 
 .script {
   font-family: var(--script);
-  font-weight: 400;
-  color: var(--navy);
+  font-weight: 800;
+  font-size: 0.95rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--red);
 }
 .script.red { color: var(--red); }
 
@@ -157,7 +159,7 @@ select:focus-visible,
 }
 .wordmark .rh {
   font-family: var(--display);
-  font-weight: 600;
+  font-weight: 400;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   font-size: 1.45rem;
@@ -228,7 +230,7 @@ select:focus-visible,
   font-size: 1rem;
   line-height: 1.2;
   padding: 0.85rem 1.8rem;
-  border-radius: 999px;
+  border-radius: 0;
   border: 2px solid var(--navy);
   cursor: pointer;
   text-decoration: none;
@@ -256,10 +258,11 @@ select:focus-visible,
   margin-top: 4.5rem;
 }
 .site-footer .script {
-  color: var(--gold);
-  font-size: 1.7rem;
+  color: var(--white);
+  font-size: 0.85rem;
+  letter-spacing: 0.16em;
   display: block;
-  margin-bottom: 0.6rem;
+  margin-bottom: 0.9rem;
 }
 .site-footer p { margin: 0 auto 0.4rem; max-width: 44rem; opacity: 0.9; font-size: 1rem; }
 .site-footer nav {
@@ -284,7 +287,7 @@ select:focus-visible,
 .section-head .label { display: block; margin-bottom: 0.5rem; }
 .section-head h2 {
   font-family: var(--display);
-  font-weight: 600;
+  font-weight: 400;
   text-transform: uppercase;
   font-size: clamp(1.8rem, 4.5vw, 2.6rem);
   letter-spacing: 0.03em;
@@ -314,11 +317,14 @@ select:focus-visible,
   overflow: hidden;
 }
 .hero .kicker {
-  font-family: var(--script);
-  font-size: clamp(1.5rem, 4vw, 2rem);
-  color: var(--navy);
+  font-family: var(--body);
+  font-weight: 800;
+  font-size: clamp(0.85rem, 2.2vw, 1rem);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--red);
   display: block;
-  margin-bottom: 0.4rem;
+  margin-bottom: 0.9rem;
 }
 .hero .arc-title { display: block; margin: 0 auto; max-width: 40rem; }
 /* shared by the hero, thanks, and 404 pages */
@@ -363,7 +369,7 @@ select:focus-visible,
 .trajectory-stats .stat.goal { text-align: right; margin-left: auto; }
 .trajectory-stats .num {
   font-family: var(--display);
-  font-weight: 600;
+  font-weight: 400;
   font-size: clamp(1.7rem, 4vw, 2.3rem);
   letter-spacing: 0.02em;
   line-height: 1.1;
@@ -394,7 +400,7 @@ select:focus-visible,
 .priority-card .icon { height: 52px; width: 60px; flex: none; }
 .priority-card h3 {
   font-family: var(--display);
-  font-weight: 600;
+  font-weight: 400;
   text-transform: uppercase;
   font-size: 1.35rem;
   letter-spacing: 0.03em;
@@ -451,15 +457,15 @@ select:focus-visible,
 .flow-header { text-align: center; padding: 2.5rem 0 0.5rem; }
 .flow-header h1 {
   font-family: var(--display);
-  font-weight: 600;
+  font-weight: 400;
   text-transform: uppercase;
   font-size: clamp(1.9rem, 5vw, 2.6rem);
   color: var(--navy);
 }
 .flow-header .script {
   display: block;
-  font-size: clamp(1.35rem, 3.5vw, 1.7rem);
-  margin-top: 0.35rem;
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
 }
 .flow-header .assurance { display: block; color: var(--grey); font-size: 0.9rem; font-weight: 700; margin: 0.6rem 0 0; }
 .flow-header .link-banner.warn {
@@ -553,7 +559,7 @@ select:focus-visible,
 .option-card .icon { width: 46px; height: 36px; grid-row: span 2; }
 .option-card .name {
   font-family: var(--display);
-  font-weight: 600;
+  font-weight: 400;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   font-size: 1.05rem;
@@ -582,7 +588,7 @@ select:focus-visible,
 .amount-btn.selected { background: var(--navy); color: var(--white); }
 .amount-btn .amt {
   font-family: var(--display);
-  font-weight: 600;
+  font-weight: 400;
   font-size: 1.5rem;
   display: block;
   line-height: 1.1;
@@ -757,7 +763,7 @@ select:focus-visible,
 
 .board-title {
   font-family: var(--display);
-  font-weight: 600;
+  font-weight: 400;
   text-transform: uppercase;
   font-size: clamp(2.4rem, 7vw, 4rem);
   letter-spacing: 0.02em;
@@ -779,7 +785,7 @@ select:focus-visible,
 }
 .board-totals .num {
   font-family: var(--display);
-  font-weight: 600;
+  font-weight: 400;
   font-size: 2rem;
   line-height: 1.1;
   color: var(--navy);
@@ -798,7 +804,7 @@ select:focus-visible,
 }
 .race .rank {
   font-family: var(--display);
-  font-weight: 600;
+  font-weight: 400;
   font-size: 1.1rem;
   color: var(--grey);
 }
@@ -822,7 +828,7 @@ select:focus-visible,
   border-top: 2px solid var(--navy);
   padding-top: 2rem;
 }
-.board-section-head .script { font-size: clamp(1.8rem, 4vw, 2.4rem); display: block; }
+.board-section-head .script { font-size: 0.9rem; display: block; }
 .board-section-head p { max-width: 36rem; margin-top: 0.5rem; }
 
 .honor-roll {
@@ -883,9 +889,12 @@ select:focus-visible,
 .thanks-hero .rocket { width: 88px; height: 88px; margin: 0 auto 0.75rem; }
 .thanks-hero .rocket svg { width: 100%; height: 100%; }
 .thanks-hero .script {
+  font-family: var(--display);
+  font-weight: 400;
   font-size: clamp(2.6rem, 8vw, 4rem);
+  letter-spacing: 0.02em;
   display: block;
-  line-height: 1.15;
+  line-height: 1.05;
 }
 .thanks-hero .sub {
   font-family: var(--serif);
@@ -930,7 +939,7 @@ select:focus-visible,
   }
   .pc-name {
     font-family: var(--display);
-    font-weight: 600;
+    font-weight: 400;
     text-transform: uppercase;
     font-size: 30pt;
     line-height: 0.98;
@@ -945,7 +954,7 @@ select:focus-visible,
   }
   .pc-cta {
     font-family: var(--display);
-    font-weight: 600;
+    font-weight: 400;
     text-transform: uppercase;
     font-size: 13pt;
     letter-spacing: 0.08em;
@@ -1030,7 +1039,7 @@ select:focus-visible,
   background: var(--navy);
   color: var(--white);
   font-family: var(--display);
-  font-weight: 600;
+  font-weight: 400;
   font-size: 1.15rem;
   display: grid;
   place-items: center;
@@ -1076,7 +1085,7 @@ select:focus-visible,
 .tier-card.selected { outline: 3px solid var(--navy); }
 .tier-card h3 {
   font-family: var(--display);
-  font-weight: 600;
+  font-weight: 400;
   font-size: 1.05rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -1084,7 +1093,7 @@ select:focus-visible,
 }
 .tier-card .tier-amount {
   font-family: var(--display);
-  font-weight: 600;
+  font-weight: 400;
   font-size: 1.7rem;
   color: var(--red);
   margin: 0;
@@ -1092,11 +1101,18 @@ select:focus-visible,
 .tier-card ul { flex: 1; margin: 0; padding-left: 1.1rem; font-size: 1rem; }
 .tier-card li { margin-bottom: 0.35rem; }
 .tier-card .tier-pick { margin-top: 1rem; align-self: start; }
-.pitch-head { font-family: var(--serif); font-weight: 800; font-size: 1.35rem; margin-bottom: 0.6rem; }
+.pitch-head {
+  font-family: var(--display);
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  font-size: 1.7rem;
+  margin-bottom: 0.6rem;
+}
 .tier-note { margin: 0 0 1rem; }
 
 .partner-wall-head { text-align: center; margin-top: 2.4rem; }
-.partner-wall-head .script { font-size: 2rem; }
+.partner-wall-head .script { font-size: 0.9rem; }
 
 .partner-grid {
   list-style: none;
@@ -1166,7 +1182,16 @@ select:focus-visible,
   text-transform: uppercase;
   padding: 0.25rem 0.55rem;
 }
-.grand-prize h2 { color: var(--white); margin: 0.7rem 0 0.5rem; }
+.grand-prize h2 {
+  font-family: var(--display);
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  font-size: clamp(1.9rem, 5vw, 2.5rem);
+  line-height: 1;
+  color: var(--white);
+  margin: 0.75rem 0 0.55rem;
+}
 .grand-prize p { margin: 0; color: rgba(255, 255, 255, 0.88); }
 .grand-prize strong { color: var(--white); }
 
@@ -1182,8 +1207,8 @@ select:focus-visible,
 .prize-key {
   flex: none;
   width: 7.5rem;
-  font-family: 'Oswald', 'Arial Narrow', Impact, sans-serif;
-  font-weight: 600;
+  font-family: var(--display);
+  font-weight: 400;
   font-size: 1.35rem;
   line-height: 1.1;
   color: var(--red);
