@@ -20,8 +20,7 @@ Where things live:
 - **Page copy** — the HTML pages in `site/` (`index.html`,
   `donate.html`, `matching.html`, …).
 - **Goals, priorities, tier amounts, classroom roster, partner list** —
-  `site/js/data.js`. After roster, partner, or priority edits, run the
-  skeleton step (see **Develop**).
+  `site/js/data.js`; the pages pick the edits up on the next deploy.
 - **Styles** — `site/css/styles.css`, following the brand guide in
   `docs/brand-guide.html`.
 
@@ -52,15 +51,13 @@ Local secrets live in `.dev.vars` (gitignored). Without Stripe keys,
 checkout answers with its friendly "giving opens soon" message —
 that's expected; everything else works.
 
-**Baked skeletons** — every block a page script fills at load (the
-home meter, its raised and goal figures, and the priority cards, the
-donate priority cards, the Rally Board, the partners ladder and wall,
-the student-link row) ships with its zero-state markup baked into the
-HTML, so the first paint has its final geometry and no-JS visitors see
-a real page. After editing the roster, partners, or priorities in
-`site/js/data.js`, or a template in `site/js/*.js`, run
-`node scripts/skeleton.js --write` to regenerate them; `npm test` and
-`npm run deploy` fail if they drift.
+**Server-rendered pages** — the worker renders every page: it streams
+the static HTML through HTMLRewriter and fills the header, footer, and
+each page's slots (the home meter and priority cards, the Rally Board,
+the partners ladder and wall, the student-link row) from
+`worker/views.js`, with live totals already in place. The HTML files
+hold structure and copy; there is no generation step, and `npm test`
+covers the rendered pages.
 
 **Demo data** — `seed/demo-donations.sql` fills the board with
 prototype-scale numbers on the real roster. Apply/remove commands
@@ -74,10 +71,9 @@ npm run deploy
 ```
 
 That ships the worker and every file under `site/` in one go. The
-`predeploy` step first checks the baked skeletons and applies any
-pending D1 migrations to the remote database (`wrangler d1 migrations
-apply red-hill-rally --remote`), so schema and code always ship
-together.
+`predeploy` step applies any pending D1 migrations to the remote
+database (`wrangler d1 migrations apply red-hill-rally --remote`), so
+schema and code always ship together.
 
 ## Before the campaign goes out to families
 
@@ -135,9 +131,7 @@ charges real money. To flip to live:
   address) never leave it — read them in the Stripe dashboard, and
   find employer-match follow-ups with `employer_match = 1` in D1 (see
   **Ad-hoc questions**).
-- **Update goals/copy/tiers** — edit `site/js/data.js`; after roster,
-  partner, or priority edits run the skeleton step (see **Develop**);
-  redeploy.
+- **Update goals/copy/tiers** — edit `site/js/data.js`; redeploy.
 - **Partner logos** — businesses upload a logo on the thank-you page
   right after paying; images **auto-publish** to /partners and the
   Rally Board (a PDF converts in the partner's browser, print original
@@ -148,7 +142,7 @@ charges real money. To flip to live:
   object metadata (dashboard → R2).
   - *Publish a held PDF or an offline partner*: web-sized image into
     `site/img/partners/`, a `PARTNERS` entry in `site/js/data.js`,
-    skeleton step, redeploy.
+    redeploy.
   - *Pull a published logo* (wrong file, inappropriate content):
     `npx wrangler d1 execute red-hill-rally --remote --command "UPDATE donations SET logo_id = '' WHERE donor_name = '<business>'"`
     — the wall, the board strip, and the direct /logo URL all stop

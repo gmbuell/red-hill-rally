@@ -82,12 +82,15 @@ Mobile is the primary surface: compact two-row header, stacked
 full-width CTAs, two-up amount tiles, race rows that stack name over
 trail, 13px minimum labels, no horizontal scroll at 390px.
 
-Every block a page script fills at load is baked into the HTML
-(`scripts/skeleton.js`, from the same template the script uses), so the
-first paint has its final geometry and nothing jumps when the deferred
-scripts run. CI holds every page to Lighthouse 98+ in all four
-categories, mobile and desktop, which is what catches a regression
-here.
+The worker renders every page: it streams the static HTML through
+HTMLRewriter and fills the shared header and footer, the campaign
+meter, the classroom race, and the partner wall from `worker/views.js`,
+so the first paint is complete and correct, nothing moves when the
+page scripts run, and a no-JS visitor sees the real numbers. Home and
+the Rally Board ship no JavaScript at all. Templates are `html` tagged
+literals from `site/js/ui.js`, escaped by default. CI holds every page
+to Lighthouse 98+ in all four categories, mobile and desktop, which is
+what catches a regression here.
 
 ## Pages
 
@@ -115,17 +118,17 @@ here.
   dashboard for receipts and future outreach. One less form field on
   mobile, and donors can fix a typo'd email right where it matters.
 - Live tallies come from the Stripe webhook feeding a D1 database,
-  read back through `/api/campaign` (home, partners) and `/api/board`
-  (Rally Board). `site/js/data.js` holds only static config
-  (priorities, goals, tiers, roster, partners) and is shared with the
-  worker.
+  rendered into the pages by the worker on each request (the same
+  stats are served as JSON at `/api/campaign` and `/api/board`; pages
+  are cacheable for a minute, like the JSON). `site/js/data.js` holds
+  only static config (priorities, goals, tiers, roster, partners) and
+  is shared with the worker, as is the render core in `site/js/ui.js`.
 - The parent link is a short server-stored code (`/api/link` mints it,
   `/l/<code>` redirects into the wizard); one code per set of
   students, case-insensitive on lookup. Internal URLs are
-  extensionless (`/donate`). The asset layer answers browser
-  navigations to unknown paths with the 404 page *before* the worker
-  runs, so `/l/*`, `/api/*`, and `/logo/*` are listed in
-  `run_worker_first`.
+  extensionless (`/donate`). Every navigation runs the worker
+  (`run_worker_first` is `/*` minus the static folders), so unknown
+  paths get the branded 404 with the shared chrome.
 - Every Stripe receipt doubles as the IRS "contemporaneous written
   acknowledgment" donors need for gifts of $250+ (Pub 1771): the
   charge description carries the org name, EIN, and no-goods-or-
