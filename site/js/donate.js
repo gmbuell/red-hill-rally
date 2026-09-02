@@ -6,7 +6,22 @@
              (student names are never shown publicly; the prefill only
              travels to the PTA backend). */
 
-(() => {
+/* Step 1 of the wizard: one radio card per priority. Baked into
+   donate.html by scripts/skeleton.js (donateView()), so the first
+   paint has its final height; the wiring below only checks the
+   chosen one. */
+const donateView = () => ({
+  priorities: PRIORITIES.map((p) => `
+      <label class="option-card with-icon">
+        <input type="radio" name="priority" value="${p.id}">
+        ${RH.icon(p.id, 'icon')}
+        <span class="name">${p.name}</span>
+        <p class="desc">${p.blurb}</p>
+      </label>`).join(''),
+});
+
+/* Browser wiring — absent when scripts/skeleton.js evaluates this file. */
+if (typeof document !== 'undefined') (() => {
   const state = {
     step: 1,
     priority: priorityById(RH.param('p')),
@@ -29,8 +44,8 @@
 
   const visibility = () => RH.qs('input[name="visibility"]:checked').value;
 
-  /* ---- step 1: priority cards — baked into the HTML (RH.priorityOptions
-     via scripts/skeleton.js), so nothing to render here ---- */
+  /* ---- step 1: priority cards — baked into the HTML (donateView), so
+     nothing to render here ---- */
 
   /* ---- step 2: amounts ---- */
   const feeCents = () => feeCoverCents(Math.round(state.amount) * 100);

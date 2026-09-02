@@ -79,8 +79,8 @@ Don't run `npm run deploy`, `wrangler d1 execute … --remote`, or
 - Don't add `"type": "module"` to `package.json`: `data.js` relies on
   the CommonJS guard and `scripts/skeleton.js` uses `require`.
 - Editing `CLASSROOMS`, `PARTNERS`, `PRIORITIES`, or any page template
-  (`boardView`, `homeView`, `partnersView`, `linkView`, the `ui.js`
-  templates) without rerunning the skeleton script fails `pretest` and
+  (the `*View` function in each page script, the `ui.js` templates)
+  without rerunning the skeleton script fails `pretest` and
   `predeploy`. Every block a script fills at load is baked this way so
   the first paint has final geometry; the Lighthouse gate fails on the
   layout shift otherwise. Page scripts keep their DOM wiring behind

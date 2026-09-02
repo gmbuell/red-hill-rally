@@ -53,13 +53,14 @@ checkout answers with its friendly "giving opens soon" message —
 that's expected; everything else works.
 
 **Baked skeletons** — every block a page script fills at load (the
-home meter and priority cards, the donate priority cards, the Rally
-Board, the partners ladder and wall, the student-link row) ships with
-its zero-state markup baked into the HTML, so the first paint has its
-final geometry and no-JS visitors see a real page. After editing the
-roster, partners, or priorities in `site/js/data.js`, or a template in
-`site/js/*.js`, run `node scripts/skeleton.js --write` to regenerate
-them; `npm test` and `npm run deploy` fail if they drift.
+home meter, its raised and goal figures, and the priority cards, the
+donate priority cards, the Rally Board, the partners ladder and wall,
+the student-link row) ships with its zero-state markup baked into the
+HTML, so the first paint has its final geometry and no-JS visitors see
+a real page. After editing the roster, partners, or priorities in
+`site/js/data.js`, or a template in `site/js/*.js`, run
+`node scripts/skeleton.js --write` to regenerate them; `npm test` and
+`npm run deploy` fail if they drift.
 
 **Demo data** — `seed/demo-donations.sql` fills the board with
 prototype-scale numbers on the real roster. Apply/remove commands
@@ -73,7 +74,7 @@ npm run deploy
 ```
 
 That ships the worker and every file under `site/` in one go. The
-`predeploy` step first checks the baked board skeleton and applies any
+`predeploy` step first checks the baked skeletons and applies any
 pending D1 migrations to the remote database (`wrangler d1 migrations
 apply red-hill-rally --remote`), so schema and code always ship
 together.

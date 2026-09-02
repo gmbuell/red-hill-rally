@@ -14,7 +14,7 @@ const LINK_ROWS = {
   classError: 'Please choose your student&rsquo;s classroom.',
 };
 const linkView = () => ({
-  rows: RH.studentRowsMarkup([{ c: '', n: '' }], { ...LINK_ROWS, placeholder: RH.samplePlaceholder(0) }),
+  rows: RH.studentRowsMarkup([{ c: '', n: '' }], LINK_ROWS),
 });
 
 /* Browser wiring — absent when scripts/skeleton.js evaluates this file. */

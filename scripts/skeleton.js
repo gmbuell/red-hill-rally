@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 /* Keeps the zero-state markup baked into the page HTML in sync with
-   its single source in the page scripts — boardView(null), homeView(0, {}),
-   partnersView(null), linkView(), and RH.priorityOptions() — so each
-   page's first paint has final geometry (no layout shift when the
-   deferred scripts run) and no-JS visitors see a real page.
+   its single source, each page's view function — homeView(0, {}),
+   donateView(), boardView(null), partnersView(null), linkView() — so
+   the page's first paint has final geometry (no layout shift when the
+   deferred scripts run) and no-JS visitors see a real page. A view's
+   keys are the page's skeleton sections; each needs a marker pair in
+   the HTML.
 
      --check  (default; runs from pretest/predeploy) exit 1 on drift
      --write  regenerate the skeletons in place (run after editing the
@@ -21,20 +23,17 @@ const path = require('path');
 const root = path.join(__dirname, '..');
 const read = (f) => fs.readFileSync(path.join(root, f), 'utf8');
 
-const { boardView, homeView, partnersView, linkView, RH } = new Function(
-  ['data', 'ui', 'board', 'home', 'partners', 'student-link'].map((f) => read(`site/js/${f}.js`)).join('\n') +
-  '\nreturn { boardView, homeView, partnersView, linkView, RH };',
+const { homeView, donateView, boardView, partnersView, linkView } = new Function(
+  ['data', 'ui', 'home', 'donate', 'board', 'partners', 'student-link'].map((f) => read(`site/js/${f}.js`)).join('\n') +
+  '\nreturn { homeView, donateView, boardView, partnersView, linkView };',
 )();
 
-const board = boardView(null);
-const home = homeView(0, {});
-const partners = partnersView(null);
 const pages = [
-  ['site/index.html', { trajectory: home.trajectory, cards: home.cards }],
-  ['site/donate.html', { priorities: RH.priorityOptions() }],
-  ['site/rally-board.html', { totals: board.totals, race: board.race, roll: board.roll, partners: board.partners }],
-  ['site/partners.html', { tiers: partners.tiers, wall: partners.wall }],
-  ['site/student-link.html', { rows: linkView().rows }],
+  ['site/index.html', homeView(0, {})],
+  ['site/donate.html', donateView()],
+  ['site/rally-board.html', boardView(null)],
+  ['site/partners.html', partnersView(null)],
+  ['site/student-link.html', linkView()],
 ];
 
 const write = process.argv.includes('--write');
@@ -45,13 +44,13 @@ for (const [htmlPath, sections] of pages) {
   for (const [name, content] of Object.entries(sections)) {
     const open = `<!-- skeleton:${name} -->`;
     const close = `<!-- /skeleton:${name} -->`;
-    const re = new RegExp(`${open}[\\s\\S]*?${close}`);
-    if (!re.test(updated)) {
+    const start = updated.indexOf(open);
+    const end = start < 0 ? -1 : updated.indexOf(close, start);
+    if (end < 0) {
       console.error(`skeleton: markers ${open}…${close} missing from ${htmlPath}`);
       process.exit(1);
     }
-    // A function replacer: a '$' in the baked content stays literal.
-    updated = updated.replace(re, () => `${open}${content}${close}`);
+    updated = updated.slice(0, start + open.length) + content + updated.slice(end);
   }
   if (html === updated) continue;
   drift = true;

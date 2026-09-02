@@ -10,14 +10,14 @@ const boardView = (live) => {
   const perClass = (live && live.classrooms) || {};
   const donors = (live && live.donors) || [];
   /* Business partners: the curated roster (baked into the skeleton)
-     plus online partnerships once live data arrives — used for the
-     totals tile and the strip below. */
-  const { logos: logoPartners, names: namePartners } = RH.partnerGroups(live && live.partners);
+     plus online partnerships once live data arrives — counted in the
+     totals tile and shown in the strip below. */
+  const partnerCount = RH.mergedPartners(live && live.partners).length;
 
   const totals = [
     [RH.money(raised), 'raised of ' + RH.money(CAMPAIGN.goal)],
     [gifts, 'family gifts so far'],
-    [logoPartners.length + namePartners.length, 'business partners'],
+    [partnerCount, 'business partners'],
     [CLASSROOMS.length, 'classrooms flying'],
   ].map(([num, label]) => `
       <div class="total"><span class="num money">${num}</span><span class="label">${label}</span></div>`
@@ -35,7 +35,7 @@ const boardView = (live) => {
       <li class="${i < 3 && c.gifts > 0 ? 'leader' : ''}">
         <span class="rank">${i + 1}</span>
         <span class="room">${c.teacher}<span class="grade">${gradeName(c.grade)}</span></span>
-        <span class="trail-holder trail">${RH.trailSVG(c.pct)}</span>
+        <span class="trail">${RH.trailSVG(c.pct)}</span>
         <span class="pct">${Math.round(c.pct * 100)}%<span class="families">${c.gifts} gift${c.gifts === 1 ? '' : 's'} &middot; class of ${c.students}</span></span>
       </li>`).join('');
 

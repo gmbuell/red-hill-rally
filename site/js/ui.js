@@ -17,9 +17,9 @@ const RH = (() => {
   const classroomOptions = () => CLASSROOMS.map((c) =>
     `<option value="${c.id}">${c.teacher} (${c.grade})</option>`).join('');
 
-  /* `pick` fixes the name — a baked skeleton must be deterministic. */
-  const samplePlaceholder = (pick = Math.random() < 0.5 ? 0 : 1) =>
-    `e.g. ${['Teddy', 'Finn'][pick]} Buell`;
+  /* The name hint alternates by row, never at random: the baked row
+     must match the live render byte for byte. */
+  const samplePlaceholder = (i) => `e.g. ${['Teddy', 'Finn'][i % 2]} Buell`;
 
   /* POST JSON, parse JSON back; {ok, data} — network errors still throw. */
   const postJson = async (path, body) => {
@@ -63,9 +63,8 @@ const RH = (() => {
   const nameId = (prefix, i) => `${prefix}-name-${i}`;
 
   /* Markup for a list of student rows — pure, so scripts/skeleton.js
-     can bake the empty first row into student-link.html. `placeholder`
-     pins the name hint there; the live render picks one at random. */
-  const studentRowsMarkup = (students, { prefix, nameFirst = false, classError, nameError = '', placeholder }) => {
+     can bake the empty first row into student-link.html. */
+  const studentRowsMarkup = (students, { prefix, nameFirst = false, classError, nameError = '' }) => {
     const classField = (i) => `
         <div class="field">
           <label for="${classId(prefix, i)}">Classroom</label>
@@ -78,7 +77,7 @@ const RH = (() => {
     const nameField = (i) => `
         <div class="field">
           <label for="${nameId(prefix, i)}">Student name${nameError ? '' : ' <span class="optional">&middot; optional</span>'}</label>
-          <input type="text" id="${nameId(prefix, i)}" data-field="n" autocomplete="off" maxlength="${MAX_NAME}" placeholder="${esc(placeholder || samplePlaceholder())}">
+          <input type="text" id="${nameId(prefix, i)}" data-field="n" autocomplete="off" maxlength="${MAX_NAME}" placeholder="${samplePlaceholder(i)}">
           ${nameError ? `<p class="error">${nameError}</p>` : ''}
         </div>`;
     return students.map((st, i) => `
@@ -330,7 +329,8 @@ const RH = (() => {
      and a business seen more than once keeps its highest tier and the
      last logo it uploaded — an upgrade or re-purchase can raise a
      listing, never demote it. `src` is the logo URL, or '' for
-     name-only recognition (a tier without `logo`, or no logo at all). */
+     name-only recognition (a tier without `logo`, or no logo at all).
+     The board's partner count is this list's length. */
   const mergedPartners = (online) => {
     const key = (name) => name.toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]/g, '');
     const rank = (tier) => PARTNER_TIERS.findIndex((t) => t.id === tier);
@@ -350,18 +350,13 @@ const RH = (() => {
     });
   };
 
-  /* Logo cards vs name-only recognition; the board's partner count
-     reads this too. */
-  const partnerGroups = (online) => {
-    const all = mergedPartners(online);
-    return { logos: all.filter((p) => p.src), names: all.filter((p) => !p.src) };
-  };
-
   /* The partner wall — identical on /partners and the Rally Board:
      full-size logo cards (name, tier badge), or `emptyHtml` when
      nobody is listed yet, plus the thanks line for name-only tiers. */
   const partnerWall = (online, emptyHtml) => {
-    const { logos, names } = partnerGroups(online);
+    const all = mergedPartners(online);
+    const logos = all.filter((p) => p.src);
+    const names = all.filter((p) => !p.src);
     const cards = logos.length ? `
     <ul class="partner-grid">${logos.map((p) => `
       <li class="partner-card">
@@ -375,21 +370,10 @@ const RH = (() => {
     return cards + thanks;
   };
 
-  /* Step 1 of the donate flow: one radio card per priority. Baked into
-     donate.html by scripts/skeleton.js so the page's first paint has
-     its final height; donate.js only checks the chosen one. */
-  const priorityOptions = () => PRIORITIES.map((p) => `
-      <label class="option-card with-icon">
-        <input type="radio" name="priority" value="${p.id}">
-        ${icon(p.id, 'icon')}
-        <span class="name">${p.name}</span>
-        <p class="desc">${p.blurb}</p>
-      </label>`).join('');
-
   return {
     money, moneyCents, qs, param, esc, nameList, roomLabels,
-    partnerGroups, partnerWall, priorityOptions, studentRows, studentRowsMarkup, checkout,
-    classroomOptions, samplePlaceholder, postJson, loadLive,
+    mergedPartners, partnerWall, studentRows, studentRowsMarkup, checkout,
+    postJson, loadLive,
     dartUp, icon,
     trailSVG, trajectorySVG,
   };

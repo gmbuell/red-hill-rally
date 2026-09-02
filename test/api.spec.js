@@ -810,3 +810,25 @@ describe('admin export', () => {
     expect(rows).toContain(row(roomA, "'@SUM(A1)", 1, '100.00'));
   });
 });
+
+/* The asset layer (site/_headers) is exercised through the ASSETS
+   binding: in production it answers these paths before the worker runs. */
+describe('static asset headers', () => {
+  it('sends the stylesheet preload hint on pages only, never on assets', async () => {
+    /* Chrome honors a preload Link header on any response, scripts and
+       fonts included; there it re-preloads a stylesheet that is already
+       loaded, then warns that the preload went unused. Early Hints are
+       only generated for extensionless URIs anyway. */
+    for (const path of ['/', '/donate', '/rally-board', '/partners', '/student-link', '/matching', '/thanks']) {
+      const res = await env.ASSETS.fetch(`https://rally.test${path}`);
+      expect(res.status, path).toBe(200);
+      expect(res.headers.get('link'), path).toContain('</css/styles.css>; rel=preload');
+    }
+    for (const path of ['/css/styles.css', '/js/data.js', '/fonts/nunitosans-var.woff2', `/img/partners/${data.PARTNERS[0].logo}`, '/favicon.svg']) {
+      const res = await env.ASSETS.fetch(`https://rally.test${path}`);
+      expect(res.status, path).toBe(200);
+      expect(res.headers.get('x-frame-options'), path).toBe('DENY');
+      expect(res.headers.get('link'), path).toBeNull();
+    }
+  });
+});
