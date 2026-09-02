@@ -3,24 +3,17 @@
    (sunny-otter) and the link is /l/<code> — easy to type straight off
    a printed flyer. */
 
-/* The rows' shape: name first, and required — the link is printed with
-   the names on it. scripts/skeleton.js bakes the empty first row into
-   student-link.html from it (linkView()), so the first paint is
-   complete; the live render below repeats the same markup. */
-const LINK_ROWS = RH.LINK_ROWS;
-const linkView = () => ({
-  rows: RH.studentRowsMarkup([{ c: '', n: '' }], LINK_ROWS),
-});
-
-/* Browser wiring — absent when scripts/skeleton.js evaluates this file. */
-if (typeof document !== 'undefined') (() => {
+/* The worker renders the first (empty) row; the rows below re-render
+   the same markup as siblings are added and removed. */
+(() => {
+  const { html } = RH;
   const form = RH.qs('#link-form');
   const errorEl = RH.qs('#link-error');
 
   const rows = RH.studentRows({
     rowsEl: RH.qs('#sibling-rows'),
     addBtn: RH.qs('#add-sibling'),
-    ...LINK_ROWS,
+    ...RH.LINK_ROWS,
   });
   rows.render();
 
@@ -65,7 +58,7 @@ if (typeof document !== 'undefined') (() => {
     RH.qs('#link-line').textContent = link;
 
     RH.qs('.pc-name').textContent = headline;
-    RH.qs('.pc-class').innerHTML = rooms.map(RH.esc).join('<br>');
+    RH.qs('.pc-class').innerHTML = html`${rooms.map((r, i) => html`${i ? html`<br>` : ''}${r}`)}`;
     RH.qs('.pc-qr').src = dataUrl;
     RH.qs('.pc-url').textContent = link.replace(/^https?:\/\//, '');
 

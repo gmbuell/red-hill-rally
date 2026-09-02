@@ -4,9 +4,8 @@
   "engines": { "node": ">=22" },
   "scripts": {
     "dev": "wrangler dev",
-    "predeploy": "node scripts/skeleton.js --check && wrangler d1 migrations apply red-hill-rally --remote",
+    "predeploy": "wrangler d1 migrations apply red-hill-rally --remote",
     "deploy": "wrangler deploy",
-    "pretest": "node scripts/skeleton.js --check",
     "test": "vitest run",
     "audit": "node scripts/lighthouse.mjs"
   },

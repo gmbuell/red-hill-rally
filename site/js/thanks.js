@@ -1,13 +1,14 @@
 /* Thank-you page: personalize the impact line from the handoff params. */
 
 (() => {
+  const { html } = RH;
   const p = priorityById(RH.param('p'));
   const amt = Number(RH.param('amt')) || 0;
   const partnerTier = partnerTierById(RH.param('partner'));
   const line = RH.qs('#impact-line');
 
   if (partnerTier) {
-    line.innerHTML = `Your business is officially a <strong>${partnerTier.name}</strong> — thank you for powering the Rally!`;
+    line.innerHTML = html`Your business is officially a <strong>${partnerTier.name}</strong> — thank you for powering the Rally!`;
   } else if (p && amt) {
     /* An exact tier, or the open-ended top tier ("$500+") for anything
        at or above it. Impacts mix noun and verb phrases ("A week of…",
@@ -16,8 +17,8 @@
     const tier = p.tiers.find((t) => t.amount === amt)
       || (top && top.plus && amt >= top.amount ? top : null);
     line.innerHTML = tier
-      ? `Your <strong>${RH.money(amt)}</strong> gift to <strong>${p.name}</strong>: ${tier.impact}.`
-      : `Your <strong>${RH.money(amt)}</strong> is real, visible support for <strong>${p.name}</strong>.`;
+      ? html`Your <strong>${RH.money(amt)}</strong> gift to <strong>${p.name}</strong>: ${tier.impact}.`
+      : html`Your <strong>${RH.money(amt)}</strong> is real, visible support for <strong>${p.name}</strong>.`;
   } else {
     line.textContent =
       'Your gift joins hundreds of families powering the Rally.';
@@ -81,12 +82,12 @@
           const data = await res.json().catch(() => ({}));
           if (res.ok) {
             logoPanel.innerHTML = data.published
-              ? `<h2>Logo received — you’re on the wall!</h2><p style="margin:0;">Your logo is live on the <a href="/partners">Business Partners page</a> and the Rally Board.${bigOriginal
-                ? ' Your print-quality PDF was over 15 MB, so only the converted image was kept — please email the PDF to <a href="mailto:fundraising@redhillpta.org">fundraising@redhillpta.org</a>.'
+              ? html`<h2>Logo received — you’re on the wall!</h2><p style="margin:0;">Your logo is live on the <a href="/partners">Business Partners page</a> and the Rally Board.${bigOriginal
+                ? html` Your print-quality PDF was over 15 MB, so only the converted image was kept — please email the PDF to <a href="mailto:fundraising@redhillpta.org">fundraising@redhillpta.org</a>.`
                 : ''}</p>`
               : (data.reason === 'tier'
-                ? '<h2>Logo received — thank you!</h2><p style="margin:0;">Rally Friend includes name recognition on the site; logo placement starts at Rally Supporter ($500). We’ve kept your file in case you upgrade — <a href="mailto:fundraising@redhillpta.org">fundraising@redhillpta.org</a>.</p>'
-                : '<h2>Logo received — thank you!</h2><p style="margin:0;">PDFs get a quick convert by the PTA, then your logo joins the <a href="/partners">Business Partners page</a>.</p>');
+                ? html`<h2>Logo received — thank you!</h2><p style="margin:0;">Rally Friend includes name recognition on the site; logo placement starts at Rally Supporter ($500). We’ve kept your file in case you upgrade — <a href="mailto:fundraising@redhillpta.org">fundraising@redhillpta.org</a>.</p>`
+                : html`<h2>Logo received — thank you!</h2><p style="margin:0;">PDFs get a quick convert by the PTA, then your logo joins the <a href="/partners">Business Partners page</a>.</p>`);
             return;
           }
           if (res.status !== 404) {

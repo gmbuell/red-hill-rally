@@ -6,22 +6,8 @@
              (student names are never shown publicly; the prefill only
              travels to the PTA backend). */
 
-/* Step 1 of the wizard: one radio card per priority. Baked into
-   donate.html by scripts/skeleton.js (donateView()), so the first
-   paint has its final height; the wiring below only checks the
-   chosen one. */
-const donateView = () => ({
-  priorities: PRIORITIES.map((p) => `
-      <label class="option-card with-icon">
-        <input type="radio" name="priority" value="${p.id}">
-        ${RH.icon(p.id, 'icon')}
-        <span class="name">${p.name}</span>
-        <p class="desc">${p.blurb}</p>
-      </label>`).join(''),
-});
-
-/* Browser wiring — absent when scripts/skeleton.js evaluates this file. */
-if (typeof document !== 'undefined') (() => {
+(() => {
+  const { html } = RH;
   const state = {
     step: 1,
     priority: priorityById(RH.param('p')),
@@ -44,8 +30,8 @@ if (typeof document !== 'undefined') (() => {
 
   const visibility = () => RH.qs('input[name="visibility"]:checked').value;
 
-  /* ---- step 1: priority cards — baked into the HTML (donateView), so
-     nothing to render here ---- */
+  /* ---- step 1: priority cards — rendered by the worker; the wiring
+     below only checks the chosen one ---- */
 
   /* ---- step 2: amounts ---- */
   const feeCents = () => feeCoverCents(Math.round(state.amount) * 100);
@@ -62,31 +48,31 @@ if (typeof document !== 'undefined') (() => {
   const renderRedirectNote = () => {
     const program = state.priority ? state.priority.name : 'the program you selected';
     RH.qs('#redirect-note').innerHTML =
-      `Your gift will be used to support <strong>${program}</strong>. If a program becomes fully funded, or if unforeseen circumstances prevent us from executing a program, Red Hill Elementary PTA reserves the right to redirect these funds to the area of greatest need that most closely aligns with your original intent.`;
+      html`Your gift will be used to support <strong>${program}</strong>. If a program becomes fully funded, or if unforeseen circumstances prevent us from executing a program, Red Hill Elementary PTA reserves the right to redirect these funds to the area of greatest need that most closely aligns with your original intent.`;
   };
 
   const renderAmounts = () => {
     const tiers = state.priority ? state.priority.tiers : [];
-    RH.qs('#amount-grid').innerHTML = tiers.map((t) => `
+    RH.qs('#amount-grid').innerHTML = html`${tiers.map((t) => html`
       <button type="button" class="amount-btn ${state.amount === t.amount ? 'selected' : ''}" data-amount="${t.amount}">
         <span class="amt">${RH.money(t.amount)}${t.plus ? '+' : ''}</span>
         <span class="impact">${t.impact}</span>
-      </button>`).join('');
+      </button>`)}`;
     renderFeeLabel();
     renderRedirectNote();
   };
 
   /* ---- step 3: the Rockets this gift credits ---- */
 
-  /* "Ms. Convery's class" / "Ms. Convery's & Mr. Zweber's classes". */
+  /* "Ms. Convery’s class" / "Ms. Convery’s & Mr. Zweber’s classes". */
   const classLabel = (ids) => {
     const teachers = [...new Set(ids.map((id) => classroomById(id)).filter(Boolean).map((r) => r.teacher))];
     if (!teachers.length) return '';
-    return RH.nameList(teachers.map((t) => `${t}&rsquo;s`)) + (teachers.length > 1 ? ' classes' : ' class');
+    return RH.nameList(teachers.map((t) => `${t}’s`)) + (teachers.length > 1 ? ' classes' : ' class');
   };
 
   /* Link-mode fragments shared by the chip, the banner, and the summary. */
-  const linkNames = () => RH.nameList(state.link.students.map((st) => RH.esc(st.n)));
+  const linkNames = () => RH.nameList(state.link.students.map((st) => st.n));
   const linkRooms = () => classLabel(state.link.students.map((st) => st.c));
   const dropLink = () => {
     state.link = null;
@@ -103,11 +89,11 @@ if (typeof document !== 'undefined') (() => {
       rows.render();
       return;
     }
-    holder.innerHTML = `
+    holder.innerHTML = html`
       <div class="link-chip">
         <svg class="icon" viewBox="20 4 24 50" aria-hidden="true">${RH.dartUp}</svg>
         <span class="who">Supporting ${linkNames()}</span>
-        <span class="meta">${RH.roomLabels(state.link.students).map(RH.esc).join(' &nbsp;&middot;&nbsp; ')}</span>
+        <span class="meta">${RH.roomLabels(state.link.students).join(' \u00a0·\u00a0 ')}</span>
       </div>
       <p class="fine-print">Not who you meant to support? <button type="button" class="linklike" id="clear-link">Remove</button></p>`;
     RH.qs('#clear-link').addEventListener('click', () => {
@@ -119,20 +105,20 @@ if (typeof document !== 'undefined') (() => {
   /* ---- step 4: summary ---- */
   const renderSummary = () => {
     const p = state.priority;
-    let s = `<strong>${RH.money(state.amount)}</strong> to <strong>${p ? p.name : ''}</strong>`;
+    const parts = [html`<strong>${RH.money(state.amount)}</strong> to <strong>${p ? p.name : ''}</strong>`];
     if (state.link) {
       const rooms = linkRooms();
-      s += `. Supporting <strong>${linkNames()}</strong>${rooms ? ` (${rooms})` : ''}.`;
+      parts.push(html`. Supporting <strong>${linkNames()}</strong>${rooms ? ` (${rooms})` : ''}.`);
     } else {
       const rooms = classLabel(rows.students.map((st) => st.c).filter(Boolean));
-      s += rooms ? `. Credited to <strong>${rooms}</strong>.` : '.';
+      parts.push(rooms ? html`. Credited to <strong>${rooms}</strong>.` : '.');
     }
     // Full price disclosure before Stripe: the fee cover and the total.
     if (coverFees()) {
       const gift = Math.round(state.amount) * 100;
-      s += ` You&rsquo;re adding <strong>${RH.moneyCents(feeCents())}</strong> to cover processing fees &mdash; <strong>${RH.moneyCents(gift + feeCents())}</strong> total.`;
+      parts.push(html` You’re adding <strong>${RH.moneyCents(feeCents())}</strong> to cover processing fees &mdash; <strong>${RH.moneyCents(gift + feeCents())}</strong> total.`);
     }
-    RH.qs('#summary-text').innerHTML = s;
+    RH.qs('#summary-text').innerHTML = html`${parts}`;
   };
 
   /* ---- wizard chrome ---- */
@@ -286,13 +272,13 @@ if (typeof document !== 'undefined') (() => {
     // A dead or unreachable link must say so — the donor arrived
     // expecting a student to be credited.
     const linkFailed = () => RH.qs('.flow-header').insertAdjacentHTML('beforeend',
-      '<p class="link-banner warn">That student link didn’t work &mdash; you can still choose a classroom on step 3.</p>');
+      html`<p class="link-banner warn">That student link didn’t work &mdash; you can still choose a classroom on step 3.</p>`);
     RH.postJson('/api/link/verify', { code }).then(({ ok, data }) => {
       if (!ok || !Array.isArray(data.students) || !data.students.length) { linkFailed(); return; }
       state.link = { code, students: data.students };
       const rooms = linkRooms();
       RH.qs('.flow-header').insertAdjacentHTML('beforeend',
-        `<p class="link-banner">Supporting <strong>${linkNames()}</strong>${rooms ? ` &middot; ${rooms}` : ''}</p>`);
+        html`<p class="link-banner">Supporting <strong>${linkNames()}</strong>${rooms ? html` &middot; ${rooms}` : ''}</p>`);
       if (state.step === 3) renderDedication();
       if (state.step === 4) renderSummary(); // a slow verify can land after the donor advanced
     }).catch(linkFailed);

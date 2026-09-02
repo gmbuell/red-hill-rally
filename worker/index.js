@@ -1,12 +1,14 @@
 /* The Rocket Rally worker: /api/*, /l/<code> short links, /logo/<id>
-   serving, and the branded 404 for unmatched paths. Static pages are
-   served from ./site by the assets binding (see run_worker_first in
-   wrangler.jsonc). */
+   serving, and every page — the static HTML under ./site rendered
+   through pages.js with the shared chrome and live slots (the branded
+   404 included). Files are served by the assets binding; see
+   run_worker_first in wrangler.jsonc. */
 
 import { createLink, resolveLink } from './links.js';
 import { normalizeStudents } from './students.js';
 import { createCheckoutSession, verifyWebhook } from './stripe.js';
 import { recordDonation, campaignStats, boardStats, exportCsv } from './store.js';
+import { renderPage } from './pages.js';
 import data from '../site/js/data.js';
 
 const { ORG, MAX_NAME, MAX_AMOUNT, feeCoverCents, priorityById, partnerTierById } = data;
@@ -337,13 +339,18 @@ export default {
         return Response.redirect(
           `${url.origin}/donate?link=${short[1].toLowerCase()}`, 302);
       }
-      // Only paths that matched no asset reach the worker — serve the
-      // branded 404 page (as a real 404, not the asset layer's 200).
-      const page = await env.ASSETS.fetch(new Request(`${url.origin}/404`));
-      return new Response(page.body, {
-        status: 404,
-        headers: { 'content-type': 'text/html; charset=utf-8' },
-      });
+      // Everything else is a page: the static HTML with the shared
+      // chrome and live slots streamed in (the branded 404 included).
+      try {
+        return await renderPage(request, env);
+      } catch (err) {
+        console.error(JSON.stringify({
+          event: 'api_error', route: `GET ${url.pathname}`, message: err && err.message,
+        }));
+        return new Response('Something went wrong on our end — please try again.', {
+          status: 500, headers: { 'content-type': 'text/plain; charset=utf-8' },
+        });
+      }
     }
     const route = `${request.method} ${url.pathname}`;
     try {

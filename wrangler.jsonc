@@ -5,16 +5,15 @@
   "compatibility_date": "2026-08-15",
   "compatibility_flags": ["nodejs_compat"],
 
-  // The static site is served as-is — no build step.
+  // The pages and files under ./site, served as-is — no build step.
   "assets": {
     "directory": "./site",
     "binding": "ASSETS",
     "not_found_handling": "404-page",
-    // Browser navigations to unmatched paths are otherwise answered by
-    // the asset layer's 404 page without ever running the worker —
-    // these routes must reach the worker (short links, API-in-browser,
-    // partner logos served from R2).
-    "run_worker_first": ["/l/*", "/api/*", "/logo/*"]
+    // Every navigation runs the worker (pages are rendered there, and
+    // so are short links, API-in-browser, and partner logos from R2);
+    // files under these paths are served straight from the asset layer.
+    "run_worker_first": ["/*", "!/css/*", "!/fonts/*", "!/js/*", "!/img/*", "!/favicon.svg"]
   },
 
   "r2_buckets": [

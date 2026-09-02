@@ -1,27 +1,8 @@
-/* Business Partners page: the partnership ladder (pick a tier, name
-   your business, pay through Stripe) and the wall of current partners
-   — all driven by data.js (PARTNER_TIERS / PARTNERS). The ladder and
-   the curated wall (partnersView(null)) are baked into partners.html
-   by scripts/skeleton.js, so the first paint is complete; online
-   partners re-render the wall with same-sized cards when live data
-   arrives. */
+/* Business Partners page: pick a tier, name your business, pay through
+   Stripe. The ladder and the wall are rendered by the worker; this is
+   the pick handler and the checkout. */
 
-const partnersView = (online) => ({
-  tiers: PARTNER_TIERS.map((t) => `
-    <div class="tier-card" data-tier="${t.id}">
-      <div class="tier-head">
-        <h3>${t.name}</h3>
-        <p class="tier-amount">${RH.money(t.amount)}</p>
-      </div>
-      <ul>${t.benefits.map((b) => `<li>${b}</li>`).join('')}</ul>
-      <button type="button" class="btn small tier-pick" data-tier="${t.id}">Become a ${t.name}</button>
-    </div>`).join(''),
-  wall: RH.partnerWall(online,
-    '<p class="hint">Your business could be first &mdash; the Rally launches in September.</p>'),
-});
-
-/* Browser wiring — absent when scripts/skeleton.js evaluates this file. */
-if (typeof document !== 'undefined') (() => {
+(() => {
   let chosen = null;
   const form = RH.qs('#partner-form');
   const errorEl = RH.qs('#partner-error');
@@ -33,7 +14,7 @@ if (typeof document !== 'undefined') (() => {
       `Add ${RH.moneyCents(fee)} to cover processing fees (${RH.moneyCents(chosen.amount * 100 + fee)} total) — 100% of our partnership reaches the school.`;
   };
 
-  /* ---- the ladder (markup is baked; this is the pick handler) ---- */
+  /* ---- the ladder: the pick handler ---- */
   RH.qs('#tier-grid').addEventListener('click', (e) => {
     const btn = e.target.closest('.tier-pick');
     if (!btn) return;
@@ -66,9 +47,4 @@ if (typeof document !== 'undefined') (() => {
   RH.qs('#biz-name').maxLength = MAX_NAME;
   RH.qs('#biz-name').addEventListener('input', () =>
     RH.qs('#biz-field').classList.remove('invalid'));
-
-  /* ---- the wall: the curated roster is baked; online partners merge
-     in when live data arrives ---- */
-  const wall = RH.qs('#partner-wall');
-  RH.loadLive('/api/campaign', (live) => { wall.innerHTML = partnersView(live.partners).wall; });
 })();

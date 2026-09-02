@@ -857,7 +857,7 @@ describe('static asset headers', () => {
        loaded, then warns that the preload went unused. Early Hints are
        only generated for extensionless URIs anyway. */
     for (const path of ['/', '/donate', '/rally-board', '/partners', '/student-link', '/matching', '/thanks']) {
-      const res = await env.ASSETS.fetch(`https://rally.test${path}`);
+      const res = await SELF.fetch(`https://rally.test${path}`);
       expect(res.status, path).toBe(200);
       expect(res.headers.get('link'), path).toContain('</css/styles.css>; rel=preload');
     }
