@@ -45,7 +45,8 @@
   // the demo donations) and logo bucket, reachable only on workers.dev.
   // It holds no Stripe secrets, so checkout answers 503 there as it
   // does in local dev. Workers Builds uploads every non-main branch to
-  // it with `npm run preview` and comments the preview URL on the PR.
+  // it with `npm run preview`; the PR's Workers Builds check links the
+  // preview URL.
   "env": {
     "preview": {
       "name": "red-hill-rally-preview",
