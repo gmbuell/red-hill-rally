@@ -306,7 +306,7 @@
     section { padding: 2rem 0; }
     .swatch, .type-card, .motif, .rule, .voice-card, .ground-card, .dd-col,
     .lockup-demo, .banner-demo, table.contrast, .prop-bar { break-inside: avoid; }
-    /* Swatches and chips are the guide's content, not decoration — force their inks
+    /* Swatches and chips are the guide's content — force their inks
        even when the browser strips backgrounds for print. */
     .swatch .chip, .prop-bar span, .pair-chip, .scene-chip {
       print-color-adjust: exact; -webkit-print-color-adjust: exact;
@@ -412,10 +412,10 @@
         <ul>
           <li><em>Stress</em> is a single word you'd stress saying the line aloud — always inside a multi-word line, never a word alone on its line.</li>
           <li><em>Voice</em> is one whole short element worn all-red: a label, a kicker, a script phrase.</li>
-          <li>A matched set of repeated labels reads as one element — repetition is rhythm, not competition.</li>
+          <li>A matched set of repeated labels reads as one element — repetition is rhythm.</li>
           <li>Never body copy; never headlines by default.</li>
           <li>Beyond text, red is ribbon banners, brush bands, hearts, fins, and — in grid builds — one structural mass a knockout mark can sit in, whether a block or an edge rail.</li>
-          <li>Budget red by area, not count: a structural red spend usually exhausts the allowance on its own, and when it does, text and labels stay navy.</li>
+          <li>Budget red by area: a structural red spend usually exhausts the allowance on its own, and when it does, text and labels stay navy.</li>
         </ul>
       </div>
     </div>
@@ -508,7 +508,7 @@
     <div class="type-card">
       <div class="role">The Wordmark</div>
       <div class="specimen" style="font-family:var(--display); font-weight:600; text-transform:uppercase; letter-spacing:0.04em; font-size:clamp(2rem,5vw,3rem); color:var(--navy);">Red Hill</div>
-      <p class="notes">"Red Hill" set in Oswald SemiBold caps with slight letter-spacing — navy on light grounds, white on navy — optionally on the gentle arc. What makes it the wordmark rather than a headline is discipline, not a different face: nothing else shares its line, and clear space equal to the cap height of the R holds on all sides. Minimum size 24px. As a logotype it's exempt from contrast requirements, but don't lean on that: set it on approved grounds anyway. This guide's own cover leads with it, "Brand Guide" stepped down beneath. A script "Red Hill" is a greeting flourish, never the wordmark.</p>
+      <p class="notes">"Red Hill" set in Oswald SemiBold caps with slight letter-spacing — navy on light grounds, white on navy — optionally on the gentle arc. What makes it the wordmark rather than a headline is discipline: nothing else shares its line, and clear space equal to the cap height of the R holds on all sides. Minimum size 24px. As a logotype it's exempt from contrast requirements, but don't lean on that: set it on approved grounds anyway. This guide's own cover leads with it, "Brand Guide" stepped down beneath. A script "Red Hill" is a greeting flourish, never the wordmark.</p>
     </div>
 
     <div class="lockup-demo">
@@ -527,7 +527,7 @@
       <h2>The Spirit Kit</h2>
       <img class="underline" aria-hidden="true" src="brand-guide/underline-flip-y.svg" alt="">
     </div>
-    <p>All visuals are flat vector: solid fills, no gradients, no drop shadows, no outlined illustration — with one signature exception: the red outlined heart. (The Sticker Cut's die-cut edge is a border around a solid motif, not an outline — it has its own card below.) And every piece carries at least one Spirit Kit motif, however austere the layout: without one, even a perfectly on-palette piece stops being Red Hill. When a piece needs to feel hand-made, reach for irregular contours — a brush edge, a wavy grass line, a hand-hung tilt — never texture: no grain, no aging, no distressing.</p>
+    <p>All visuals are flat vector with solid fills and solid shapes, with one signature exception: the red outlined heart. (The Sticker Cut's die-cut edge is a border around a solid motif; it has its own card below.) And every piece carries at least one Spirit Kit motif, however austere the layout: without one, even a perfectly on-palette piece stops being Red Hill. When a piece needs to feel hand-made, reach for irregular contours — a brush edge, a wavy grass line, a hand-hung tilt — and keep surfaces clean and flat.</p>
     <div class="motif-grid">
       <div class="motif">
         <img width="64" height="64" aria-hidden="true" src="brand-guide/badge-rocket.svg" alt="">
@@ -537,12 +537,12 @@
       <div class="motif">
         <img width="64" height="64" aria-hidden="true" src="brand-guide/red-rocket.svg" alt="">
         <div class="name">The Red Rocket</div>
-        <p>The celebration rocket. Red body, navy fins and porthole ring, and a full, curving gold plume with a red inner tongue — the flame is drawn, never a straight triangle. The big expressive version for banners and spirit pieces, always with a dotted trail's worth of room to fly.</p>
+        <p>The celebration rocket. Red body, navy fins and porthole ring, and a full, curving gold plume with a red inner tongue — the flame is drawn with a curve. The big expressive version for banners and spirit pieces, always with a dotted trail's worth of room to fly.</p>
       </div>
       <div class="motif">
         <img width="64" height="64" aria-hidden="true" src="brand-guide/dart.svg" alt="">
         <div class="name">The Dart</div>
-        <p>The accent. A small, simplified dart — navy body, red fins, streak exhaust — for corners, dividers, and above headlines, where it stays legible at 24px. Every rocket flies mid-flight at an angle, never grounded, never pointing down.</p>
+        <p>The accent. A small, simplified dart — navy body, red fins, streak exhaust — for corners, dividers, and above headlines, where it stays legible at 24px. Every rocket flies mid-flight at a rising angle.</p>
       </div>
       <div class="motif">
         <img width="64" height="64" aria-hidden="true" src="brand-guide/sticker-cut.svg" alt="">
@@ -552,7 +552,7 @@
       <div class="motif">
         <img width="64" height="64" aria-hidden="true" src="brand-guide/star-scatter.svg" alt="">
         <div class="name">Star Scatter</div>
-        <p>Confetti, not wallpaper. Two or three stars in mixed sizes and colors clustered near a headline or motif — asymmetric, like they just burst. Always star-shaped: no dots or circles standing in for stars.</p>
+        <p>Confetti. Two or three stars in mixed sizes and colors clustered near a headline or motif — asymmetric, like they just burst. Always star-shaped.</p>
       </div>
       <div class="motif">
         <img width="64" height="64" aria-hidden="true" src="brand-guide/hearts.svg" alt="">
@@ -648,23 +648,23 @@
       </div>
       <div class="ground-card" style="background:var(--sky);">
         <h3>Sky wash organizes</h3>
-        <p>Section bands, icon rows, and info panels sit in Sky Wash — the same blue as the illustrated sky, so panels feel like air, not boxes. Warmth comes from gold, script, and the voice, not from the paper.</p>
+        <p>Section bands, icon rows, and info panels sit in Sky Wash — the same blue as the illustrated sky, so panels feel like air. Warmth comes from gold, script, and the voice; the paper stays cool.</p>
       </div>
     </div>
 
     <p style="margin-top:2rem;"><strong>Composition.</strong> Every piece commits to one spine. The default is the <em>spirit stack</em>: a centered vertical build — motif, then lockup, then ribbon or panel, then supporting detail — that balances itself and always feels like a poster. The alternative is the <em>grid build</em>: everything hangs flush-left on a strict grid, oversized type and generous whitespace, with one bold mass counterweighting the type. Choose the stack when the feeling leads, the grid when the information leads — and never mix spines in one piece. In both builds, body text stays left-aligned inside its column: centering is for the spine, never the sentences.</p>
     <p><strong>The grid build in practice.</strong> Open with a hairline masthead — organization flush-left, date flush-right — anchored to the content edge: when a rail claims an edge of the sheet, the grid's origin moves with it. The counterweight to the type mass is one bold element, any of three forms: a navy or red block a knockout mark sits in, a single large motif, or a structural rail or band bled off the edge — and the band may itself be an illustrated scene, a grass strip serving as both mass and motif. Script keeps its warmth here, flush-left on its own line. And motifs may inhabit the structure instead of decorating it: a rocket climbing a rail, its trail running inside the band.</p>
     <p><strong>Panels and rows.</strong> Lists of programs or benefits sit in a strip: icon above label, items separated by thin vertical rules, three to five items — enough to show breadth, few enough to read at a car-line glance. The strip has two grounds. Sky Wash is the default — quiet organization inside a busy page, labels in bold navy caps. Navy is the announcement variant, for when the row itself is the star: gold caps labels, white body text, white hairline rules, and icons as solid white knockouts — never line drawings. Gold is a label color on navy only; on light grounds labels stay navy or slate.</p>
-    <p><strong>Edges are horizons.</strong> The boundary between two grounds is a stage, not a seam. A panel's top edge can be the ground line the schoolhouse sits on; a navy band's rim, the surface a rocket launches from; a hairline, the path the dart flies above. One figure on one edge is plenty — it's the move that makes a piece look composed instead of assembled.</p>
+    <p><strong>Edges are horizons.</strong> The boundary between two grounds is a stage. A panel's top edge can be the ground line the schoolhouse sits on; a navy band's rim, the surface a rocket launches from; a hairline, the path the dart flies above. One figure on one edge is plenty — it's the move that makes a piece look composed instead of assembled.</p>
     <p><strong>Small against big.</strong> Scale drama runs both ways. Huge type is one kind of energy; a small motif alone in a generous field is the other — a tiny rocket high in an empty ice-paper sky reads as flight and wonder. When a motif shrinks, let the whitespace around it do the work.</p>
-    <p><strong>Photography.</strong> Event photos join a layout as blocks: sharp-edged rectangles set flush on the grid and treated as one bold mass — a photo can carry a grid build as its counterweight. Never behind text, never rounded, never floated. In a spirit stack, a photo may take the composition's one tilt, like a snapshot taped to the fridge; in a grid build it stays square like everything else.</p>
+    <p><strong>Photography.</strong> Event photos join a layout as blocks: sharp-edged rectangles set flush on the grid and treated as one bold mass — a photo can carry a grid build as its counterweight. Text sits beside a photo, corners stay square, and the block sits on the grid. In a spirit stack, a photo may take the composition's one tilt, like a snapshot taped to the fridge; in a grid build it stays square like everything else.</p>
     <p><strong>Tilt with intent.</strong> One tilt per view — a view being what the eye takes in at once. A ribbon, a badge, a brush band, a taped-down photo may rotate a degree or two; it's the hand-made wink. A poster is one view, so one tilt. A tall stacked piece is several views, so a tilted badge in its hero and a tilted ribbon at its close can coexist — but two tilts never share a view, and type blocks, panels, and anything on the grid never tilt. If everything tilts, nothing does. To know whether any device belongs in a grid build, ask where its energy lives: in its contour, or in its placement. Contour energy — script curves, brush edges, a wavy grass line — travels anywhere, because the grid governs placement and doesn't care about edges. Placement energy — tilt, arc, the ribbon's hand-hung hang — stays in the stack, because the grid is a placement discipline and those devices exist to defy it.</p>
     <div class="rule">
       <p class="rule-line">The device budget: a typical piece picks two or three devices and lets the rest sit out.</p>
       <div class="fine-print">
         <span class="fp-label">The fine print</span>
         <ul>
-          <li>The one-of-each rules — arc, tilt (per view), brush stroke, star scatter, sparks, scene — are ceilings, not a recipe.</li>
+          <li>The one-of-each rules — arc, tilt (per view), brush stroke, star scatter, sparks, scene — are ceilings.</li>
           <li>Reach for everything at once only when the occasion is genuinely maximal.</li>
           <li>Even then, ask which device the piece would miss least — and cut it.</li>
         </ul>
@@ -685,7 +685,7 @@
       <h2>How Red Hill Sounds</h2>
       <img class="underline" aria-hidden="true" src="brand-guide/underline-flip-x.svg" alt="">
     </div>
-    <p>Gratitude first, community always. Red Hill talks like a thankful neighbor, not an institution.</p>
+    <p>Gratitude first, community always. Red Hill talks like a thankful neighbor.</p>
     <div class="voice-cols">
       <div class="voice-card">
         <h3>Lead with thanks</h3>
@@ -699,7 +699,7 @@
         <h3>Always "our," never "the"</h3>
         <ul>
           <li>It's <span class="say">our students, our school, our community</span> — the reader is already part of it.</li>
-          <li>Invitations, not instructions: <span class="say">"Create your account today, simplify your school year."</span></li>
+          <li>Invitations: <span class="say">"Create your account today, simplify your school year."</span></li>
         </ul>
       </div>
       <div class="voice-card">

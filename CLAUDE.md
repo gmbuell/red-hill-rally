@@ -6,9 +6,9 @@ Checkout, short student links, D1 tallies, and R2 partner logos. **Production is
 live** at <https://red-hill-rally.gmbuell.workers.dev>; there is no
 staging environment.
 
-Long-form docs, don't duplicate them here: `README.md` (setup, deploy,
-go-live checklist, operations) and `docs/design-decisions.md`
-(product decisions and data flow). Brand system: `docs/brand-guide.html`.
+Product decisions: `docs/design-decisions.md`. Brand
+system: `docs/brand-guide.html`. The README is a two-sentence pointer;
+this file is the operating manual.
 
 ## Commands
 
@@ -18,11 +18,14 @@ go-live checklist, operations) and `docs/design-decisions.md`
 | `npx wrangler d1 migrations apply red-hill-rally --local` | once per clone: local D1 schema |
 | `npm run dev` | `wrangler dev` on http://localhost:8787 |
 | `npm test` | vitest (84 tests, ~3 s) |
-| `npm run audit` | Lighthouse on every page, mobile + desktop; defaults to the live site (`npm run audit -- --url http://localhost:8787` for local). CI runs it with `--runs 3 --min 98` against `wrangler dev` |
-| `npm run deploy` | **Ships to production** after running the tests and applying remote D1 migrations |
+| `npm run audit` | Lighthouse on every page, mobile + desktop (needs Chrome); defaults to the live site (`npm run audit -- --url http://localhost:8787` for local). `--runs 3 --min 98` reproduces the CI gate, `--form mobile` limits it to one form factor |
+| `npm run deploy` | **Ships to production**: the worker and every file under `site/`. The `predeploy` step runs the tests, then applies pending D1 migrations to the remote database, so schema and code ship together |
+| `npx wrangler tail red-hill-rally` | Production logs |
 
 Don't run `npm run deploy`, `wrangler d1 execute … --remote`, or
 `wrangler secret put` unless asked; they all touch production.
+`npm test` runs with fake keys, so contributors can work without
+secrets; the maintainer reviews and ships PRs.
 
 ## Layout
 
@@ -55,6 +58,9 @@ Don't run `npm run deploy`, `wrangler d1 execute … --remote`, or
   credited Rocket), `links` (code → students JSON + signature).
 - `test/` — vitest on `@cloudflare/vitest-pool-workers`; migrations are
   read from disk and re-applied before each test.
+- `seed/demo-donations.sql` — prototype-scale demo donations on the
+  real roster; apply/remove commands are in its header. It replaces
+  whatever is in the donations and links tables.
 - `.github/workflows/ci.yml` — PR gate: `npm test` plus Lighthouse
   ≥ 98 on every page, mobile and desktop. Lighthouse is the repo's
   `lighthouse` devDependency, so `npm run audit` and CI score alike.
@@ -133,5 +139,84 @@ Don't run `npm run deploy`, `wrangler d1 execute … --remote`, or
   tests pick it up automatically.
 - Commit messages: one imperative, sentence-case line, no type prefix.
 - Review posture: skip attacker-only findings unless the fix is a few
-  lines; prefer a README note over new code for manual admin paths
-  (refunds, pulling a logo).
+  lines; prefer a note under **Operations** over new code for manual
+  admin paths (refunds, pulling a logo).
+
+## Going live
+
+The site is wired to the Stripe **sandbox**: the full flow works end
+to end with test cards (`4242 4242 4242 4242`) on play money. To
+flip to live, in this order:
+
+1. **Live Stripe key** — `npx wrangler secret put STRIPE_SECRET_KEY`
+   with the live-mode key (Dashboard → Developers → API keys).
+2. **Live webhook** — in the Stripe dashboard (live mode) add an
+   endpoint for
+   `https://red-hill-rally.gmbuell.workers.dev/api/stripe/webhook`
+   listening for **both** `checkout.session.completed` and
+   `checkout.session.async_payment_succeeded` (the second covers
+   bank-debit payments that confirm later, so those gifts reach the
+   tallies), then `npx wrangler secret put
+   STRIPE_WEBHOOK_SECRET` with its signing secret. The sandbox
+   endpoint can stay; it only receives sandbox events, and the worker
+   holds one webhook secret at a time.
+3. **Receipts** — turn on email receipts in Stripe settings (live
+   mode). The site promises one, and each charge description carries
+   the IRS acknowledgment donors need to deduct gifts of $250+.
+4. **Clear test data** (last, so the campaign opens on an empty
+   board) —
+   `npx wrangler d1 execute red-hill-rally --remote --command "DELETE FROM donation_students; DELETE FROM donations; DELETE FROM links"`.
+5. **Prove it live** — one small real donation with a real card:
+   the tally moves on the Rally Board, the receipt arrives with the
+   acknowledgment line, the Rocket shows on the student sheet. Refund
+   it from Stripe and remove the row (see **Refunds**), or let it open
+   the campaign.
+
+## Operations
+
+- **Student sheet** (what each class and each Rocket has raised) —
+  the key is `ADMIN_KEY` in `.dev.vars`:
+
+  ```sh
+  curl -H "Authorization: Bearer <ADMIN_KEY>" \
+    https://red-hill-rally.gmbuell.workers.dev/api/export.csv > students.csv
+  ```
+
+  `…/api/export.csv?key=<ADMIN_KEY>` also works in a browser but
+  leaves the key in history and request logs. Columns are grade,
+  teacher, student, gifts, raised: every roster classroom lists its
+  Rockets, biggest first, then a `Class total` row. A gift naming
+  several kids counts once for each and splits its dollars evenly;
+  family gifts that named no Rocket sit in a last `No Rocket named`
+  row so the sheet adds up to the board. Partnerships are left out.
+  Donor contact details stay in the backend: read them in the Stripe
+  dashboard, and find employer-match follow-ups with
+  `employer_match = 1` in D1.
+- **Goals, copy, tiers, roster, partners** — edit `site/js/data.js`
+  (page copy lives in the HTML files); redeploy.
+- **Partner logos** — businesses upload a logo on the thank-you page
+  right after paying; images **auto-publish** to /partners and the
+  Rally Board (a PDF converts in the partner's browser, print original
+  stored alongside; see `docs/design-decisions.md`). A PDF that fails
+  to convert, or a script upload, is stored and held. Files live
+  in the `red-hill-rally-logos` R2 bucket as
+  `partner-logos/<opaque id>`, business name and session id in the
+  object metadata.
+  - *Publish a held PDF or an offline partner*: web-sized image into
+    `site/img/partners/`, a `PARTNERS` entry in `site/js/data.js`,
+    redeploy.
+  - *Pull a published logo* (wrong file, inappropriate content):
+    `npx wrangler d1 execute red-hill-rally --remote --command "UPDATE donations SET logo_id = '' WHERE donor_name = '<business>'"`.
+    The wall, the board strip, and the direct /logo URL stop within
+    ~5 minutes (image cache); delete the R2 object too if the file
+    itself should go. The partner's thank-you link can upload again,
+    so to pull a logo for good, refund the partnership and delete its
+    row.
+- **Refunds** — the tallies keep a refunded gift until its row is
+  deleted. After refunding, delete the gift's row by its Stripe session id (`cs_…`,
+  shown on the payment in the dashboard):
+  `npx wrangler d1 execute red-hill-rally --remote --command "DELETE FROM donations WHERE id = 'cs_…'"`.
+  Totals, honor roll, and classroom credits drop off with it.
+- **Ad-hoc questions** — `npx wrangler d1 execute red-hill-rally
+  --remote --command "SELECT ..."`, or the D1 console in the
+  Cloudflare dashboard.

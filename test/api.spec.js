@@ -4,7 +4,7 @@ import worker from '../worker/index.js';
 import data from '../site/js/data.js';
 import { paidSession, paidPartnership, PII } from './fixtures.js';
 
-/* Fixture config derives from data.js, so the edits the README invites
+/* Fixture config derives from data.js, so the edits contributors make
    (rename a tier, change a price, update the roster) don't break the
    suite: any two priorities, any three classrooms, one logo tier and
    one name-only tier will do — the tests pin mechanics, not this
