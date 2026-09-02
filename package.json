@@ -14,5 +14,6 @@
     "lighthouse": "^13.4.1",
     "vitest": "^4.1.11",
     "wrangler": "^4.0.0"
-  }
+  },
+  "allowScripts": { "esbuild": true, "workerd": true }
 }
