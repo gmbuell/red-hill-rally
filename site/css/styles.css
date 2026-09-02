@@ -35,6 +35,12 @@
      and focus rings reference it, and now resolves to the red. */
   --navy: #000000;
   --red: #E31E24;
+  /* The brand red is 4.26:1 on the paper ground, under the 4.5:1 floor
+     for small text, so red type takes these instead: `--red-ink` on
+     light, `--red-glow` on black. Fills, rules and display type keep
+     the true brand red. */
+  --red-ink: #C81419;
+  --red-glow: #FF5A57;
   --gold: #E31E24;
   --sky: #F4F4F2;
   --paper: #FFFFFF;
@@ -118,9 +124,9 @@ select:focus-visible,
   font-size: 0.95rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--red);
+  color: var(--red-ink);
 }
-.script.red { color: var(--red); }
+.script.red { color: var(--red-ink); }
 
 .label {
   font-weight: 800;
@@ -322,7 +328,7 @@ select:focus-visible,
   font-size: clamp(0.85rem, 2.2vw, 1rem);
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--red);
+  color: var(--red-ink);
   display: block;
   margin-bottom: 0.9rem;
 }
@@ -339,7 +345,7 @@ select:focus-visible,
 /* Presenting sponsor: text only, no logo, per the partnership terms. */
 .hero .presented {
   margin: 1.5rem auto 0;
-  font-size: 0.92rem;
+  font-size: 1rem;
   color: var(--navy);
   font-weight: 700;
 }
@@ -1175,8 +1181,8 @@ select:focus-visible,
 .grand-badge {
   display: inline-block;
   border: 2px solid var(--red);
-  color: var(--gold);
-  font-size: 0.72rem;
+  color: var(--red-glow);
+  font-size: 0.8125rem;
   font-weight: 800;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -1206,25 +1212,25 @@ select:focus-visible,
 .prize-list li:last-child { border-bottom: none; }
 .prize-key {
   flex: none;
-  width: 7.5rem;
+  width: 8rem;
   font-family: var(--display);
   font-weight: 400;
-  font-size: 1.35rem;
-  line-height: 1.1;
-  color: var(--red);
+  font-size: 1.5rem;
+  line-height: 1.5;
+  color: var(--red-ink);
 }
 .prize-key small {
   display: block;
   font-family: inherit;
-  font-size: 0.68rem;
+  font-size: 0.8125rem;
   font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--grey);
-  margin-top: 0.15rem;
+  line-height: 1.5;
 }
 .prize-list p { margin: 0; }
-.prize-body { margin: 0.8rem 0 0; font-size: 0.94rem; }
+.prize-body { margin: 0.8rem 0 0; }
 
 @media (max-width: 34rem) {
   .prize-list li { flex-direction: column; gap: 0.4rem; }

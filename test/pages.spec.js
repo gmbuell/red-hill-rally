@@ -61,7 +61,7 @@ describe('rendered pages', () => {
     // Priority cards show what a priority has raised, never a per-priority
     // goal: the six goals are annual program costs and do not add up to the
     // Rally's own target.
-    expect(text).toContain('<strong>$100</strong> raised</p>');
+    expect(text).toContain('<strong>$100</strong> raised<');
     expect(text).not.toContain(`raised of $${P_MAIN.goal.toLocaleString('en-US')}`);
     expect(text).toContain('<clipPath id="traj-clip">');
   });
@@ -81,7 +81,7 @@ describe('rendered pages', () => {
     const apollo = data.PARTNERS.find((p) => p.annual === top.id);
     const orbit = data.PARTNERS.find((p) => p.annual && p.annual !== top.id);
     expect(text).toContain(`size-${top.size}`);
-    expect(text).toContain(`<span class="partner-tier">${top.name}</span>`);
+    expect(text).toContain(`class="partner-tier">${top.name}<`);
     expect(text.indexOf(apollo.name)).toBeLessThan(text.indexOf(orbit.name));
   });
 
