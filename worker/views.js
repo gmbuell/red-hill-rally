@@ -157,7 +157,9 @@ const trajectorySVG = (pct) => {
    last logo it uploaded — an upgrade or re-purchase can raise a
    listing, never demote it. `src` is the logo URL, or '' for
    name-only recognition (a tier without `logo`, or no logo at all).
-   The board's partner count is this list's length. */
+   An unknown tier id (a typo in data.js) lists the business without
+   a badge rather than breaking the page. The board's partner count is
+   this list's length. */
 const mergedPartners = (online) => {
   const key = (name) => name.toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]/g, '');
   const rank = (tier) => PARTNER_TIERS.findIndex((t) => t.id === tier);
@@ -173,15 +175,15 @@ const mergedPartners = (online) => {
   }
   return [...byKey.values()].map((p) => {
     const tier = partnerTierById(p.tier);
-    return { ...p, src: tier && !tier.logo ? '' : p.src };
+    return { ...p, tierName: tier ? tier.name : '', src: tier && !tier.logo ? '' : p.src };
   });
 };
 
 /* The partner wall — identical on /partners and the Rally Board:
    full-size logo cards (name, tier badge), or `empty` when nobody is
-   listed yet, plus the thanks line for name-only tiers. */
-const partnerWall = (online, empty) => {
-  const all = mergedPartners(online);
+   listed yet, plus the thanks line for name-only tiers. `all` is the
+   mergedPartners list. */
+const partnerWall = (all, empty) => {
   const logos = all.filter((p) => p.src);
   const names = all.filter((p) => !p.src);
   const cards = logos.length ? html`
@@ -189,7 +191,7 @@ const partnerWall = (online, empty) => {
       <li class="partner-card">
         <img src="${p.src}" alt="${p.name} logo" loading="lazy">
         <span class="partner-name">${p.name}</span>
-        ${p.tier ? html`<span class="partner-tier">${partnerTierById(p.tier).name}</span>` : ''}
+        ${p.tierName ? html`<span class="partner-tier">${p.tierName}</span>` : ''}
       </li>`)}
     </ul>` : (names.length ? '' : empty);
   const thanks = names.length ? html`
@@ -226,7 +228,7 @@ export const footer = () => html`
     <a href="/student-link">Student Link</a>
     <a href="/partners">Business Partners</a>
   </nav>
-  <p>Red Hill Elementary PTA &middot; Home of the Rockets &middot; Tustin Unified School District</p>
+  <p>${ORG.name} &middot; Home of the Rockets &middot; Tustin Unified School District</p>
   <p>Red Hill PTA is a 501(c)(3) nonprofit, EIN ${ORG.ein} &mdash; donations are tax-deductible. Many employers match gifts &mdash; <a href="/matching">here&rsquo;s how</a>.</p>`;
 
 /* ---- pages ------------------------------------------------------------ */
@@ -275,12 +277,12 @@ export const boardSlots = (live) => {
   const gifts = live ? live.campaign.gifts : 0;
   const perClass = (live && live.classrooms) || {};
   const donors = (live && live.donors) || [];
-  const online = live && live.partners;
+  const partners = mergedPartners(live && live.partners);
 
   const totals = [
     [money(raised), 'raised of ' + money(CAMPAIGN.goal)],
     [gifts, 'family gifts so far'],
-    [mergedPartners(online).length, 'business partners'],
+    [partners.length, 'business partners'],
     [CLASSROOMS.length, 'classrooms flying'],
   ].map(([num, label]) => html`
       <div class="total"><span class="num money">${num}</span><span class="label">${label}</span></div>`);
@@ -334,7 +336,7 @@ export const boardSlots = (live) => {
     'board-totals': html`${totals}`,
     race: html`${race}`,
     'honor-roll': roll,
-    'board-partners': partnerWall(online, html`
+    'board-partners': partnerWall(partners, html`
       <p class="board-lede">Your business could be up here &mdash; the Rally runs September&ndash;October.</p>`),
   };
 };
@@ -350,7 +352,7 @@ export const partnersSlots = (live) => ({
       <ul>${t.benefits.map((b) => html`<li>${b}</li>`)}</ul>
       <button type="button" class="btn small tier-pick" data-tier="${t.id}">Become a ${t.name}</button>
     </div>`)}`,
-  'partner-wall': partnerWall(live && live.partners, html`
+  'partner-wall': partnerWall(mergedPartners(live && live.partners), html`
     <p class="hint">Your business could be first &mdash; the Rally launches in September.</p>`),
 });
 

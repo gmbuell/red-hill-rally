@@ -128,7 +128,10 @@ what catches a regression here.
   students, case-insensitive on lookup. Internal URLs are
   extensionless (`/donate`). Every navigation runs the worker
   (`run_worker_first` is `/*` minus the static folders), so unknown
-  paths get the branded 404 with the shared chrome.
+  paths get the branded 404 with the shared chrome. A missing file
+  under a static folder is the one request the worker never sees; the
+  asset layer answers it with `404.html`, so that file carries a baked
+  copy of the chrome, pinned to `views.js` by a test.
 - Every Stripe receipt doubles as the IRS "contemporaneous written
   acknowledgment" donors need for gifts of $250+ (Pub 1771): the
   charge description carries the org name, EIN, and no-goods-or-

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import ui from '../site/js/ui.js';
+import uiSource from '../site/js/ui.js?raw';
 import data from '../site/js/data.js';
 
 const { html, raw, studentRowsMarkup, LINK_ROWS } = ui;
@@ -23,5 +24,13 @@ describe('html tag', () => {
     expect(row).toContain('student’s name');
     expect(row).not.toContain('&amp;');
     expect(row).not.toContain('remove-student');
+  });
+});
+
+describe('ui.js as a page script', () => {
+  it('uses the page globals even when something defines a `module` global', () => {
+    const load = new Function('module', 'CLASSROOMS', 'classroomById', 'MAX_NAME', 'MAX_STUDENTS', `${uiSource}\nreturn RH;`);
+    const rh = load({}, data.CLASSROOMS, data.classroomById, data.MAX_NAME, data.MAX_STUDENTS);
+    expect(String(rh.html`<b>${'<'}</b>`)).toBe('<b>&lt;</b>');
   });
 });

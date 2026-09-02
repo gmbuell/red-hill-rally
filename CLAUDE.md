@@ -17,9 +17,9 @@ go-live checklist, operations) and `docs/design-decisions.md`
 | `npm install` | wrangler, vitest + workers pool, lighthouse |
 | `npx wrangler d1 migrations apply red-hill-rally --local` | once per clone: local D1 schema |
 | `npm run dev` | `wrangler dev` on http://localhost:8787 |
-| `npm test` | vitest (79 tests, ~3 s) |
+| `npm test` | vitest (84 tests, ~3 s) |
 | `npm run audit` | Lighthouse on every page, mobile + desktop; defaults to the live site (`npm run audit -- --url http://localhost:8787` for local). CI runs it with `--runs 3 --min 98` against `wrangler dev` |
-| `npm run deploy` | **Ships to production** after applying remote D1 migrations |
+| `npm run deploy` | **Ships to production** after running the tests and applying remote D1 migrations |
 
 Don't run `npm run deploy`, `wrangler d1 execute … --remote`, or
 `wrangler secret put` unless asked; they all touch production.
@@ -89,18 +89,25 @@ Don't run `npm run deploy`, `wrangler d1 execute … --remote`, or
   from the pool's `reset()`. Noise; read the summary line.
 - Don't add `"type": "module"` to `package.json`: `data.js` and
   `ui.js` rely on the CommonJS guard.
-- Markup is built only with the `html` tag from `ui.js`: plain strings
-  are escaped, nested `html`/`raw` values and arrays pass through,
-  `null`/`false` vanish. Interpolated copy uses Unicode characters
-  (’ · —), never entities, or they render literally.
+- Markup with interpolated values is built only with the `html` tag
+  from `ui.js`: plain strings are escaped, nested `html`/`raw` values
+  and arrays pass through, `null`/`false` vanish. Interpolated copy
+  uses Unicode characters (’ · —), never entities, or they render
+  literally.
 - The site header and footer come from `worker/views.js`; the HTML
-  files carry empty `<header>`/`<footer>` elements. The stat pages
-  render into empty slot elements by id; a slot needs the id in the
-  HTML and a key in the page's slot builder.
+  files carry empty `<header>`/`<footer>` elements. The one exception
+  is `404.html`, which carries a baked copy: the asset layer serves it
+  by itself for a missing file under a static folder, where the worker
+  never runs. `test/pages.spec.js` pins that copy to `views.js`; when
+  the chrome changes, paste the new markup in. The stat pages render
+  into empty slot elements by id; a slot needs the id in the HTML and
+  a key in the page's slot builder (a test checks every key has its
+  id).
 - Every navigation runs the worker: `run_worker_first` is `/*` minus
   the static folders. A new static folder under `site/` must be added
   to the exclusions in `wrangler.jsonc`. A stats failure renders the
-  zero state (logged as `api_error`), never an error page.
+  zero state (logged as `api_error`, sent `no-store`), never an error
+  page.
 - Internal URLs are extensionless (`/donate`, not `/donate.html`).
 - The word lists in `worker/links.js` print on kids' handouts; any
   addition must be elementary-school-safe in every adjective+animal

@@ -1,8 +1,8 @@
 /* Campaign configuration — the static facts of the Rocket Rally.
-   Live numbers come from /api/campaign (totals) and /api/board (the
-   classroom race and honor roll). The worker imports this same file
-   for validation, so the classroom roster and priorities live in
-   exactly one place. */
+   Live numbers (totals, the classroom race, the honor roll) come from
+   D1 and are rendered into the pages by the worker. The worker imports
+   this same file for validation and rendering, so the classroom roster
+   and priorities live in exactly one place. */
 
 const ORG = {
   name: 'Red Hill Elementary PTA',

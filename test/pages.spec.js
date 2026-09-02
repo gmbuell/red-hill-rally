@@ -1,47 +1,28 @@
-import { env, SELF, reset } from 'cloudflare:test';
+import { env, SELF, createExecutionContext, reset } from 'cloudflare:test';
 import { afterEach, describe, it, expect } from 'vitest';
+import worker from '../worker/index.js';
 import { recordDonation } from '../worker/store.js';
+import { header, footer } from '../worker/views.js';
 import data from '../site/js/data.js';
+import { paidSession, paidPartnership, PII, PAGE_PATHS } from './fixtures.js';
 
 const [P_MAIN] = data.PRIORITIES;
 const [ROOM_A] = data.CLASSROOMS.map((c) => c.id);
-const LOGO_TIER = data.PARTNER_TIERS.find((t) => t.logo);
-const PAGES = ['/', '/donate', '/rally-board', '/partners', '/student-link', '/matching', '/thanks'];
 
 const page = async (path) => {
   const res = await SELF.fetch(`https://rally.test${path}`);
   return { res, text: await res.text() };
 };
 
-/* A paid session as the webhook stores it — the webhook path has its
-   own tests; these seed the store directly. */
-const gift = (over = {}) => recordDonation(env.DB, {
-  id: over.id || 'cs_page_1',
-  amount_total: over.amount ?? 10000,
-  payment_status: 'paid',
-  customer_details: {
-    email: 'fam@example.com', name: 'Rosa Rodriguez',
-    address: { line1: '123 Rocket Way', city: 'Tustin', state: 'CA', postal_code: '92780', country: 'US' },
-  },
-  metadata: {
-    priority: P_MAIN.id,
-    students: JSON.stringify([{ c: ROOM_A, n: 'Mia Rodriguez' }]),
-    donor_name: over.donorName || 'The Rodriguez Family',
-    visibility: 'public', fee_cents: '0',
-    ...(over.metadata || {}),
-  },
-}, 1756100000);
-
-const partner = (name) => gift({
-  id: 'cs_page_partner', amount: LOGO_TIER.amount * 100,
-  metadata: { kind: 'partner', partner_tier: LOGO_TIER.id, priority: '', students: '', donor_name: name },
-});
+/* Seed the store directly; the webhook path has its own tests. */
+const gift = (over = {}) => recordDonation(env.DB, paidSession(over), 1756100000);
+const partner = (name) => recordDonation(env.DB, paidPartnership({ metadata: { donor_name: name } }), 1756100000);
 
 afterEach(() => reset());
 
 describe('rendered pages', () => {
   it('serves every page with the shared chrome and no client templates', async () => {
-    for (const path of PAGES) {
+    for (const path of PAGE_PATHS) {
       const { res, text } = await page(path);
       expect(res.status, path).toBe(200);
       expect(res.headers.get('content-type'), path).toContain('text/html');
@@ -86,7 +67,7 @@ describe('rendered pages', () => {
   });
 
   it('escapes donor and partner names', async () => {
-    await gift({ donorName: '<b>Bold</b> Family' });
+    await gift({ metadata: { donor_name: '<b>Bold</b> Family' } });
     await partner('Galaxy <Tire> & Co');
     const board = (await page('/rally-board')).text;
     expect(board).toContain('&lt;b&gt;Bold&lt;/b&gt; Family');
@@ -98,7 +79,7 @@ describe('rendered pages', () => {
     await gift();
     for (const path of ['/', '/rally-board', '/partners']) {
       const { text } = await page(path);
-      for (const probe of ['Mia', 'example.com', 'Rosa', 'Rocket Way']) expect(text, `${path} ${probe}`).not.toContain(probe);
+      for (const probe of PII) expect(text, `${path} ${probe}`).not.toContain(probe);
     }
   });
 
@@ -114,6 +95,18 @@ describe('rendered pages', () => {
     const { res, text } = await page('/nope');
     expect(res.status).toBe(404);
     expect(text).toContain('<nav class="site-nav" aria-label="Site">');
+    expect(res.headers.get('link')).toContain('</css/styles.css>; rel=preload');
+  });
+
+  it('bakes the chrome into the 404 file, which the asset layer serves by itself for missing static files', async () => {
+    // A miss under /css, /fonts, /js, or /img never reaches the worker,
+    // so 404.html must carry the header and footer as views.js renders
+    // them. When this fails, paste the new markup into site/404.html.
+    const res = await env.ASSETS.fetch('https://rally.test/img/partners/gone.webp');
+    expect(res.status).toBe(404);
+    const text = await res.text();
+    expect(text).toContain(String(header('/404')));
+    expect(text).toContain(String(footer()));
   });
 
   it('falls back to the zero state when the database is unavailable', async () => {
@@ -121,14 +114,40 @@ describe('rendered pages', () => {
     const home = await page('/');
     expect(home.res.status).toBe(200);
     expect(home.text).toContain('id="stat-raised">$0</span>');
+    // A failure must not be cached: the next visit should try D1 again.
+    expect(home.res.headers.get('cache-control')).toBe('no-store');
     const board = await page('/rally-board');
     expect(board.res.status).toBe(200);
     expect(board.text).toContain('<span class="num money">0</span><span class="label">family gifts so far</span>');
     expect(board.text).toContain('class="empty-roll"');
   });
 
+  it('reads the stats while the asset round trip is still in flight', async () => {
+    const order = [];
+    const ASSETS = {
+      fetch: async (req) => {
+        order.push('asset start');
+        const res = await env.ASSETS.fetch(req);
+        await new Promise((r) => setTimeout(r, 25));
+        order.push('asset done');
+        return res;
+      },
+    };
+    const DB = new Proxy(env.DB, {
+      get(db, key) {
+        if (key === 'prepare' && !order.includes('db')) order.push('db');
+        const v = db[key];
+        return typeof v === 'function' ? v.bind(db) : v;
+      },
+    });
+    const res = await worker.fetch(new Request('https://rally.test/rally-board'), { ...env, ASSETS, DB }, createExecutionContext());
+    expect(res.status).toBe(200);
+    expect(await res.text()).toContain('family gifts so far');
+    expect(order.indexOf('db')).toBeLessThan(order.indexOf('asset done'));
+  });
+
   it('carries the preload hint and a short cache life, and drops the asset etag', async () => {
-    for (const path of PAGES) {
+    for (const path of PAGE_PATHS) {
       const { res } = await page(path);
       expect(res.headers.get('link'), path).toContain('</css/styles.css>; rel=preload');
       expect(res.headers.get('cache-control'), path).toBe('public, max-age=60');

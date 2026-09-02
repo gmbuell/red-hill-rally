@@ -7,14 +7,15 @@
 import { campaignStats, boardStats } from './store.js';
 import { header, footer, homeSlots, donateSlots, boardSlots, partnersSlots, linkSlots } from './views.js';
 
-const PAGES = {
+/* The pages with something to render beyond the chrome: a D1 read
+   (`live`) and a slot builder. A page in site/ with neither needs no
+   entry. */
+export const PAGES = {
   '/': { live: campaignStats, slots: homeSlots },
   '/donate': { slots: donateSlots },
   '/rally-board': { live: boardStats, slots: boardSlots },
   '/partners': { live: campaignStats, slots: partnersSlots },
   '/student-link': { slots: linkSlots },
-  '/matching': {},
-  '/thanks': {},
 };
 
 const fill = (fragment) => ({
@@ -22,6 +23,17 @@ const fill = (fragment) => ({
 });
 
 export async function renderPage(request, env) {
+  const path = new URL(request.url).pathname;
+  const page = PAGES[path] || {};
+  // The D1 read runs alongside the asset round trip rather than after
+  // it. A failed read is logged and renders the zero state.
+  const stats = page.live && request.method === 'GET'
+    ? page.live(env.DB).then((live) => ({ live, failed: false }), (err) => {
+      console.error(JSON.stringify({ event: 'api_error', route: `GET ${path}`, message: err && err.message }));
+      return { live: null, failed: true };
+    })
+    : Promise.resolve({ live: null, failed: false });
+
   const asset = await env.ASSETS.fetch(request);
   // Redirects (/donate.html → /donate), method errors, and any stray
   // file pass through untouched; pages and the 404 page get rendered.
@@ -29,25 +41,24 @@ export async function renderPage(request, env) {
     && (asset.headers.get('content-type') || '').startsWith('text/html');
   if (!isPage) return asset;
 
-  const path = new URL(request.url).pathname;
-  const page = (asset.status === 200 && PAGES[path]) || {};
-  let live = null;
-  if (page.live) {
-    try {
-      live = await page.live(env.DB);
-    } catch (err) {
-      console.error(JSON.stringify({ event: 'api_error', route: `GET ${path}`, message: err && err.message }));
-    }
-  }
-  const slots = page.slots ? page.slots(live) : {};
+  const { live, failed } = await stats;
+  const slots = asset.status === 200 && page.slots ? page.slots(live) : {};
 
   // The body changes, so the asset's validator and length no longer
-  // apply; the security and preload headers still do. Sixty seconds
-  // matches the API cache the pages used to read.
+  // apply; the security headers still do. Sixty seconds
+  // matches the API cache the pages used to read. The zero state a
+  // failed read produces must not be cached: the next visit tries D1
+  // again.
   const headers = new Headers(asset.headers);
   headers.delete('etag');
   headers.delete('content-length');
-  headers.set('cache-control', 'public, max-age=60');
+  headers.set('cache-control', failed ? 'no-store' : 'public, max-age=60');
+  // Early Hints: the browser fetches the stylesheet during server
+  // think-time. Only pages carry the hint; Chrome acts on it from any
+  // response, and from a script or font response it re-preloads a
+  // stylesheet that is already loaded, then warns the preload went
+  // unused.
+  headers.set('link', '</css/styles.css>; rel=preload; as=style');
 
   const rewriter = new HTMLRewriter()
     .on('.site-header', fill(header(path)))

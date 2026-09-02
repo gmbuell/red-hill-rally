@@ -6,7 +6,7 @@
 
 /* data.js: globals in the browser (it loads first), a module in the
    worker bundle. */
-const DATA = typeof module !== 'undefined'
+const DATA = typeof module !== 'undefined' && module.exports
   ? require('./data.js')
   : { CLASSROOMS, classroomById, MAX_NAME, MAX_STUDENTS };
 

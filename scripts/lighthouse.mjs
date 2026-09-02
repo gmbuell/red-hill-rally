@@ -1,14 +1,15 @@
 #!/usr/bin/env node
 /* Audit every public page with Lighthouse and print a score table.
    Usage: node scripts/lighthouse.mjs [--url <base>] [--runs N] [--min S]
-                                      [--form mobile|desktop|both] [--page <name>]
-   Defaults: the live site, one run, both form factors, every page,
+                                      [--form mobile|desktop|both] [--page <slug>]
+   Defaults: the live site, one run, both form factors, every page in
+   site/ (slug = file stem, "home" for index; the 404 is skipped),
    report only. --runs N scores each page by the median of N runs
    (absorbs runner noise; the per-run scores print when they differ,
    and the saved report is the run at the performance median); --min S
    fails the process when any median lands below S. CI runs it against
    `wrangler dev` with --runs 3 --min 98. */
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';
 import lighthouse, { desktopConfig } from 'lighthouse';
 import { launch } from 'chrome-launcher';
@@ -28,11 +29,12 @@ const runs = Number(opts.runs);
 const min = opts.min === undefined ? null : Number(opts.min);
 const forms = opts.form === 'both' ? ['mobile', 'desktop'] : [opts.form];
 
-const PAGES = [
-  ['home', '/'], ['donate', '/donate'], ['board', '/rally-board'],
-  ['partners', '/partners'], ['link', '/student-link'],
-  ['matching', '/matching'], ['thanks', '/thanks'],
-].filter(([name]) => !opts.page || name === opts.page);
+// The pages are the HTML files; the worker renders whatever is there.
+const PAGES = readdirSync(new URL('../site/', import.meta.url))
+  .filter((f) => f.endsWith('.html') && f !== '404.html')
+  .map((f) => f.slice(0, -5))
+  .map((stem) => (stem === 'index' ? ['home', '/'] : [stem, `/${stem}`]))
+  .filter(([name]) => !opts.page || name === opts.page);
 const CATEGORIES = ['performance', 'accessibility', 'best-practices', 'seo'];
 const out = 'lighthouse-reports';
 mkdirSync(out, { recursive: true });

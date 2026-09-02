@@ -71,8 +71,9 @@ npm run deploy
 ```
 
 That ships the worker and every file under `site/` in one go. The
-`predeploy` step applies any pending D1 migrations to the remote
-database (`wrangler d1 migrations apply red-hill-rally --remote`), so
+`predeploy` step runs `npm test`, then applies any pending D1
+migrations to the remote database (`wrangler d1 migrations apply
+red-hill-rally --remote`), so nothing ships with a red suite and
 schema and code always ship together.
 
 ## Before the campaign goes out to families

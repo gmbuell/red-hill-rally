@@ -1,27 +1,9 @@
-# Served by the Workers static-assets layer.
+# Served by the Workers static-assets layer. Pages get their preload
+# hint and cache life from worker/pages.js.
 /*
   X-Frame-Options: DENY
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
-
-# Early Hints lets the browser fetch the stylesheet during server
-# think-time. Only the pages carry the hint: Chrome acts on it from any
-# response, and from a script or font response it re-preloads a
-# stylesheet that is already loaded, then warns the preload went unused.
-/
-  Link: </css/styles.css>; rel=preload; as=style
-/donate
-  Link: </css/styles.css>; rel=preload; as=style
-/rally-board
-  Link: </css/styles.css>; rel=preload; as=style
-/partners
-  Link: </css/styles.css>; rel=preload; as=style
-/student-link
-  Link: </css/styles.css>; rel=preload; as=style
-/matching
-  Link: </css/styles.css>; rel=preload; as=style
-/thanks
-  Link: </css/styles.css>; rel=preload; as=style
 
 # Fonts are content-stable; let repeat visits skip the network entirely.
 /fonts/*

@@ -13,7 +13,25 @@
 </head>
 <body>
 
-<header class="site-header"></header>
+<!-- The chrome is baked in here (and only here): the asset layer
+     serves this file itself for a missing file under the static
+     folders, where the worker never runs. test/pages.spec.js pins it
+     to worker/views.js. -->
+<header class="site-header">
+  <div class="wrap bar">
+    <a class="wordmark" href="/">
+      <span class="rh">Red Hill</span>
+      <span class="org">Elementary PTA</span>
+    </a>
+    <nav class="site-nav" aria-label="Site">
+      <a href="/">Home</a>
+      <a href="/rally-board">Rally Board</a>
+      <a href="/student-link">Student Link</a>
+      <a href="/partners">Business Partners</a>
+    </nav>
+    <a class="btn secondary small donate-cta" href="/donate">Donate <span class="arrow" aria-hidden="true">→</span></a>
+  </div>
+</header>
 
 <main>
   <div class="flow-header wrap-narrow" style="text-align:center;">
@@ -27,7 +45,18 @@
   </div>
 </main>
 
-<footer class="site-footer on-navy"></footer>
+<footer class="site-footer on-navy">
+  <span class="script">Thank you for investing in our students, staff &amp; school.</span>
+  <nav aria-label="Footer">
+    <a href="/">Home</a>
+    <a href="/donate">Donate</a>
+    <a href="/rally-board">Rally Board</a>
+    <a href="/student-link">Student Link</a>
+    <a href="/partners">Business Partners</a>
+  </nav>
+  <p>Red Hill Elementary PTA &middot; Home of the Rockets &middot; Tustin Unified School District</p>
+  <p>Red Hill PTA is a 501(c)(3) nonprofit, EIN 33-0973857 &mdash; donations are tax-deductible. Many employers match gifts &mdash; <a href="/matching">here&rsquo;s how</a>.</p>
+</footer>
 
 </body>
 </html>

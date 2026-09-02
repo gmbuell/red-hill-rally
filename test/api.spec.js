@@ -2,6 +2,7 @@ import { env, SELF, createExecutionContext, reset } from 'cloudflare:test';
 import { afterEach, describe, it, expect, vi } from 'vitest';
 import worker from '../worker/index.js';
 import data from '../site/js/data.js';
+import { paidSession, paidPartnership, PII } from './fixtures.js';
 
 /* Fixture config derives from data.js, so the edits the README invites
    (rename a tier, change a price, update the roster) don't break the
@@ -68,45 +69,14 @@ const signPayload = async (payload, secret, t = Math.floor(Date.now() / 1000)) =
   return `t=${t},v1=${hex(sig)}`;
 };
 
-const sessionEvent = (over = {}) => JSON.stringify({
+/* The webhook events for the shared fixtures. */
+const event = (session, over) => JSON.stringify({
   type: over.type || 'checkout.session.completed',
   created: over.created || 1756100000,
-  data: {
-    object: {
-      id: over.id || 'cs_test_abc',
-      amount_total: over.amount_total ?? 10000,
-      payment_status: over.payment_status || 'paid',
-      customer_details: {
-        email: 'fam@example.com',
-        name: 'Rosa Rodriguez',
-        address: {
-          line1: '123 Rocket Way', line2: 'Apt 4', city: 'Tustin',
-          state: 'CA', postal_code: '92780', country: 'US',
-        },
-      },
-      metadata: {
-        priority: P_MAIN.id,
-        students: JSON.stringify([{ c: ROOM_A, n: 'Mia Rodriguez' }]),
-        donor_name: 'The Rodriguez Family',
-        visibility: 'public',
-        employer_match: '1',
-        via_link: '1',
-        ...(over.metadata || {}),
-      },
-    },
-  },
+  data: { object: session },
 });
-
-/* A paid Rally Champion partnership, as the webhook sees it. */
-const partnerSession = (over = {}) => sessionEvent({
-  id: 'cs_partner', amount_total: LOGO_TIER.amount * 100,
-  ...over,
-  metadata: {
-    kind: 'partner', partner_tier: LOGO_TIER.id, priority: '',
-    donor_name: 'Galaxy Automotive & Tire', students: '', fee_cents: '0',
-    ...(over.metadata || {}),
-  },
-});
+const sessionEvent = (over = {}) => event(paidSession(over), over);
+const partnerSession = (over = {}) => event(paidPartnership(over), over);
 
 const deliverWebhook = async (payload, sigOverride) => {
   const signature = sigOverride ?? await signPayload(payload, 'whsec_test_secret');
@@ -378,11 +348,7 @@ describe('webhook and campaign stats', () => {
     // The privacy model: student names, emails, and billing contact
     // details never leave the backend.
     for (const text of [campaignText, boardText]) {
-      expect(text).not.toContain('Mia');
-      expect(text).not.toContain('example.com');
-      expect(text).not.toContain('Rosa');
-      expect(text).not.toContain('Rocket Way');
-      expect(text).not.toContain('92780');
+      for (const probe of PII) expect(text, probe).not.toContain(probe);
     }
   });
 
@@ -849,18 +815,13 @@ describe('admin export', () => {
 });
 
 /* The asset layer (site/_headers) is exercised through the ASSETS
-   binding: in production it answers these paths before the worker runs. */
+   binding: in production it answers these paths before the worker runs.
+   The pages' own headers are covered in pages.spec.js. */
 describe('static asset headers', () => {
-  it('sends the stylesheet preload hint on pages only, never on assets', async () => {
+  it('sends the security headers and never the stylesheet preload hint', async () => {
     /* Chrome honors a preload Link header on any response, scripts and
        fonts included; there it re-preloads a stylesheet that is already
-       loaded, then warns that the preload went unused. Early Hints are
-       only generated for extensionless URIs anyway. */
-    for (const path of ['/', '/donate', '/rally-board', '/partners', '/student-link', '/matching', '/thanks']) {
-      const res = await SELF.fetch(`https://rally.test${path}`);
-      expect(res.status, path).toBe(200);
-      expect(res.headers.get('link'), path).toContain('</css/styles.css>; rel=preload');
-    }
+       loaded, then warns that the preload went unused. */
     for (const path of ['/css/styles.css', '/js/data.js', '/fonts/nunitosans-var.woff2', `/img/partners/${data.PARTNERS[0].logo}`, '/favicon.svg']) {
       const res = await env.ASSETS.fetch(`https://rally.test${path}`);
       expect(res.status, path).toBe(200);
