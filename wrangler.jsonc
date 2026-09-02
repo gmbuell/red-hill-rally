@@ -5,7 +5,8 @@
   "compatibility_date": "2026-08-15",
   "compatibility_flags": ["nodejs_compat"],
   // Custom domains on the rocketrally.org zone; the worker sends www to
-  // the apex. workers.dev stays on as well.
+  // the apex. With routes set, wrangler leaves workers.dev off for this
+  // worker.
   "routes": [
     { "pattern": "rocketrally.org", "custom_domain": true },
     { "pattern": "www.rocketrally.org", "custom_domain": true }
@@ -35,8 +36,33 @@
     }
   ],
 
-  "observability": { "enabled": true, "head_sampling_rate": 1 }
+  "observability": { "enabled": true, "head_sampling_rate": 1 },
 
   // Secrets (wrangler secret put): ADMIN_KEY, STRIPE_SECRET_KEY,
   // STRIPE_WEBHOOK_SECRET
+
+  // PR previews: a second worker with its own database (seeded with
+  // the demo donations) and logo bucket, reachable only on workers.dev.
+  // It holds no Stripe secrets, so checkout answers 503 there as it
+  // does in local dev. Workers Builds uploads every non-main branch to
+  // it with `npm run preview` and comments the preview URL on the PR.
+  "env": {
+    "preview": {
+      "name": "red-hill-rally-preview",
+      "routes": [],
+      "workers_dev": true,
+      "preview_urls": true,
+      "r2_buckets": [
+        { "binding": "LOGOS", "bucket_name": "red-hill-rally-preview-logos" }
+      ],
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "red-hill-rally-preview",
+          "database_id": "50a231ac-c415-44b0-b4c9-5288097b344f",
+          "migrations_dir": "./migrations"
+        }
+      ]
+    }
+  }
 }
