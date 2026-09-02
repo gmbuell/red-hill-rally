@@ -197,6 +197,6 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     ORG, PRIORITIES, CAMPAIGN, CLASSROOMS, PARTNER_TIERS, PARTNERS,
     MAX_NAME, MAX_AMOUNT, MAX_STUDENTS, feeCoverCents,
-    priorityById, classroomById, partnerTierById,
+    priorityById, classroomById, partnerTierById, gradeName,
   };
 }

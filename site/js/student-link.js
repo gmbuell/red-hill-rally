@@ -7,12 +7,7 @@
    the names on it. scripts/skeleton.js bakes the empty first row into
    student-link.html from it (linkView()), so the first paint is
    complete; the live render below repeats the same markup. */
-const LINK_ROWS = {
-  prefix: 'sibling',
-  nameFirst: true,
-  nameError: 'Please enter your student&rsquo;s name.',
-  classError: 'Please choose your student&rsquo;s classroom.',
-};
+const LINK_ROWS = RH.LINK_ROWS;
 const linkView = () => ({
   rows: RH.studentRowsMarkup([{ c: '', n: '' }], LINK_ROWS),
 });
