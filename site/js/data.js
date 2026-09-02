@@ -32,7 +32,7 @@ const feeCoverCents = (amountCents) =>
 const PRIORITIES = [
   {
     id: 'people',
-    name: 'Fund the Rocket',
+    name: 'Essential Support Staff',
     goal: 90000,
     blurb: 'Red Hill’s PTA funds what district budgets don’t: a school counselor for every child navigating a hard moment, a dedicated PE teacher, and Tier II academic support that catches struggling readers and mathematicians early. About $90,000 a year — the quiet backbone of the whole school.',
     circle: { min: 500, label: 'Counselor Circle' },
@@ -73,7 +73,7 @@ const PRIORITIES = [
     id: 'garden',
     name: 'The Red Hill Garden',
     goal: 15000,
-    blurb: 'The garden is Red Hill’s outdoor classroom — planting, patience, nutrition, and the joy of eating something you grew. This year we’re funding repairs, supplies, and improvements, with a possible curriculum refresh ($15,000 budgeted; every donated dollar and seedling reduces that cost).',
+    blurb: 'The garden is Red Hill’s outdoor classroom — planting, patience, nutrition, and the joy of eating something you grew. This year we’re funding repairs, supplies, improvements, and a curriculum refresh ($15,000 budgeted; every donated dollar and seedling reduces that cost).',
     circle: { min: 500, label: 'Garden Bed Sponsor' },
     tiers: [
       { amount: 25, impact: 'Soil, seeds, and tools' },
@@ -110,8 +110,14 @@ const PRIORITIES = [
   },
 ];
 
+/* The campaign goal is the number on the ticker and the thermometer
+   outside school: what the Rally itself is trying to raise this fall.
+   It is deliberately not the sum of the priority goals — those are
+   what each program costs to run for a year, most of it already
+   covered by the annual fund, so adding them up would advertise a
+   target the Rally is not chasing. */
 const CAMPAIGN = {
-  goal: PRIORITIES.reduce((s, p) => s + p.goal, 0),      // 205,000
+  goal: 50000,
 };
 
 /* The classroom roster, keyed by teacher. `students` is the class
@@ -163,27 +169,36 @@ const PARTNER_TIERS = [
   ] },
 ];
 
+/* Annual Partnership levels. These are the year-round partnerships
+   that run July through the first week of September, separate from the
+   Rally-only ladder above: an Annual Partner is already backing the
+   whole year, so they sit above the Rally tiers on the wall rather
+   than inside them. `size` drives how large the logo card renders. */
+const ANNUAL_LEVELS = [
+  { id: 'apollo', name: 'Apollo Partner', size: 'lg' },
+  { id: 'orbit', name: 'Orbit Partner', size: 'md' },
+];
+
 /* Businesses backing this year's Rally, shown on /partners and the
-   Rally Board. `tier` is a PARTNER_TIERS id — fill it in as each gift
-   arrives (null shows a logo without a tier label; 'friend' lists the
-   name instead of a logo, per the ladder). TODO: confirm tiers with
-   the PTA — these six were listed before tiers were tracked and
-   default to 'supporter'. Web logos live in site/img/partners/;
-   print-quality originals stay out of the repo (assets/partner-logos/,
-   gitignored). */
+   Rally Board. `annual` is an ANNUAL_LEVELS id for a year-round
+   partner and outranks `tier`, a PARTNER_TIERS id filled in as each
+   Rally gift arrives (null shows a logo without a tier label;
+   'friend' lists the name instead of a logo, per the ladder). Web
+   logos live in site/img/partners/; print-quality originals stay out
+   of the repo (assets/partner-logos/, gitignored). */
 const PARTNERS = [
-  { name: 'Black Gold Pump & Supply', logo: 'black-gold-pump-supply.webp', tier: 'supporter' },
-  { name: 'Earthco Landscape Services', logo: 'earthco-landscape.webp', tier: 'supporter' },
-  { name: 'Felton Ninja Academy', logo: 'felton-ninja-academy.webp', tier: 'supporter' },
-  { name: 'Galaxy Automotive & Tire', logo: 'galaxy-automotive.webp', tier: 'supporter' },
-  { name: 'Sports Ambassadors of Quan', logo: 'aoq-sports.webp', tier: 'supporter' },
-  { name: 'The O’Dell Group Real Estate', logo: 'odell-group.webp', tier: 'supporter' },
+  { name: 'Earthco Landscape Services', logo: 'earthco-landscape.webp', annual: 'apollo' },
+  { name: 'The O’Dell Group Real Estate', logo: 'odell-group.webp', annual: 'apollo' },
+  { name: 'AOQ Sports', logo: 'aoq-sports.webp', annual: 'orbit' },
+  { name: 'Galaxy Automotive & Tire', logo: 'galaxy-automotive.webp', annual: 'orbit' },
+  { name: 'Felton Ninja Academy', logo: 'felton-ninja-academy.webp', annual: 'orbit' },
 ];
 
 /* Lookup helpers shared by the worker and every page script. */
 const priorityById = (id) => PRIORITIES.find((p) => p.id === id) || null;
 const classroomById = (id) => CLASSROOMS.find((c) => c.id === id) || null;
 const partnerTierById = (id) => PARTNER_TIERS.find((t) => t.id === id) || null;
+const annualLevelById = (id) => ANNUAL_LEVELS.find((l) => l.id === id) || null;
 
 /* Display names for the roster's grade codes; any other code reads
    "<code> grade". */
@@ -195,7 +210,8 @@ const gradeName = (g) => GRADE_NAMES[g] || `${g} grade`;
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     ORG, PRIORITIES, CAMPAIGN, CLASSROOMS, PARTNER_TIERS, PARTNERS,
+    ANNUAL_LEVELS,
     MAX_NAME, MAX_AMOUNT, MAX_STUDENTS, feeCoverCents,
-    priorityById, classroomById, partnerTierById, gradeName,
+    priorityById, classroomById, partnerTierById, annualLevelById, gradeName,
   };
 }

@@ -7,7 +7,7 @@
 import data from '../site/js/data.js';
 import ui from '../site/js/ui.js';
 
-const { ORG, PRIORITIES, CAMPAIGN, CLASSROOMS, PARTNER_TIERS, PARTNERS, priorityById, partnerTierById, gradeName } = data;
+const { ORG, PRIORITIES, CAMPAIGN, CLASSROOMS, PARTNER_TIERS, PARTNERS, ANNUAL_LEVELS, priorityById, partnerTierById, annualLevelById, gradeName } = data;
 const { html, raw, money, nameList, studentRowsMarkup, LINK_ROWS, dartUp } = ui;
 
 /* ---- motifs (from the brand guide's Spirit Kit) -------------------- */
@@ -165,18 +165,33 @@ const mergedPartners = (online) => {
   const rank = (tier) => PARTNER_TIERS.findIndex((t) => t.id === tier);
   const byKey = new Map();
   for (const p of PARTNERS) {
-    byKey.set(key(p.name), { name: p.name, tier: p.tier || '', src: p.logo ? `/img/partners/${p.logo}` : '' });
+    byKey.set(key(p.name), { name: p.name, tier: p.tier || '', annual: p.annual || '', src: p.logo ? `/img/partners/${p.logo}` : '' });
   }
   for (const p of (online || []).filter((o) => o && o.name)) {
-    const cur = byKey.get(key(p.name)) || { name: p.name, tier: '', src: '' };
+    const cur = byKey.get(key(p.name)) || { name: p.name, tier: '', annual: '', src: '' };
     if (rank(p.tier) > rank(cur.tier)) cur.tier = p.tier;
     if (p.logo) cur.src = `/logo/${p.logo}`;
     byKey.set(key(p.name), cur);
   }
   return [...byKey.values()].map((p) => {
     const tier = partnerTierById(p.tier);
-    return { ...p, tierName: tier ? tier.name : '', src: tier && !tier.logo ? '' : p.src };
+    const level = annualLevelById(p.annual);
+    return {
+      ...p,
+      // An Annual Partner is already backing the whole year, so its
+      // level is the badge and it always keeps its logo.
+      tierName: level ? level.name : (tier ? tier.name : ''),
+      size: level ? level.size : 'sm',
+      src: !level && tier && !tier.logo ? '' : p.src,
+    };
   });
+};
+
+/* Wall order: Apollo, then Orbit, then everyone else, so the
+   year-round partners sit at the top at the size their level earns. */
+const wallRank = (p) => {
+  const i = ANNUAL_LEVELS.findIndex((l) => l.id === p.annual);
+  return i === -1 ? ANNUAL_LEVELS.length : i;
 };
 
 /* The partner wall — identical on /partners and the Rally Board:
@@ -184,11 +199,11 @@ const mergedPartners = (online) => {
    listed yet, plus the thanks line for name-only tiers. `all` is the
    mergedPartners list. */
 const partnerWall = (all, empty) => {
-  const logos = all.filter((p) => p.src);
+  const logos = all.filter((p) => p.src).sort((a, b) => wallRank(a) - wallRank(b));
   const names = all.filter((p) => !p.src);
   const cards = logos.length ? html`
     <ul class="partner-grid">${logos.map((p) => html`
-      <li class="partner-card">
+      <li class="partner-card size-${p.size}">
         <img src="${p.src}" alt="${p.name} logo" loading="lazy">
         <span class="partner-name">${p.name}</span>
         ${p.tierName ? html`<small class="partner-tier">${p.tierName}</small>` : ''}
@@ -202,7 +217,7 @@ const partnerWall = (all, empty) => {
 /* ---- the shared chrome ---------------------------------------------- */
 
 const NAV = [
-  ['/', 'Home'], ['/rally-board', 'Rally Board'],
+  ['/', 'Home'], ['/rally-board', 'Rally Board'], ['/prizes', 'Prizes'],
   ['/student-link', 'Student Link'], ['/partners', 'Business Partners'],
 ];
 const current = (path, here) => (path === here ? raw(' aria-current="page"') : '');
@@ -225,6 +240,7 @@ export const footer = () => html`
     <a href="/">Home</a>
     <a href="/donate">Donate</a>
     <a href="/rally-board">Rally Board</a>
+    <a href="/prizes">Prizes</a>
     <a href="/student-link">Student Link</a>
     <a href="/partners">Business Partners</a>
   </nav>
@@ -251,7 +267,7 @@ export const homeSlots = (live) => {
         <p class="blurb">${p.blurb}</p>
         <div class="trail-row">
           ${trailSVG(pRaised / p.goal)}
-          <small class="raised-line"><strong>${money(pRaised)}</strong> raised of ${money(p.goal)}</small>
+          <small class="raised-line"><strong>${money(pRaised)}</strong> raised</small>
         </div>
         <a class="go" href="/donate?p=${p.id}">Give to this</a>
       </article>`;

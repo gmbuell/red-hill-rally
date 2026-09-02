@@ -58,8 +58,31 @@ describe('rendered pages', () => {
     const { text } = await page('/');
     expect(text).toContain('id="stat-raised">$100</span>');
     expect(text).toContain(`id="stat-goal">$${data.CAMPAIGN.goal.toLocaleString('en-US')}</span>`);
-    expect(text).toContain(`<strong>$100</strong> raised of $${P_MAIN.goal.toLocaleString('en-US')}`);
+    // Priority cards show what a priority has raised, never a per-priority
+    // goal: the six goals are annual program costs and do not add up to the
+    // Rally's own target.
+    expect(text).toContain('<strong>$100</strong> raised</p>');
+    expect(text).not.toContain(`raised of $${P_MAIN.goal.toLocaleString('en-US')}`);
     expect(text).toContain('<clipPath id="traj-clip">');
+  });
+
+  it('names the grand prize and how participation is counted on prizes', async () => {
+    const { text } = await page('/prizes');
+    expect(text).toContain('Principal for the Day');
+    // The fairness line is the answer to the question every parent asks,
+    // so it stays on the page: any amount, and a share of your own class.
+    expect(text).toContain('any amount');
+    expect(text).toContain('a class of 18 and a class of 32');
+  });
+
+  it('puts annual partners above rally partners on the wall, biggest first', async () => {
+    const { text } = await page('/partners');
+    const [top] = data.ANNUAL_LEVELS;
+    const apollo = data.PARTNERS.find((p) => p.annual === top.id);
+    const orbit = data.PARTNERS.find((p) => p.annual && p.annual !== top.id);
+    expect(text).toContain(`size-${top.size}`);
+    expect(text).toContain(`<span class="partner-tier">${top.name}</span>`);
+    expect(text.indexOf(apollo.name)).toBeLessThan(text.indexOf(orbit.name));
   });
 
   it('ranks the classroom and lists the donor on the board', async () => {
