@@ -107,27 +107,33 @@ charges real money. To flip to live:
    links).
 5. **Prove it live** — make one small real donation with a real card:
    confirm the tally moves on the Rally Board, the email receipt
-   arrives with the acknowledgment line, and the gift appears in the
-   CSV export. Refund it from the Stripe dashboard if you like (see
+   arrives with the acknowledgment line, and your Rocket shows on the
+   student sheet. Refund it from the Stripe dashboard if you like (see
    **Refunds** below for removing the row — or just let your own gift
    open the campaign).
 
 ## Operations
 
-- **Donation report** (who gave, which student/classroom to credit,
-  employer-match follow-ups) — the key is `ADMIN_KEY` in `.dev.vars`:
+- **Student sheet** (what each class and each Rocket has raised) —
+  the key is `ADMIN_KEY` in `.dev.vars`:
 
   ```sh
   curl -H "Authorization: Bearer <ADMIN_KEY>" \
-    https://red-hill-rally.gmbuell.workers.dev/api/export.csv > rally.csv
+    https://red-hill-rally.gmbuell.workers.dev/api/export.csv > students.csv
   ```
 
   (`…/api/export.csv?key=<ADMIN_KEY>` also works in a browser, but
-  leaves the key in browser history and request logs.) Each row also
-  carries the donor's billing name and full mailing address from
-  Stripe's checkout page — useful for thank-you notes and future
-  outreach. This is the only place student names, emails, and
-  addresses ever leave the backend; don't share the key.
+  leaves the key in browser history and request logs.) Columns are
+  grade, teacher, student, gifts, raised: every roster classroom lists
+  its Rockets, biggest first, then a `Class total` row. A gift naming
+  several kids counts once for each and splits its dollars evenly
+  between them; family gifts that named no Rocket sit in a last `No
+  Rocket named` row so the sheet adds up to the board. Partnerships
+  are left out. This is the only place student names leave the
+  backend; don't share the key. Donor contact details (email, billing
+  address) never leave it — read them in the Stripe dashboard, and
+  find employer-match follow-ups with `employer_match = 1` in D1 (see
+  **Ad-hoc questions**).
 - **Update goals/copy/tiers** — edit `site/js/data.js`; after roster,
   partner, or priority edits run the skeleton step (see **Develop**);
   redeploy.
@@ -151,8 +157,8 @@ charges real money. To flip to live:
     refund the partnership in Stripe and delete its row (see
     **Refunds**).
 - **Refunds** — a refund in Stripe does not touch the site's tallies.
-  After refunding, delete the gift's row by its Stripe session id (the
-  `id` column in the export):
+  After refunding, delete the gift's row by its Stripe session id
+  (`cs_…`, shown on the payment in the Stripe dashboard):
   `npx wrangler d1 execute red-hill-rally --remote --command "DELETE FROM donations WHERE id = 'cs_…'"`
   — the totals, honor roll, and any classroom credits drop off with
   it.

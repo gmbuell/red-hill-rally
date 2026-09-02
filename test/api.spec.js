@@ -70,7 +70,7 @@ const signPayload = async (payload, secret, t = Math.floor(Date.now() / 1000)) =
 
 const sessionEvent = (over = {}) => JSON.stringify({
   type: over.type || 'checkout.session.completed',
-  created: 1756100000,
+  created: over.created || 1756100000,
   data: {
     object: {
       id: over.id || 'cs_test_abc',
@@ -536,9 +536,6 @@ describe('business partner checkout', () => {
     const wall = { name: 'Galaxy Automotive & Tire', tier: LOGO_TIER.id, logo: '' };
     expect(board.partners).toEqual([wall]);
     expect((await getJson('/api/campaign')).partners).toEqual([wall]);
-    const csv = await (await SELF.fetch('https://rally.test/api/export.csv?key=test-admin-key')).text();
-    expect(csv).toContain('partner_tier');
-    expect(csv).toContain(`"${LOGO_TIER.id}"`);
   });
 });
 
@@ -693,6 +690,17 @@ describe('partner logo upload', () => {
 /* ---- admin export ---- */
 
 describe('admin export', () => {
+  const roomA = data.classroomById(ROOM_A);
+  const roomB = data.classroomById(ROOM_B);
+  const roomC = data.classroomById(ROOM_C);
+  const row = (room, student, gifts, raised) =>
+    `"${room.grade}","${room.teacher}","${student}","${gifts}","${raised}"`;
+  const exportRows = async () => {
+    const res = await SELF.fetch('https://rally.test/api/export.csv?key=test-admin-key');
+    expect(res.status).toBe(200);
+    return (await res.text()).split('\n');
+  };
+
   it('requires the admin key', async () => {
     expect((await SELF.fetch('https://rally.test/api/export.csv')).status).toBe(401);
     expect((await SELF.fetch('https://rally.test/api/export.csv?key=wrong')).status).toBe(401);
@@ -707,47 +715,98 @@ describe('admin export', () => {
     expect(res.status).toBe(401);
   });
 
-  it('returns full records for the PTA, via bearer auth', async () => {
+  it('lists each Rocket under their classroom with a class total, via bearer auth', async () => {
     await deliverWebhook(sessionEvent());
+    await deliverWebhook(sessionEvent({
+      id: 'cs_2', amount_total: 2500,
+      metadata: { students: JSON.stringify([{ c: ROOM_A, n: 'Leo Park' }]) },
+    }));
     const res = await SELF.fetch('https://rally.test/api/export.csv', {
       headers: { authorization: 'Bearer test-admin-key' },
     });
     expect(res.status).toBe(200);
+    expect(res.headers.get('content-disposition')).toContain('rocket-rally-students.csv');
     const bytes = new Uint8Array(await res.arrayBuffer());
     expect([...bytes.slice(0, 3)]).toEqual([0xef, 0xbb, 0xbf]); // Excel UTF-8 BOM
-    const csv = new TextDecoder().decode(bytes);
-    expect(csv).toContain('Mia Rodriguez');
-    expect(csv).toContain('priority,partner_tier,students,donor_name');
-    expect(csv).toContain(`"Mia Rodriguez — ${data.classroomById(ROOM_A).teacher}"`);
-    expect(csv).not.toContain('student_name');
-    expect(csv).toContain('fam@example.com');
-    expect(csv).toContain('"100.00"');
-    // Billing contact details captured from Stripe's checkout page.
-    expect(csv).toContain('Rosa Rodriguez');
-    expect(csv).toContain('123 Rocket Way');
-    expect(csv).toContain('"Tustin","CA","92780","US"');
+    const rows = new TextDecoder().decode(bytes).split('\n'); // decoding drops the BOM
+    expect(rows[0]).toBe('grade,teacher,student,gifts,raised');
+    // Biggest fundraiser first, then the class total closes the group.
+    const mia = rows.indexOf(row(roomA, 'Mia Rodriguez', 1, '100.00'));
+    const leo = rows.indexOf(row(roomA, 'Leo Park', 1, '25.00'));
+    const total = rows.indexOf(row(roomA, 'Class total', 2, '125.00'));
+    expect(mia).toBeGreaterThan(0);
+    expect(leo).toBe(mia + 1);
+    expect(total).toBe(leo + 1);
   });
 
-  it('exports the gift and the fee cover as separate columns', async () => {
+  it('merges spellings of the same student', async () => {
+    await deliverWebhook(sessionEvent());
+    await deliverWebhook(sessionEvent({
+      id: 'cs_2', amount_total: 5000, created: 1756100060,
+      metadata: { students: JSON.stringify([{ c: ROOM_A, n: '  mia RODRIGUEZ ' }]) },
+    }));
+    const rows = await exportRows();
+    expect(rows).toContain(row(roomA, 'Mia Rodriguez', 2, '150.00'));
+    expect(rows.filter((r) => /rodriguez/i.test(r))).toHaveLength(1);
+  });
+
+  it('splits a shared gift between its Rockets and counts it once for each', async () => {
+    await deliverWebhook(sessionEvent({
+      metadata: { students: JSON.stringify([{ c: ROOM_A, n: 'Mia Rodriguez' }, { c: ROOM_B, n: 'Leo Park' }]) },
+    }));
+    const rows = await exportRows();
+    expect(rows).toContain(row(roomA, 'Mia Rodriguez', 1, '50.00'));
+    expect(rows).toContain(row(roomA, 'Class total', 1, '50.00'));
+    expect(rows).toContain(row(roomB, 'Leo Park', 1, '50.00'));
+    expect(rows).toContain(row(roomB, 'Class total', 1, '50.00'));
+  });
+
+  it('lists every classroom in roster order, zeros included', async () => {
+    await deliverWebhook(sessionEvent({
+      metadata: { students: JSON.stringify([{ c: ROOM_B, n: 'Leo Park' }]) },
+    }));
+    const rows = await exportRows();
+    const a = rows.indexOf(row(roomA, 'Class total', 0, '0.00'));
+    const b = rows.indexOf(row(roomB, 'Class total', 1, '100.00'));
+    const c = rows.indexOf(row(roomC, 'Class total', 0, '0.00'));
+    expect(a).toBeGreaterThan(0);
+    expect(b).toBeGreaterThan(a);
+    expect(c).toBeGreaterThan(b);
+  });
+
+  it('groups nameless credits and gifts that named no Rocket', async () => {
+    await deliverWebhook(sessionEvent({
+      metadata: { students: JSON.stringify([{ c: ROOM_A, n: '' }]) },
+    }));
+    await deliverWebhook(sessionEvent({ id: 'cs_2', amount_total: 4000, metadata: { students: '[]' } }));
+    const rows = await exportRows();
+    expect(rows).toContain(row(roomA, '(no name given)', 1, '100.00'));
+    expect(rows).toContain('"","","No Rocket named","1","40.00"');
+  });
+
+  it('counts the gift, not the fee cover', async () => {
     await deliverWebhook(sessionEvent({ amount_total: 10330, metadata: { fee_cents: '330' } }));
-    const res = await SELF.fetch('https://rally.test/api/export.csv?key=test-admin-key');
-    const csv = await res.text();
-    expect(csv).toContain('fee_dollars');
-    expect(csv).toContain('"100.00"');
-    expect(csv).toContain('"3.30"');
+    const rows = await exportRows();
+    expect(rows).toContain(row(roomA, 'Mia Rodriguez', 1, '100.00'));
+    expect(rows.join('\n')).not.toContain('103.30');
+  });
+
+  it('leaves partners and donor details out', async () => {
+    await deliverWebhook(sessionEvent());
+    await deliverWebhook(partnerSession());
+    const csv = (await exportRows()).join('\n');
+    expect(csv).not.toContain('Galaxy');
+    expect(csv).not.toContain(LOGO_TIER.id);
+    expect(csv).not.toContain('Rodriguez Family');
+    expect(csv).not.toContain('fam@example.com');
+    expect(csv).not.toContain('Rocket Way');
   });
 
   it('neutralizes spreadsheet formulas in exported names', async () => {
     await deliverWebhook(sessionEvent({
-      id: 'cs_evil',
-      metadata: {
-        donor_name: '=HYPERLINK("http://evil")',
-        students: JSON.stringify([{ c: ROOM_A, n: '@SUM(A1)' }]),
-      },
+      metadata: { students: JSON.stringify([{ c: ROOM_A, n: '@SUM(A1)' }]) },
     }));
-    const res = await SELF.fetch('https://rally.test/api/export.csv?key=test-admin-key');
-    const csv = await res.text();
-    expect(csv).toContain('"\'=HYPERLINK(""http://evil"")"');
-    expect(csv).toContain(`"'@SUM(A1) — ${data.classroomById(ROOM_A).teacher}"`);
+    const rows = await exportRows();
+    expect(rows).toContain(row(roomA, "'@SUM(A1)", 1, '100.00'));
   });
 });

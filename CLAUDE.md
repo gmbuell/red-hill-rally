@@ -53,9 +53,10 @@ Don't run `npm run deploy`, `wrangler d1 execute … --remote`, or
 ## Invariants the tests pin
 
 - **Student names, donor email, and billing address never leave the
-  backend.** `campaignStats` and `boardStats` must not select them; only
-  `exportCsv` behind `ADMIN_KEY` may. No student picker or roster on
-  any page.
+  backend.** `campaignStats` and `boardStats` must not select them.
+  Only `exportCsv` (the admin student sheet behind `ADMIN_KEY`) reads
+  student names; nothing serves email or address. No student picker or
+  roster on any page.
 - The classroom race ranks by participation (gifts ÷ class size),
   never dollars.
 - Money is decided server-side: the worker computes the fee cover from

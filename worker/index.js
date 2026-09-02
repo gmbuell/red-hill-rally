@@ -292,7 +292,7 @@ async function handleExport(request, url, env) {
   return new Response(await exportCsv(env.DB), {
     headers: {
       'content-type': 'text/csv; charset=utf-8',
-      'content-disposition': 'attachment; filename="rocket-rally-donations.csv"',
+      'content-disposition': 'attachment; filename="rocket-rally-students.csv"',
     },
   });
 }

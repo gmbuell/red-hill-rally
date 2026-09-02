@@ -111,9 +111,9 @@ here.
 - The wizard does not ask for an email: Stripe's checkout page
   collects it (for the receipt) along with the donor's full billing
   address (required), and the webhook stores both with the donation —
-  backend only, for receipts, employer-match follow-up, and future
-  outreach. One less form field on mobile, and donors can fix a typo'd
-  email right where it matters.
+  backend only, never exported; the PTA reads them in the Stripe
+  dashboard for receipts and future outreach. One less form field on
+  mobile, and donors can fix a typo'd email right where it matters.
 - Live tallies come from the Stripe webhook feeding a D1 database,
   read back through `/api/campaign` (home, partners) and `/api/board`
   (Rally Board). `site/js/data.js` holds only static config
@@ -139,12 +139,12 @@ here.
   full amount remains a tax-deductible gift. The server computes the
   fee (`coverFees` boolean is all the client sends) and stamps
   `fee_cents` into session metadata; the webhook stores gift and fee
-  in separate columns so campaign totals, the classroom race, and
-  circle tiers count the intended gift only, while the admin CSV
-  shows both.
+  in separate columns so campaign totals, the classroom race, circle
+  tiers, and the admin student sheet all count the intended gift only.
 - Still promised in the UI and owed by operations: email receipts
   (enable in Stripe), the Spring Impact Report, and employer-matching
-  follow-up (flagged per gift in `/api/export.csv`).
+  follow-up (the `employer_match` flag on each gift in D1 and in the
+  Stripe session's metadata).
 
 ## Partner logo pipeline
 

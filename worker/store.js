@@ -2,12 +2,14 @@
    session id is the primary key, so webhook retries are idempotent
    inserts), plus one donation_students row per Rocket the gift
    credits. Student names, email, and the billing contact fields are
-   PTA-backend-only: nothing here may select them into campaignStats —
-   they leave the database only through the admin export. */
+   PTA-backend-only: nothing here may select them into campaignStats.
+   Student names leave the database only through the admin export;
+   email and the billing address never do (the PTA reads those in the
+   Stripe dashboard). */
 
 import data from '../site/js/data.js';
 
-const { CAMPAIGN, priorityById, classroomById, MAX_STUDENTS } = data;
+const { CAMPAIGN, CLASSROOMS, priorityById, classroomById, MAX_STUDENTS } = data;
 
 /* A session's Rockets: the `students` JSON our checkout stamps into
    metadata (a partnership carries none). */
@@ -140,44 +142,74 @@ export async function boardStats(db) {
   return { campaign: campaignShape(totals), classrooms, donors, partners: partnerShape(partnerRows) };
 }
 
-/* Full records for the PTA (admin-only): the backend view where student
-   names and emails are allowed to appear. */
+/* The PTA's student sheet (admin-only): what each classroom and each
+   Rocket has raised, one row per student under their class and a
+   class-total row after each. Every roster classroom appears, so a
+   class with nothing yet shows a zero. */
 export async function exportCsv(db) {
-  const [gifts, credits] = await db.batch([
-    db.prepare('SELECT * FROM donations ORDER BY created, id'),
-    db.prepare('SELECT donation_id, classroom, student_name FROM donation_students ORDER BY donation_id, position'),
+  const [credits, uncredited] = await db.batch([
+    // Joined so a gift deleted by hand (refund, the go-live wipe)
+    // takes its classroom credits with it.
+    db.prepare(`SELECT s.donation_id, s.classroom, s.student_name, d.amount_cents
+                FROM donation_students s JOIN donations d ON d.id = s.donation_id
+                ORDER BY d.created, d.id, s.position`),
+    // Family gifts that named no Rocket, so the sheet still adds up to
+    // the board. Partnerships are not family fundraising and stay out.
+    db.prepare(`SELECT COUNT(*) AS gifts, COALESCE(SUM(amount_cents), 0) AS cents
+                FROM donations d WHERE partner_tier = ''
+                AND NOT EXISTS (SELECT 1 FROM donation_students s WHERE s.donation_id = d.id)`),
   ]);
-  // "Mia Rodriguez — Ms. Convery; Leo Park — Mr. Zweber" (a nameless
-  // Rocket shows just the teacher).
-  const studentsByGift = {};
-  for (const s of credits.results) {
-    const room = classroomById(s.classroom);
-    const where = room ? room.teacher : s.classroom;
-    (studentsByGift[s.donation_id] ||= []).push(s.student_name ? `${s.student_name} — ${where}` : where);
+
+  // A gift naming several Rockets counts once for each (as the race
+  // does) and splits its dollars evenly, so class totals stay real
+  // money; leftover cents go to the first named.
+  const rocketsPerGift = {};
+  for (const c of credits.results) rocketsPerGift[c.donation_id] = (rocketsPerGift[c.donation_id] || 0) + 1;
+  const handedOut = {};
+  const rooms = {}; // classroom id -> lowercase name -> { name, gifts, cents }
+  for (const c of credits.results) {
+    const n = rocketsPerGift[c.donation_id];
+    const i = handedOut[c.donation_id] = (handedOut[c.donation_id] || 0) + 1;
+    const share = Math.floor(c.amount_cents / n) + (i <= c.amount_cents % n ? 1 : 0);
+    // Grandparents and parents spell a kid differently; keep the first
+    // spelling seen and merge the rest.
+    const name = c.student_name.trim();
+    const room = (rooms[c.classroom] ||= {});
+    const student = (room[name.toLowerCase()] ||= { name: name || '(no name given)', gifts: 0, cents: 0 });
+    student.gifts += 1;
+    student.cents += share;
   }
+
   const cell = (value) => {
     let s = String(value == null ? '' : value);
-    // Donor/student names are attacker-supplied and this file's purpose is
-    // to be opened in Excel/Sheets — neutralize formula-leading characters.
+    // Student names are attacker-supplied and this file's purpose is to
+    // be opened in Excel/Sheets — neutralize formula-leading characters.
     if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
     return `"${s.replace(/"/g, '""')}"`;
   };
-  const header = ['id', 'date', 'amount_dollars', 'fee_dollars', 'priority',
-    'partner_tier', 'students', 'donor_name', 'visibility', 'email',
-    'billing_name', 'address_line1', 'address_line2', 'city', 'state',
-    'postal_code', 'country', 'employer_match', 'via_link'];
-  const rows = [header.join(',')];
-  for (const r of gifts.results) {
-    rows.push([
-      r.id,
-      new Date((r.created || 0) * 1000).toISOString(),
-      (r.amount_cents / 100).toFixed(2),
-      ((r.fee_cents || 0) / 100).toFixed(2),
-      r.priority, r.partner_tier, (studentsByGift[r.id] || []).join('; '), r.donor_name,
-      r.visibility, r.email, r.billing_name,
-      r.address_line1, r.address_line2, r.city, r.state, r.postal_code,
-      r.country, r.employer_match ? 'yes' : 'no', r.via_link ? 'yes' : 'no',
-    ].map(cell).join(','));
+  const dollars = (cents) => (cents / 100).toFixed(2);
+  const rows = ['grade,teacher,student,gifts,raised'];
+  const line = (...values) => rows.push(values.map(cell).join(','));
+
+  // Roster order, then any classroom the roster no longer lists.
+  const known = CLASSROOMS.map((r) => r.id);
+  const order = [...known, ...Object.keys(rooms).filter((id) => !known.includes(id))];
+  for (const id of order) {
+    const room = classroomById(id);
+    const grade = room ? room.grade : '';
+    const teacher = room ? room.teacher : id;
+    const students = Object.entries(rooms[id] || {}).sort(([ka, a], [kb, b]) =>
+      (ka === '') - (kb === '') || b.cents - a.cents || b.gifts - a.gifts || a.name.localeCompare(b.name));
+    let gifts = 0;
+    let cents = 0;
+    for (const [, s] of students) {
+      line(grade, teacher, s.name, s.gifts, dollars(s.cents));
+      gifts += s.gifts;
+      cents += s.cents;
+    }
+    line(grade, teacher, 'Class total', gifts, dollars(cents));
   }
+  const rest = uncredited.results[0];
+  if (rest.gifts) line('', '', 'No Rocket named', rest.gifts, dollars(rest.cents));
   return '\ufeff' + rows.join('\n') + '\n'; // BOM so Excel reads UTF-8 names
 }
