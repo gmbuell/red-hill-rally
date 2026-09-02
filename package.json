@@ -6,6 +6,8 @@
     "dev": "wrangler dev",
     "predeploy": "npm test && wrangler d1 migrations apply red-hill-rally --remote",
     "deploy": "wrangler deploy",
+    "preview": "wrangler d1 migrations apply red-hill-rally-preview --env preview --remote && wrangler versions upload --env preview",
+    "preview:deploy": "wrangler d1 migrations apply red-hill-rally-preview --env preview --remote && wrangler deploy --env preview",
     "test": "vitest run",
     "audit": "node scripts/lighthouse.mjs",
     "wcag": "node scripts/wcag.mjs"

@@ -3,9 +3,13 @@
 Fundraising site: pages in `site/` (vanilla JS, no build step)
 rendered by a Cloudflare Worker in `worker/` that also handles Stripe
 Checkout, short student links, D1 tallies, and R2 partner logos. **Production is
-live** at <https://rocketrally.org> (www redirects there;
-<https://red-hill-rally.gmbuell.workers.dev> still answers and is where
-the sandbox Stripe webhook points); there is no staging environment.
+live** at <https://rocketrally.org> (www redirects there; the
+production worker's workers.dev hostname is off, which is where the
+sandbox Stripe webhook still points). Every PR gets a **preview** on a
+second worker, `red-hill-rally-preview`, with its own D1 database
+(demo donations), its own logo bucket, and no secrets; the preview URL
+is in the PR's "Workers Builds" check (details link), and
+<https://red-hill-rally-preview.gmbuell.workers.dev> tracks `main`.
 
 Product decisions: `docs/design-decisions.md`. Brand
 system: `docs/brand-guide.html`. The README is a two-sentence pointer;
@@ -22,7 +26,8 @@ this file is the operating manual.
 | `npm run audit` | Lighthouse on every page, mobile + desktop (needs Chrome); defaults to the live site (`npm run audit -- --url http://localhost:8787` for local). `--runs 3 --min 98` reproduces the CI gate, `--form mobile` limits it to one form factor |
 | `npm run wcag` | WCAG 2.2 checks on every page, mobile + desktop (needs Chrome): text contrast, non-text contrast, focus rings, target size, body leading ≥ 1.5, body text ≥ 16px and labels ≥ 13px. Defaults to the live site (`npm run wcag -- --url http://localhost:8787` for local, `--page donate --form mobile` to narrow). Each cell shows how many elements the check examined |
 | `npm run deploy` | **Ships to production**: the worker and every file under `site/`. The `predeploy` step runs the tests, then applies pending D1 migrations to the remote database, so schema and code ship together. Every push to `main` runs this through Cloudflare Workers Builds (dashboard → the worker → Settings → Build), so merging a PR deploys it |
-| `npx wrangler tail red-hill-rally` | Production logs |
+| `npm run preview` | What Workers Builds runs for every branch except `main` (the preview worker's Settings → Build holds the two triggers): applies pending migrations to the preview database, then uploads a version of the preview worker; the PR's "Workers Builds" check carries the preview URL, and `<branch>-red-hill-rally-preview.gmbuell.workers.dev` follows the branch. `npm run preview:deploy` is the `main` counterpart, a full deploy of the preview worker. Both need a Cloudflare login and touch only the preview worker |
+| `npx wrangler tail red-hill-rally` | Production logs (`--env preview` for the preview worker) |
 
 Don't run `npm run deploy`, `wrangler d1 execute … --remote`, or
 `wrangler secret put` unless asked; they all touch production. The
@@ -93,6 +98,15 @@ secrets; the maintainer reviews and ships PRs.
 
 ## Gotchas
 
+- The preview worker is the `preview` environment in `wrangler.jsonc`:
+  same code, own bindings. It holds no secrets, so checkout answers
+  503 and the export 401 there, and a preview reads the demo seed, not
+  real gifts. A PR that adds a migration applies it to the preview
+  database before the version uploads, so a bad migration fails the
+  preview build. Reseed the preview database with
+  `npx wrangler d1 execute red-hill-rally-preview --env preview --remote --file seed/demo-donations.sql`.
+  Bindings are per environment: a new binding goes in both the top
+  level and `env.preview`.
 - `.dev.vars` holds the **production** `ADMIN_KEY`. Never print it.
   `vitest.config.mjs` overrides every secret with fakes; keep that.
   `STRIPE_SECRET_KEY` is absent locally, so local checkout answers 503
