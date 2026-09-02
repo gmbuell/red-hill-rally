@@ -4,11 +4,11 @@
   "engines": { "node": ">=22" },
   "scripts": {
     "dev": "wrangler dev",
-    "predeploy": "node scripts/board-skeleton.js --check && wrangler d1 migrations apply red-hill-rally --remote",
+    "predeploy": "node scripts/skeleton.js --check && wrangler d1 migrations apply red-hill-rally --remote",
     "deploy": "wrangler deploy",
-    "pretest": "node scripts/board-skeleton.js --check",
+    "pretest": "node scripts/skeleton.js --check",
     "test": "vitest run",
-    "audit": "bash scripts/lighthouse.sh"
+    "audit": "node scripts/lighthouse.mjs"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.22.0",

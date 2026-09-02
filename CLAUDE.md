@@ -17,9 +17,9 @@ go-live checklist, operations) and `docs/design-decisions.md`
 | `npm install` | wrangler, vitest + workers pool, lighthouse |
 | `npx wrangler d1 migrations apply red-hill-rally --local` | once per clone: local D1 schema |
 | `npm run dev` | `wrangler dev` on http://localhost:8787 |
-| `npm test` | `pretest` checks the board skeleton, then vitest (55 tests, ~2 s) |
-| `node scripts/board-skeleton.js --write` | regenerate the baked Rally Board markup after editing the roster/partners in `data.js` or templates in `board.js` |
-| `npm run audit` | Lighthouse on every page, mobile + desktop; defaults to the live site (`npm run audit -- http://localhost:8787` for local) |
+| `npm test` | `pretest` checks the baked skeletons, then vitest (55 tests, ~2 s) |
+| `node scripts/skeleton.js --write` | regenerate the baked zero-state markup in the page HTML after editing the roster, partners, or priorities in `data.js`, or a page template (the `*View` functions, `ui.js` templates) |
+| `npm run audit` | Lighthouse on every page, mobile + desktop; defaults to the live site (`npm run audit -- --url http://localhost:8787` for local). CI runs it with `--runs 3 --min 98` against `wrangler dev` |
 | `npm run deploy` | **Ships to production** after applying remote D1 migrations |
 
 Don't run `npm run deploy`, `wrangler d1 execute … --remote`, or
@@ -45,6 +45,9 @@ Don't run `npm run deploy`, `wrangler d1 execute … --remote`, or
   credited Rocket), `links` (code → students JSON + signature).
 - `test/` — vitest on `@cloudflare/vitest-pool-workers`; migrations are
   read from disk and re-applied before each test.
+- `.github/workflows/ci.yml` — PR gate: `npm test` plus Lighthouse
+  ≥ 98 on every page, mobile and desktop. Lighthouse is the repo's
+  `lighthouse` devDependency, so `npm run audit` and CI score alike.
 - `docs/superpowers/` — brainstorm specs and plans, gitignored.
 
 ## Invariants the tests pin
@@ -73,9 +76,14 @@ Don't run `npm run deploy`, `wrangler d1 execute … --remote`, or
 - `npm test` prints a wall of `deleteAllDurableObjects()` stack traces
   from the pool's `reset()`. Noise; read the summary line.
 - Don't add `"type": "module"` to `package.json`: `data.js` relies on
-  the CommonJS guard and `scripts/board-skeleton.js` uses `require`.
-- Editing `CLASSROOMS`, `PARTNERS`, `board.js`, or `ui.js` without
-  rerunning the skeleton script fails `pretest` and `predeploy`.
+  the CommonJS guard and `scripts/skeleton.js` uses `require`.
+- Editing `CLASSROOMS`, `PARTNERS`, `PRIORITIES`, or any page template
+  (`boardView`, `homeView`, `partnersView`, `linkView`, the `ui.js`
+  templates) without rerunning the skeleton script fails `pretest` and
+  `predeploy`. Every block a script fills at load is baked this way so
+  the first paint has final geometry; the Lighthouse gate fails on the
+  layout shift otherwise. Page scripts keep their DOM wiring behind
+  `typeof document !== 'undefined'` so the skeleton can evaluate them.
 - Browser navigations to unknown paths hit the assets 404 before the
   worker runs. A new worker-served path must be added to
   `run_worker_first` in `wrangler.jsonc`; curl alone won't catch this.

@@ -3,18 +3,29 @@
    (sunny-otter) and the link is /l/<code> — easy to type straight off
    a printed flyer. */
 
-(() => {
+/* The rows' shape: name first, and required — the link is printed with
+   the names on it. scripts/skeleton.js bakes the empty first row into
+   student-link.html from it (linkView()), so the first paint is
+   complete; the live render below repeats the same markup. */
+const LINK_ROWS = {
+  prefix: 'sibling',
+  nameFirst: true,
+  nameError: 'Please enter your student&rsquo;s name.',
+  classError: 'Please choose your student&rsquo;s classroom.',
+};
+const linkView = () => ({
+  rows: RH.studentRowsMarkup([{ c: '', n: '' }], { ...LINK_ROWS, placeholder: RH.samplePlaceholder(0) }),
+});
+
+/* Browser wiring — absent when scripts/skeleton.js evaluates this file. */
+if (typeof document !== 'undefined') (() => {
   const form = RH.qs('#link-form');
   const errorEl = RH.qs('#link-error');
 
-  /* Name first, and required — the link is printed with the names on it. */
   const rows = RH.studentRows({
     rowsEl: RH.qs('#sibling-rows'),
     addBtn: RH.qs('#add-sibling'),
-    prefix: 'sibling',
-    nameFirst: true,
-    nameError: 'Please enter your student&rsquo;s name.',
-    classError: 'Please choose your student&rsquo;s classroom.',
+    ...LINK_ROWS,
   });
   rows.render();
 

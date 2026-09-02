@@ -1,6 +1,6 @@
 /* Rally Board: campaign totals, the classroom race, and the honor roll.
    The zero-state skeleton is baked into rally-board.html (kept in sync
-   by scripts/board-skeleton.js, which calls boardView(null)), so the
+   by scripts/skeleton.js, which calls boardView(null)), so the
    first paint is complete with no layout shift; live /api/board data
    then re-renders rows of identical size, so the swap moves nothing. */
 
@@ -77,7 +77,7 @@ const boardView = (live) => {
   return { totals, race, roll, partners };
 };
 
-/* Browser wiring — absent when scripts/board-skeleton.js evaluates this
+/* Browser wiring — absent when scripts/skeleton.js evaluates this
    file in Node to generate the static skeleton. */
 if (typeof document !== 'undefined') {
   RH.loadLive('/api/board', (live) => {

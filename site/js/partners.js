@@ -1,8 +1,27 @@
 /* Business Partners page: the partnership ladder (pick a tier, name
    your business, pay through Stripe) and the wall of current partners
-   — all driven by data.js (PARTNER_TIERS / PARTNERS). */
+   — all driven by data.js (PARTNER_TIERS / PARTNERS). The ladder and
+   the curated wall (partnersView(null)) are baked into partners.html
+   by scripts/skeleton.js, so the first paint is complete; online
+   partners re-render the wall with same-sized cards when live data
+   arrives. */
 
-(() => {
+const partnersView = (online) => ({
+  tiers: PARTNER_TIERS.map((t) => `
+    <div class="tier-card" data-tier="${t.id}">
+      <div class="tier-head">
+        <h3>${t.name}</h3>
+        <p class="tier-amount">${RH.money(t.amount)}</p>
+      </div>
+      <ul>${t.benefits.map((b) => `<li>${b}</li>`).join('')}</ul>
+      <button type="button" class="btn small tier-pick" data-tier="${t.id}">Become a ${t.name}</button>
+    </div>`).join(''),
+  wall: RH.partnerWall(online,
+    '<p class="hint">Your business could be first &mdash; the Rally launches in September.</p>'),
+});
+
+/* Browser wiring — absent when scripts/skeleton.js evaluates this file. */
+if (typeof document !== 'undefined') (() => {
   let chosen = null;
   const form = RH.qs('#partner-form');
   const errorEl = RH.qs('#partner-error');
@@ -14,17 +33,7 @@
       `Add ${RH.moneyCents(fee)} to cover card processing (${RH.moneyCents(chosen.amount * 100 + fee)} total) — 100% of our partnership reaches the school.`;
   };
 
-  /* ---- the ladder ---- */
-  RH.qs('#tier-grid').innerHTML = PARTNER_TIERS.map((t) => `
-    <div class="tier-card" data-tier="${t.id}">
-      <div class="tier-head">
-        <h3>${t.name}</h3>
-        <p class="tier-amount">${RH.money(t.amount)}</p>
-      </div>
-      <ul>${t.benefits.map((b) => `<li>${b}</li>`).join('')}</ul>
-      <button type="button" class="btn small tier-pick" data-tier="${t.id}">Become a ${t.name}</button>
-    </div>`).join('');
-
+  /* ---- the ladder (markup is baked; this is the pick handler) ---- */
   RH.qs('#tier-grid').addEventListener('click', (e) => {
     const btn = e.target.closest('.tier-pick');
     if (!btn) return;
@@ -58,13 +67,8 @@
   RH.qs('#biz-name').addEventListener('input', () =>
     RH.qs('#biz-field').classList.remove('invalid'));
 
-  /* ---- the wall: curated roster immediately (no pop-in for the
-     common case), online partners merged in when live data arrives ---- */
+  /* ---- the wall: the curated roster is baked; online partners merge
+     in when live data arrives ---- */
   const wall = RH.qs('#partner-wall');
-  const renderWall = (online) => {
-    wall.innerHTML = RH.partnerWall(online,
-      '<p class="hint">Your business could be first &mdash; the Rally launches in September.</p>');
-  };
-  renderWall(null);
-  RH.loadLive('/api/campaign', (live) => renderWall(live.partners));
+  RH.loadLive('/api/campaign', (live) => { wall.innerHTML = partnersView(live.partners).wall; });
 })();

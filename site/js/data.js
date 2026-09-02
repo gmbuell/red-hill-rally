@@ -171,7 +171,7 @@ const PARTNER_TIERS = [
    default to 'supporter'. Web logos live in site/img/partners/;
    print-quality originals stay out of the repo (assets/partner-logos/,
    gitignored). The board bakes this list — run
-   `node scripts/board-skeleton.js --write` after editing. */
+   `node scripts/skeleton.js --write` after editing. */
 const PARTNERS = [
   { name: 'Black Gold Pump & Supply', logo: 'black-gold-pump-supply.webp', tier: 'supporter' },
   { name: 'Earthco Landscape Services', logo: 'earthco-landscape.webp', tier: 'supporter' },

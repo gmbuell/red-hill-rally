@@ -1,8 +1,6 @@
 /* Thank-you page: personalize the impact line from the handoff params. */
 
 (() => {
-  RH.qs('#thanks-rocket').innerHTML = RH.badgeRocket('rocket-float');
-
   const p = priorityById(RH.param('p'));
   const amt = Number(RH.param('amt')) || 0;
   const partnerTier = partnerTierById(RH.param('partner'));

@@ -29,17 +29,8 @@
 
   const visibility = () => RH.qs('input[name="visibility"]:checked').value;
 
-  /* ---- step 1: priority cards ---- */
-  const renderPriorities = () => {
-    RH.qs('#priority-options').innerHTML = PRIORITIES.map((p) => `
-      <label class="option-card with-icon">
-        <input type="radio" name="priority" value="${p.id}"
-          ${state.priority && state.priority.id === p.id ? 'checked' : ''}>
-        ${RH.icon(p.id, 'icon')}
-        <span class="name">${p.name}</span>
-        <p class="desc">${p.blurb}</p>
-      </label>`).join('');
-  };
+  /* ---- step 1: priority cards — baked into the HTML (RH.priorityOptions
+     via scripts/skeleton.js), so nothing to render here ---- */
 
   /* ---- step 2: amounts ---- */
   const feeCents = () => feeCoverCents(Math.round(state.amount) * 100);
@@ -264,11 +255,13 @@
   /* ---- boot ---- */
   RH.qs('#custom-amount').max = MAX_AMOUNT;
   RH.qs('#donor-name').maxLength = MAX_NAME;
-  renderPriorities();
   /* A ?p= arrival (home-page tile, or Stripe's cancel URL) has already
-     chosen a priority — start on the amount step; Back still reaches
-     the priority cards with that choice checked. */
-  if (state.priority) state.step = 2;
+     chosen a priority — check its card and start on the amount step;
+     Back still reaches the cards with that choice checked. */
+  if (state.priority) {
+    RH.qs(`input[name="priority"][value="${state.priority.id}"]`).checked = true;
+    state.step = 2;
+  }
   showStep();
 
   /* Resolve a student-link code before trusting it — in the background,

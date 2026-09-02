@@ -56,7 +56,9 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 
-html { -webkit-text-size-adjust: 100%; }
+/* Scripts grow some pages past the viewport after first paint; the
+   scrollbar's arrival must not shift the centered layout sideways. */
+html { -webkit-text-size-adjust: 100%; scrollbar-gutter: stable; }
 @media (prefers-reduced-motion: no-preference) {
   html { scroll-behavior: smooth; }
 }
@@ -1108,7 +1110,8 @@ select:focus-visible,
   gap: 0.6rem;
   text-align: center;
 }
-.partner-card img { max-height: 10rem; width: auto; max-width: 100%; object-fit: contain; }
+/* A fixed box: logos load after first paint and must not grow the card. */
+.partner-card img { width: 100%; height: 10rem; object-fit: contain; }
 .partner-card .partner-name { font-weight: 800; font-size: 0.88rem; color: var(--navy); }
 .partner-card .partner-tier {
   font-size: 0.72rem;

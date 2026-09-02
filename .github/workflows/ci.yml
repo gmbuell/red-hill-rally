@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# A newer push to the same PR supersedes the run in progress.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+
+  # Every page must score 98+ in all four categories, median of three
+  # runs, against a local wrangler dev (no Cloudflare login needed, so
+  # PRs from forks work too).
+  lighthouse:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        form: [mobile, desktop]
+    env:
+      WRANGLER_SEND_METRICS: 'false'
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx wrangler d1 migrations apply red-hill-rally --local
+      - name: Start wrangler dev
+        run: |
+          npx wrangler dev --port 8787 > wrangler-dev.log 2>&1 &
+          for i in $(seq 1 60); do
+            curl -sf -o /dev/null http://localhost:8787/ && exit 0
+            sleep 1
+          done
+          echo 'wrangler dev did not come up'; cat wrangler-dev.log; exit 1
+      - name: Lighthouse gate
+        run: node scripts/lighthouse.mjs --url http://localhost:8787 --runs 3 --min 98 --form ${{ matrix.form }}
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: lighthouse-${{ matrix.form }}
+          path: lighthouse-reports/

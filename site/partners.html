@@ -40,7 +40,39 @@
     <h2 class="pitch-head">Reach Red Hill Families During Rocket Rally</h2>
     <p class="how-intro">Red Hill Elementary serves roughly 510 students and their families in Tustin, North Tustin, and Santa Ana (ZIP codes 92705, 92780, 92782). The Rocket Rally is our biggest fall event &mdash; a school-wide fundraising campaign that begins with a community walk to school and rally on campus. A Rocket Rally Partnership puts your business in front of these families during our highest-energy week of the fall: on our digital marquee facing Red Hill Avenue, on our Rocket Rally webpage, across our social channels, and in our Rally newsletter issue.</p>
 
-    <div class="tier-grid" id="tier-grid"></div>
+    <div class="tier-grid" id="tier-grid"><!-- skeleton:tiers -->
+    <div class="tier-card" data-tier="friend">
+      <div class="tier-head">
+        <h3>Rally Friend</h3>
+        <p class="tier-amount">$250</p>
+      </div>
+      <ul><li>Name on the Rocket Rally webpage</li><li>Social media thank-you during Rally week</li></ul>
+      <button type="button" class="btn small tier-pick" data-tier="friend">Become a Rally Friend</button>
+    </div>
+    <div class="tier-card" data-tier="supporter">
+      <div class="tier-head">
+        <h3>Rally Supporter</h3>
+        <p class="tier-amount">$500</p>
+      </div>
+      <ul><li>Digital marquee rotation (1 week, Rally week only)</li><li>Logo on the Rocket Rally webpage</li></ul>
+      <button type="button" class="btn small tier-pick" data-tier="supporter">Become a Rally Supporter</button>
+    </div>
+    <div class="tier-card" data-tier="champion">
+      <div class="tier-head">
+        <h3>Rally Champion</h3>
+        <p class="tier-amount">$750</p>
+      </div>
+      <ul><li>Logo on the Rocket Rally event shirt</li><li>Featured Instagram post</li><li>Mention in the Rally newsletter issue</li></ul>
+      <button type="button" class="btn small tier-pick" data-tier="champion">Become a Rally Champion</button>
+    </div>
+    <div class="tier-card" data-tier="mvp">
+      <div class="tier-head">
+        <h3>Rally MVP</h3>
+        <p class="tier-amount">$1,500</p>
+      </div>
+      <ul><li>Instagram Story added alongside the featured post</li><li>Mid-size logo on the Rocket Rally walk-to-school sponsor boards (route and arrival gates)</li></ul>
+      <button type="button" class="btn small tier-pick" data-tier="mvp">Become a Rally MVP</button>
+    </div><!-- /skeleton:tiers --></div>
     <p class="fine-print tier-note">Each tier includes all the benefits of the tiers above it. Partnerships are tax-deductible &mdash; Red Hill PTA is a 501(c)(3) nonprofit, EIN 33-0973857.</p>
 
     <form id="partner-form" hidden novalidate>
@@ -63,7 +95,39 @@
       <span class="script red">Thank you!</span>
       <p>To the businesses already backing this year&rsquo;s Rally.</p>
     </div>
-    <div id="partner-wall"></div>
+    <div id="partner-wall"><!-- skeleton:wall -->
+    <ul class="partner-grid">
+      <li class="partner-card">
+        <img src="/img/partners/black-gold-pump-supply.webp" alt="Black Gold Pump &amp; Supply logo" loading="lazy">
+        <span class="partner-name">Black Gold Pump &amp; Supply</span>
+        <span class="partner-tier">Rally Supporter</span>
+      </li>
+      <li class="partner-card">
+        <img src="/img/partners/earthco-landscape.webp" alt="Earthco Landscape Services logo" loading="lazy">
+        <span class="partner-name">Earthco Landscape Services</span>
+        <span class="partner-tier">Rally Supporter</span>
+      </li>
+      <li class="partner-card">
+        <img src="/img/partners/felton-ninja-academy.webp" alt="Felton Ninja Academy logo" loading="lazy">
+        <span class="partner-name">Felton Ninja Academy</span>
+        <span class="partner-tier">Rally Supporter</span>
+      </li>
+      <li class="partner-card">
+        <img src="/img/partners/galaxy-automotive.webp" alt="Galaxy Automotive &amp; Tire logo" loading="lazy">
+        <span class="partner-name">Galaxy Automotive &amp; Tire</span>
+        <span class="partner-tier">Rally Supporter</span>
+      </li>
+      <li class="partner-card">
+        <img src="/img/partners/aoq-sports.webp" alt="Sports Ambassadors of Quan logo" loading="lazy">
+        <span class="partner-name">Sports Ambassadors of Quan</span>
+        <span class="partner-tier">Rally Supporter</span>
+      </li>
+      <li class="partner-card">
+        <img src="/img/partners/odell-group.webp" alt="The O’Dell Group Real Estate logo" loading="lazy">
+        <span class="partner-name">The O’Dell Group Real Estate</span>
+        <span class="partner-tier">Rally Supporter</span>
+      </li>
+    </ul><!-- /skeleton:wall --></div>
 
     <div class="cta-row">
       <a class="btn secondary" href="/rally-board">See the Rally Board <span class="arrow" aria-hidden="true">→</span></a>

@@ -38,7 +38,24 @@
 
   <div class="wrap-narrow">
     <form id="link-form" novalidate>
-      <div id="sibling-rows"></div>
+      <div id="sibling-rows"><!-- skeleton:rows -->
+      <div class="student-row" data-row="0">
+        
+        <div class="field">
+          <label for="sibling-name-0">Student name</label>
+          <input type="text" id="sibling-name-0" data-field="n" autocomplete="off" maxlength="80" placeholder="e.g. Teddy Buell">
+          <p class="error">Please enter your student&rsquo;s name.</p>
+        </div>
+        <div class="field">
+          <label for="sibling-class-0">Classroom</label>
+          <select id="sibling-class-0" data-field="c">
+            <option value="">Choose a classroom&hellip;</option>
+            <option value="hesseltine">Mrs. Hesseltine (TK)</option><option value="wass">Mrs. Wass (TK)</option><option value="montgomery">Mrs. Montgomery (TK)</option><option value="michel">Mrs. Michel (K)</option><option value="convery">Ms. Convery (K)</option><option value="marshall">Ms. Marshall (K)</option><option value="knott">Mrs. Knott (1st)</option><option value="ludes">Mrs. Ludes (1st)</option><option value="miller">Ms. Miller (1st)</option><option value="sharp">Mrs. Sharp (1st/2nd)</option><option value="bryan">Mrs. Bryan (2nd)</option><option value="bowers">Mrs. Bowers (2nd)</option><option value="zweber">Mr. Zweber (3rd)</option><option value="harrison">Mrs. Harrison (3rd)</option><option value="sianez">Mrs. Sianez (4th)</option><option value="herman">Mrs. Herman (4th)</option><option value="crain">Mrs. Crain (5th)</option><option value="knutson">Mr. Knutson (5th)</option><option value="bishop">Mr. Bishop (SDC)</option><option value="smith">Mrs. Smith (SDC)</option>
+          </select>
+          <p class="error">Please choose your student&rsquo;s classroom.</p>
+        </div>
+        
+      </div><!-- /skeleton:rows --></div>
       <button type="button" class="btn secondary small" id="add-sibling">+ Add a sibling</button>
       <button type="submit" class="btn">Create the link <span class="arrow" aria-hidden="true">→</span></button>
       <p class="form-error" id="link-error" role="alert" hidden></p>

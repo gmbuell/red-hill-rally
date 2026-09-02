@@ -20,13 +20,17 @@ Where things live:
 - **Page copy** — the HTML pages in `site/` (`index.html`,
   `donate.html`, `matching.html`, …).
 - **Goals, priorities, tier amounts, classroom roster, partner list** —
-  `site/js/data.js`. After roster or partner edits, run the
-  board-skeleton step (see **Develop**).
+  `site/js/data.js`. After roster, partner, or priority edits, run the
+  skeleton step (see **Develop**).
 - **Styles** — `site/css/styles.css`, following the brand guide in
   `docs/brand-guide.html`.
 
 `npm test` runs the full suite with fake keys — no secrets needed.
-Deploys, secrets, Stripe, and the production database stay with the
+Every pull request runs the tests and a Lighthouse gate: each page
+must score 98 or better in all four categories, mobile and desktop
+(median of three runs, against a local `wrangler dev`). A failed run
+attaches the HTML reports under the workflow's artifacts. Deploys,
+secrets, Stripe, and the production database stay with the
 maintainer, who reviews and ships merged PRs.
 
 ## Develop
@@ -39,16 +43,23 @@ npm test         # vitest (workers pool) — API, webhook, privacy tests
 npm run audit    # Lighthouse: every page, mobile + desktop (needs Chrome)
 ```
 
+`npm run audit` scores the live site by default; `npm run audit --
+--url http://localhost:8787` audits a local `wrangler dev`, and
+`--runs 3 --min 98` reproduces the CI gate (`--form mobile` for one
+form factor).
+
 Local secrets live in `.dev.vars` (gitignored). Without Stripe keys,
 checkout answers with its friendly "giving opens soon" message —
 that's expected; everything else works.
 
-**Rally Board skeleton** — rally-board.html ships with the board's
-zero-state markup baked in (no layout shift on first paint; a real
-board for no-JS visitors). After editing the classroom roster in
-`site/js/data.js` or the board templates in `site/js/board.js`, run
-`node scripts/board-skeleton.js --write` to regenerate it; `npm test`
-and `npm run deploy` fail if it drifts.
+**Baked skeletons** — every block a page script fills at load (the
+home meter and priority cards, the donate priority cards, the Rally
+Board, the partners ladder and wall, the student-link row) ships with
+its zero-state markup baked into the HTML, so the first paint has its
+final geometry and no-JS visitors see a real page. After editing the
+roster, partners, or priorities in `site/js/data.js`, or a template in
+`site/js/*.js`, run `node scripts/skeleton.js --write` to regenerate
+them; `npm test` and `npm run deploy` fail if they drift.
 
 **Demo data** — `seed/demo-donations.sql` fills the board with
 prototype-scale numbers on the real roster. Apply/remove commands
@@ -117,8 +128,8 @@ charges real money. To flip to live:
   Stripe's checkout page — useful for thank-you notes and future
   outreach. This is the only place student names, emails, and
   addresses ever leave the backend; don't share the key.
-- **Update goals/copy/tiers** — edit `site/js/data.js`; after roster
-  or partner edits run the board-skeleton step (see **Develop**);
+- **Update goals/copy/tiers** — edit `site/js/data.js`; after roster,
+  partner, or priority edits run the skeleton step (see **Develop**);
   redeploy.
 - **Partner logos** — businesses upload a logo on the thank-you page
   right after paying; images **auto-publish** to /partners and the
@@ -130,7 +141,7 @@ charges real money. To flip to live:
   object metadata (dashboard → R2).
   - *Publish a held PDF or an offline partner*: web-sized image into
     `site/img/partners/`, a `PARTNERS` entry in `site/js/data.js`,
-    board-skeleton step, redeploy.
+    skeleton step, redeploy.
   - *Pull a published logo* (wrong file, inappropriate content):
     `npx wrangler d1 execute red-hill-rally --remote --command "UPDATE donations SET logo_id = '' WHERE donor_name = '<business>'"`
     — the wall, the board strip, and the direct /logo URL all stop

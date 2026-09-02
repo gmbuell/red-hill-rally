@@ -1,19 +1,13 @@
-/* Home page: campaign meter and the six priority cards. Renders
-   immediately with zeros so the first paint is complete (no pop-in
-   layout shift), then patches in live totals from /api/campaign —
-   the update replaces same-sized content, so nothing moves. */
+/* Home page: campaign meter and the six priority cards. The zero-state
+   (homeView(0, {})) is baked into index.html by scripts/skeleton.js,
+   so the first paint is complete; live /api/campaign totals then
+   re-render same-sized content, so nothing moves. */
 
-(() => {
-  RH.qs('#scatter').innerHTML = RH.scatter;
-
-  const render = (raised, perPriority) => {
-    RH.buildTrajectory(RH.qs('#trajectory'), raised / CAMPAIGN.goal);
-    RH.qs('#stat-raised').textContent = RH.money(raised);
-    RH.qs('#stat-goal').textContent = RH.money(CAMPAIGN.goal);
-
-    RH.qs('#priority-grid').innerHTML = PRIORITIES.map((p) => {
-      const pRaised = perPriority[p.id] || 0;
-      return `
+const homeView = (raised, perPriority) => ({
+  trajectory: RH.trajectorySVG(raised / CAMPAIGN.goal),
+  cards: PRIORITIES.map((p) => {
+    const pRaised = perPriority[p.id] || 0;
+    return `
       <article class="priority-card">
         ${RH.icon(p.id, 'icon')}
         <h3>${p.name}</h3>
@@ -24,9 +18,16 @@
         </div>
         <a class="go" href="/donate?p=${p.id}">Give to this</a>
       </article>`;
-    }).join('');
-  };
+  }).join(''),
+});
 
-  render(0, {});
-  RH.loadLive('/api/campaign', (live) => render(live.campaign.raised, live.priorities || {}));
-})();
+/* Browser wiring — absent when scripts/skeleton.js evaluates this file. */
+if (typeof document !== 'undefined') {
+  RH.qs('#stat-goal').textContent = RH.money(CAMPAIGN.goal);
+  RH.loadLive('/api/campaign', (live) => {
+    const v = homeView(live.campaign.raised, live.priorities || {});
+    RH.qs('#trajectory').innerHTML = v.trajectory;
+    RH.qs('#stat-raised').textContent = RH.money(live.campaign.raised);
+    RH.qs('#priority-grid').innerHTML = v.cards;
+  });
+}

@@ -17,8 +17,9 @@ const RH = (() => {
   const classroomOptions = () => CLASSROOMS.map((c) =>
     `<option value="${c.id}">${c.teacher} (${c.grade})</option>`).join('');
 
-  const samplePlaceholder = () =>
-    `e.g. ${Math.random() < 0.5 ? 'Teddy' : 'Finn'} Buell`;
+  /* `pick` fixes the name — a baked skeleton must be deterministic. */
+  const samplePlaceholder = (pick = Math.random() < 0.5 ? 0 : 1) =>
+    `e.g. ${['Teddy', 'Finn'][pick]} Buell`;
 
   /* POST JSON, parse JSON back; {ok, data} — network errors still throw. */
   const postJson = async (path, body) => {
@@ -58,14 +59,17 @@ const RH = (() => {
      edit/remove/add, and hides the add button at MAX_STUDENTS.
      `validate(check)` marks fields invalid per `check(st) -> {c, n}`
      and returns whether every row passed. */
-  const studentRows = ({ rowsEl, addBtn, prefix, nameFirst = false, classError, nameError = '' }) => {
-    const students = [{ c: '', n: '' }];
-    const classId = (i) => `${prefix}-class-${i}`;
-    const nameId = (i) => `${prefix}-name-${i}`;
+  const classId = (prefix, i) => `${prefix}-class-${i}`;
+  const nameId = (prefix, i) => `${prefix}-name-${i}`;
+
+  /* Markup for a list of student rows — pure, so scripts/skeleton.js
+     can bake the empty first row into student-link.html. `placeholder`
+     pins the name hint there; the live render picks one at random. */
+  const studentRowsMarkup = (students, { prefix, nameFirst = false, classError, nameError = '', placeholder }) => {
     const classField = (i) => `
         <div class="field">
-          <label for="${classId(i)}">Classroom</label>
-          <select id="${classId(i)}" data-field="c">
+          <label for="${classId(prefix, i)}">Classroom</label>
+          <select id="${classId(prefix, i)}" data-field="c">
             <option value="">Choose a classroom&hellip;</option>
             ${classroomOptions()}
           </select>
@@ -73,19 +77,25 @@ const RH = (() => {
         </div>`;
     const nameField = (i) => `
         <div class="field">
-          <label for="${nameId(i)}">Student name${nameError ? '' : ' <span class="optional">&middot; optional</span>'}</label>
-          <input type="text" id="${nameId(i)}" data-field="n" autocomplete="off" maxlength="${MAX_NAME}" placeholder="${esc(samplePlaceholder())}">
+          <label for="${nameId(prefix, i)}">Student name${nameError ? '' : ' <span class="optional">&middot; optional</span>'}</label>
+          <input type="text" id="${nameId(prefix, i)}" data-field="n" autocomplete="off" maxlength="${MAX_NAME}" placeholder="${esc(placeholder || samplePlaceholder())}">
           ${nameError ? `<p class="error">${nameError}</p>` : ''}
         </div>`;
-    const render = () => {
-      rowsEl.innerHTML = students.map((st, i) => `
+    return students.map((st, i) => `
       <div class="student-row" data-row="${i}">
         ${nameFirst ? nameField(i) + classField(i) : classField(i) + nameField(i)}
         ${students.length > 1 ? '<button type="button" class="linklike remove-student">Remove</button>' : ''}
       </div>`).join('');
+  };
+
+  const studentRows = ({ rowsEl, addBtn, ...shape }) => {
+    const { prefix, nameFirst = false } = shape;
+    const students = [{ c: '', n: '' }];
+    const render = () => {
+      rowsEl.innerHTML = studentRowsMarkup(students, shape);
       students.forEach((st, i) => {
-        qs(`#${classId(i)}`).value = st.c;
-        qs(`#${nameId(i)}`).value = st.n;
+        qs(`#${classId(prefix, i)}`).value = st.c;
+        qs(`#${nameId(prefix, i)}`).value = st.n;
       });
       addBtn.hidden = students.length >= MAX_STUDENTS;
     };
@@ -108,12 +118,12 @@ const RH = (() => {
       if (students.length >= MAX_STUDENTS) return;
       students.push({ c: '', n: '' });
       render();
-      qs(`#${(nameFirst ? nameId : classId)(students.length - 1)}`).focus();
+      qs(`#${(nameFirst ? nameId : classId)(prefix, students.length - 1)}`).focus();
     });
     const validate = (check) => students.reduce((ok, st, i) => {
       const bad = check(st);
-      qs(`#${classId(i)}`).closest('.field').classList.toggle('invalid', !!bad.c);
-      qs(`#${nameId(i)}`).closest('.field').classList.toggle('invalid', !!bad.n);
+      qs(`#${classId(prefix, i)}`).closest('.field').classList.toggle('invalid', !!bad.c);
+      qs(`#${nameId(prefix, i)}`).closest('.field').classList.toggle('invalid', !!bad.n);
       return ok && !bad.c && !bad.n;
     }, true);
     return { students, render, validate };
@@ -160,21 +170,6 @@ const RH = (() => {
   /* ---- motifs (from the brand guide's Spirit Kit) -------------------- */
 
   const STAR = 'M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z';
-
-  // Badge rocket: the primary mark (navy silhouette, white porthole, red dashes)
-  const badgeRocket = (cls) => `
-  <svg class="${cls || ''}" viewBox="0 0 64 64" aria-hidden="true">
-    <g transform="rotate(45 32 32)">
-      <path d="M25 28 C20 32 17 37 16.5 43 L25 38 Z" fill="#0A2B4E"/>
-      <path d="M39 28 C44 32 47 37 47.5 43 L39 38 Z" fill="#0A2B4E"/>
-      <path d="M32 6 C36.5 11 39 18 39 26 L39 38 L25 38 L25 26 C25 18 27.5 11 32 6 Z" fill="#0A2B4E"/>
-      <path d="M27.5 38 L36.5 38 L34.5 43 L29.5 43 Z" fill="#0A2B4E"/>
-      <circle cx="32" cy="21" r="4.8" fill="#FFFFFF"/>
-      <g stroke="#B92025" stroke-width="2.5" stroke-linecap="round">
-        <path d="M28.5 46.5 L28.5 51.5"/><path d="M32 46.5 L32 55"/><path d="M35.5 46.5 L35.5 51.5"/>
-      </g>
-    </g>
-  </svg>`;
 
   // Red rocket pointing straight up (rotate it yourself), gold plume
   const redRocketUp = `
@@ -300,9 +295,9 @@ const RH = (() => {
     };
   };
 
-  const buildTrajectory = (container, pct) => {
+  const trajectorySVG = (pct) => {
     const pt = trajPointAt(Math.max(0.02, Math.min(pct, 1)));
-    container.innerHTML = `
+    return `
     <svg viewBox="0 0 680 190" aria-hidden="true">
       <defs>
         <clipPath id="traj-clip"><rect x="0" y="0" width="${pt.x.toFixed(1)}" height="190"/></clipPath>
@@ -323,12 +318,6 @@ const RH = (() => {
       </g>
     </svg>`;
   };
-
-  /* Star scatter: 2–3 mixed stars clustered near a headline. */
-  const scatter = `
-    <svg class="sparkle" style="top:9%;left:calc(50% + 218px);" width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="${STAR}" fill="#B92025"/></svg>
-    <svg class="sparkle" style="top:19%;left:calc(50% + 262px);" width="13" height="13" viewBox="0 0 24 24" aria-hidden="true"><path d="${STAR}" fill="#0A2B4E"/></svg>
-    <svg class="sparkle" style="top:7%;left:calc(50% - 252px);" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="${STAR}" fill="#F5B70F"/></svg>`;
 
   /* "Mia", "Mia & Leo", "Mia, Leo & Sam". */
   const nameList = (names) => names.length <= 1
@@ -386,11 +375,22 @@ const RH = (() => {
     return cards + thanks;
   };
 
+  /* Step 1 of the donate flow: one radio card per priority. Baked into
+     donate.html by scripts/skeleton.js so the page's first paint has
+     its final height; donate.js only checks the chosen one. */
+  const priorityOptions = () => PRIORITIES.map((p) => `
+      <label class="option-card with-icon">
+        <input type="radio" name="priority" value="${p.id}">
+        ${icon(p.id, 'icon')}
+        <span class="name">${p.name}</span>
+        <p class="desc">${p.blurb}</p>
+      </label>`).join('');
+
   return {
     money, moneyCents, qs, param, esc, nameList, roomLabels,
-    partnerGroups, partnerWall, studentRows, checkout,
+    partnerGroups, partnerWall, priorityOptions, studentRows, studentRowsMarkup, checkout,
     classroomOptions, samplePlaceholder, postJson, loadLive,
-    badgeRocket, dartUp, icon,
-    trailSVG, buildTrajectory, scatter,
+    dartUp, icon,
+    trailSVG, trajectorySVG,
   };
 })();

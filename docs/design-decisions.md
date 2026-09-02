@@ -82,6 +82,13 @@ Mobile is the primary surface: compact two-row header, stacked
 full-width CTAs, two-up amount tiles, race rows that stack name over
 trail, 13px minimum labels, no horizontal scroll at 390px.
 
+Every block a page script fills at load is baked into the HTML
+(`scripts/skeleton.js`, from the same template the script uses), so the
+first paint has its final geometry and nothing jumps when the deferred
+scripts run. CI holds every page to Lighthouse 98+ in all four
+categories, mobile and desktop, which is what catches a regression
+here.
+
 ## Pages
 
 | Page | Role |
