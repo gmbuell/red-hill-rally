@@ -4,8 +4,8 @@ Fundraising site: pages in `site/` (vanilla JS, no build step)
 rendered by a Cloudflare Worker in `worker/` that also handles Stripe
 Checkout, short student links, D1 tallies, and R2 partner logos. **Production is
 live** at <https://rocketrally.org> (www redirects there; the
-production worker's workers.dev hostname is off, which is where the
-sandbox Stripe webhook still points). Every PR gets a **preview** on a
+production worker's workers.dev hostname is off, and the sandbox
+Stripe webhook points at rocketrally.org). Every PR gets a **preview** on a
 second worker, `red-hill-rally-preview`, with its own D1 database
 (demo donations), its own logo bucket, and no secrets; the preview URL
 is in the PR's "Workers Builds" check (details link), and
