@@ -20,6 +20,19 @@ const partner = (name) => recordDonation(env.DB, paidPartnership({ metadata: { d
 
 afterEach(() => reset());
 
+describe('canonical host', () => {
+  it('sends www to the apex, keeping path and query', async () => {
+    const res = await SELF.fetch('https://www.rocketrally.org/donate?p=x&link=sunny-otter', { redirect: 'manual' });
+    expect(res.status).toBe(301);
+    expect(res.headers.get('location')).toBe('https://rocketrally.org/donate?p=x&link=sunny-otter');
+  });
+
+  it('leaves every other host alone', async () => {
+    const res = await SELF.fetch('https://rocketrally.org/', { redirect: 'manual' });
+    expect(res.status).toBe(200);
+  });
+});
+
 describe('rendered pages', () => {
   it('serves every page with the shared chrome and no client templates', async () => {
     for (const path of PAGE_PATHS) {

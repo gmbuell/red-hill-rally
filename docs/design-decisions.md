@@ -4,7 +4,7 @@ The product decisions behind the Red Hill Elementary PTA fundraising
 site. How it is built and operated is in `CLAUDE.md`; the brand system
 is `brand-guide.html`.
 
-**Live:** <https://red-hill-rally.gmbuell.workers.dev>
+**Live:** <https://rocketrally.org>
 
 ## Scope
 

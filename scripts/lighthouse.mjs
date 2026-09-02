@@ -17,7 +17,7 @@ import { launch } from 'chrome-launcher';
 const { values: opts, positionals } = parseArgs({
   allowPositionals: true,
   options: {
-    url: { type: 'string', default: 'https://red-hill-rally.gmbuell.workers.dev' },
+    url: { type: 'string', default: 'https://rocketrally.org' },
     runs: { type: 'string', default: '1' },
     min: { type: 'string' },
     form: { type: 'string', default: 'both' },

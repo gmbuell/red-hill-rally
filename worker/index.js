@@ -302,6 +302,11 @@ async function handleExport(request, url, env) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    // One canonical host, so shared links and search results agree.
+    if (url.hostname === 'www.rocketrally.org') {
+      url.hostname = 'rocketrally.org';
+      return Response.redirect(url.toString(), 301);
+    }
     if (!url.pathname.startsWith('/api/')) {
       // The typeable short link off flyers and handouts: /l/sunny-otter.
       // Published partner logos, addressed by opaque public id only.

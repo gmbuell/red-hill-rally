@@ -3,8 +3,9 @@
 Fundraising site: pages in `site/` (vanilla JS, no build step)
 rendered by a Cloudflare Worker in `worker/` that also handles Stripe
 Checkout, short student links, D1 tallies, and R2 partner logos. **Production is
-live** at <https://red-hill-rally.gmbuell.workers.dev>; there is no
-staging environment.
+live** at <https://rocketrally.org> (www redirects there;
+<https://red-hill-rally.gmbuell.workers.dev> still answers and is where
+the sandbox Stripe webhook points); there is no staging environment.
 
 Product decisions: `docs/design-decisions.md`. Brand
 system: `docs/brand-guide.html`. The README is a two-sentence pointer;
@@ -153,7 +154,7 @@ flip to live, in this order:
    with the live-mode key (Dashboard → Developers → API keys).
 2. **Live webhook** — in the Stripe dashboard (live mode) add an
    endpoint for
-   `https://red-hill-rally.gmbuell.workers.dev/api/stripe/webhook`
+   `https://rocketrally.org/api/stripe/webhook`
    listening for **both** `checkout.session.completed` and
    `checkout.session.async_payment_succeeded` (the second covers
    bank-debit payments that confirm later, so those gifts reach the
@@ -180,7 +181,7 @@ flip to live, in this order:
 
   ```sh
   curl -H "Authorization: Bearer <ADMIN_KEY>" \
-    https://red-hill-rally.gmbuell.workers.dev/api/export.csv > students.csv
+    https://rocketrally.org/api/export.csv > students.csv
   ```
 
   `…/api/export.csv?key=<ADMIN_KEY>` also works in a browser but

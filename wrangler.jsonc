@@ -4,6 +4,12 @@
   "main": "worker/index.js",
   "compatibility_date": "2026-08-15",
   "compatibility_flags": ["nodejs_compat"],
+  // Custom domains on the rocketrally.org zone; the worker sends www to
+  // the apex. workers.dev stays on as well.
+  "routes": [
+    { "pattern": "rocketrally.org", "custom_domain": true },
+    { "pattern": "www.rocketrally.org", "custom_domain": true }
+  ],
 
   // The pages and files under ./site, served as-is — no build step.
   "assets": {
