@@ -236,6 +236,28 @@ describe('checkout', () => {
     expect(sent.get('success_url')).toContain('{CHECKOUT_SESSION_ID}');
   });
 
+  it('offers only Visa, Mastercard, and a US bank account', async () => {
+    const calls = stubStripe();
+    expect((await checkoutDirect(validCheckout)).status).toBe(200);
+    expect((await partnerDirect({ tier: LOGO_TIER.id, business: 'Galaxy Automotive & Tire' })).status).toBe(200);
+
+    for (const call of calls) {
+      const sent = new URLSearchParams(String(call.body));
+      // Pinning the list opts the session out of dynamic payment
+      // methods, so nothing new appears just by being switched on in
+      // the Stripe Dashboard.
+      expect([sent.get('payment_method_types[0]'), sent.get('payment_method_types[1]')])
+        .toEqual(['card', 'us_bank_account']);
+      expect(sent.has('payment_method_types[2]')).toBe(false);
+      // Blocking these two brands leaves Visa and Mastercard, in
+      // wallets and co-badged cards too.
+      expect([
+        sent.get('payment_method_options[card][restrictions][brands_blocked][0]'),
+        sent.get('payment_method_options[card][restrictions][brands_blocked][1]'),
+      ]).toEqual(['american_express', 'discover_global_network']);
+    }
+  });
+
   it('a family link credits every sibling and overrides hand-typed rows', async () => {
     const { code } = await (await post('/api/link', {
       students: [{ n: 'Leo Park', c: ROOM_B }, { n: 'Ana Park', c: 'michel' }],
@@ -284,7 +306,7 @@ describe('checkout', () => {
     expect(await bad({ students: Array.from({ length: data.MAX_STUDENTS + 1 }, (_, i) => ({ c: ROOM_A, n: `K${i}` })) })).toBe(400);
   });
 
-  it('adds a fee-cover line item when the donor covers card costs', async () => {
+  it('adds a fee-cover line item when the donor covers processing costs', async () => {
     const calls = stubStripe();
     const res = await checkoutDirect({ ...validCheckout, coverFees: true });
     expect(res.status).toBe(200);
@@ -294,7 +316,7 @@ describe('checkout', () => {
     expect(sent.get('line_items[0][price_data][unit_amount]')).toBe('10000');
     expect(sent.get('line_items[1][quantity]')).toBe('1');
     expect(sent.get('line_items[1][price_data][unit_amount]')).toBe('330');
-    expect(sent.get('line_items[1][price_data][product_data][name]')).toBe('Covering card processing');
+    expect(sent.get('line_items[1][price_data][product_data][name]')).toBe('Covering processing fees');
     expect(sent.get('metadata[fee_cents]')).toBe('330');
   });
 
@@ -426,6 +448,21 @@ describe('webhook and campaign stats', () => {
     expect(stats.campaign.gifts).toBe(0);
   });
 
+  it('records a bank gift when it clears days later', async () => {
+    // ACH is a delayed-notification method: the session completes
+    // unpaid and the money confirms in a second event up to four
+    // business days on, which is when the gift joins the totals.
+    await deliverWebhook(sessionEvent({ id: 'cs_ach', payment_status: 'unpaid' }));
+    expect((await getJson('/api/campaign')).campaign.gifts).toBe(0);
+
+    await deliverWebhook(sessionEvent({
+      id: 'cs_ach', type: 'checkout.session.async_payment_succeeded',
+    }));
+    const stats = await getJson('/api/campaign');
+    expect(stats.campaign).toEqual({ raised: 100, goal: data.CAMPAIGN.goal, gifts: 1 });
+    expect((await getJson('/api/board')).classrooms[ROOM_A]).toBe(1);
+  });
+
   it('credits the base gift, not the fee cover, to campaign totals', async () => {
     await deliverWebhook(sessionEvent({ amount_total: 10330, metadata: { fee_cents: '330' } }));
     const stats = await getJson('/api/campaign');
@@ -506,7 +543,7 @@ describe('business partner checkout', () => {
     const fee = data.feeCoverCents(LOGO_TIER.amount * 100);
     expect(sent.get('line_items[0][price_data][unit_amount]')).toBe(String(LOGO_TIER.amount * 100));
     expect(sent.get('line_items[1][price_data][unit_amount]')).toBe(String(fee));
-    expect(sent.get('line_items[1][price_data][product_data][name]')).toBe('Covering card processing');
+    expect(sent.get('line_items[1][price_data][product_data][name]')).toBe('Covering processing fees');
     expect(sent.get('metadata[fee_cents]')).toBe(String(fee));
   });
 

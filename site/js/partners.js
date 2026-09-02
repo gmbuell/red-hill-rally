@@ -30,7 +30,7 @@ if (typeof document !== 'undefined') (() => {
     if (!chosen) return;
     const fee = feeCoverCents(chosen.amount * 100);
     RH.qs('#partner-fee-label').textContent =
-      `Add ${RH.moneyCents(fee)} to cover card processing (${RH.moneyCents(chosen.amount * 100 + fee)} total) — 100% of our partnership reaches the school.`;
+      `Add ${RH.moneyCents(fee)} to cover processing fees (${RH.moneyCents(chosen.amount * 100 + fee)} total) — 100% of our partnership reaches the school.`;
   };
 
   /* ---- the ladder (markup is baked; this is the pick handler) ---- */

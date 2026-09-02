@@ -9,6 +9,15 @@ export async function createCheckoutSession(env, { amountCents, productName, fee
   const params = new URLSearchParams();
   params.set('mode', 'payment');
   params.set('submit_type', 'donate');
+  // Visa and Mastercard, plus ACH from a US bank. Pinning the list here
+  // opts out of dynamic payment methods, so nothing new reaches donors
+  // just by being switched on in the Stripe Dashboard. Blocking the two
+  // brands leaves Visa and Mastercard everywhere Checkout shows a card:
+  // wallets, Link's saved cards, and co-badged networks.
+  params.set('payment_method_types[0]', 'card');
+  params.set('payment_method_types[1]', 'us_bank_account');
+  params.set('payment_method_options[card][restrictions][brands_blocked][0]', 'american_express');
+  params.set('payment_method_options[card][restrictions][brands_blocked][1]', 'discover_global_network');
   params.set('success_url', successUrl);
   params.set('cancel_url', cancelUrl);
   // Becomes the charge description, which Stripe prints on the email

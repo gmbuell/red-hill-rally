@@ -54,7 +54,7 @@ if (typeof document !== 'undefined') (() => {
   const feeLabelIdle = feeLabel.textContent; // the HTML's no-amount-yet copy
   const renderFeeLabel = () => {
     feeLabel.textContent = state.amount > 0
-      ? `Add ${RH.moneyCents(feeCents())} to cover card processing — 100% of my gift reaches the school.`
+      ? `Add ${RH.moneyCents(feeCents())} to cover processing fees — 100% of my gift reaches the school.`
       : feeLabelIdle;
   };
 
@@ -130,7 +130,7 @@ if (typeof document !== 'undefined') (() => {
     // Full price disclosure before Stripe: the fee cover and the total.
     if (coverFees()) {
       const gift = Math.round(state.amount) * 100;
-      s += ` You&rsquo;re adding <strong>${RH.moneyCents(feeCents())}</strong> to cover card processing &mdash; <strong>${RH.moneyCents(gift + feeCents())}</strong> total.`;
+      s += ` You&rsquo;re adding <strong>${RH.moneyCents(feeCents())}</strong> to cover processing fees &mdash; <strong>${RH.moneyCents(gift + feeCents())}</strong> total.`;
     }
     RH.qs('#summary-text').innerHTML = s;
   };

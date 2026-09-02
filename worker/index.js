@@ -75,7 +75,7 @@ const startCheckout = async (env, { amountCents, coverFees, productName, success
     amountCents,
     productName,
     feeCents,
-    feeName: 'Covering card processing',
+    feeName: 'Covering processing fees',
     description: TAX_ACKNOWLEDGMENT,
     successUrl,
     cancelUrl,
