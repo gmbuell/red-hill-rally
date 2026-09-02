@@ -7,11 +7,14 @@
     "predeploy": "npm test && wrangler d1 migrations apply red-hill-rally --remote",
     "deploy": "wrangler deploy",
     "test": "vitest run",
-    "audit": "node scripts/lighthouse.mjs"
+    "audit": "node scripts/lighthouse.mjs",
+    "wcag": "node scripts/wcag.mjs"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.22.0",
+    "axe-core": "^4.13.0",
     "lighthouse": "^13.4.1",
+    "puppeteer-core": "^25.9.0",
     "vitest": "^4.1.11",
     "wrangler": "^4.0.0"
   },

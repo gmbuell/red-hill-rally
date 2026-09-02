@@ -67,10 +67,10 @@ describe('rendered pages', () => {
     const { text } = await page('/rally-board');
     const room = data.classroomById(ROOM_A);
     expect(text).toContain('<span class="num money">1</span><span class="label">family gifts so far</span>');
-    expect(text).toContain(`${room.teacher}<span class="grade">`);
+    expect(text).toContain(`${room.teacher}<small class="grade">`);
     expect(text).toContain(`1 gift &middot; class of ${room.students}`);
     expect(text).toContain('<span class="who">The Rodriguez Family</span>');
-    expect(text).toContain(`<span class="what">${P_MAIN.name}</span>`);
+    expect(text).toContain(`<small class="what">${P_MAIN.name}</small>`);
   });
 
   it('lists a paid partnership on the partner wall and the board', async () => {

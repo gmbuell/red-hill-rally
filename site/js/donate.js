@@ -95,7 +95,7 @@
         <span class="who">Supporting ${linkNames()}</span>
         <span class="meta">${RH.roomLabels(state.link.students).join(' \u00a0·\u00a0 ')}</span>
       </div>
-      <p class="fine-print">Not who you meant to support? <button type="button" class="linklike" id="clear-link">Remove</button></p>`;
+      <small class="fine-print">Not who you meant to support? <button type="button" class="linklike" id="clear-link">Remove</button></small>`;
     RH.qs('#clear-link').addEventListener('click', () => {
       dropLink();
       renderDedication();

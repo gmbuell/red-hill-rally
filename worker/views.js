@@ -191,7 +191,7 @@ const partnerWall = (all, empty) => {
       <li class="partner-card">
         <img src="${p.src}" alt="${p.name} logo" loading="lazy">
         <span class="partner-name">${p.name}</span>
-        ${p.tierName ? html`<span class="partner-tier">${p.tierName}</span>` : ''}
+        ${p.tierName ? html`<small class="partner-tier">${p.tierName}</small>` : ''}
       </li>`)}
     </ul>` : (names.length ? '' : empty);
   const thanks = names.length ? html`
@@ -251,7 +251,7 @@ export const homeSlots = (live) => {
         <p class="blurb">${p.blurb}</p>
         <div class="trail-row">
           ${trailSVG(pRaised / p.goal)}
-          <p class="raised-line"><strong>${money(pRaised)}</strong> raised of ${money(p.goal)}</p>
+          <small class="raised-line"><strong>${money(pRaised)}</strong> raised of ${money(p.goal)}</small>
         </div>
         <a class="go" href="/donate?p=${p.id}">Give to this</a>
       </article>`;
@@ -266,7 +266,7 @@ export const donateSlots = () => ({
         <input type="radio" name="priority" value="${p.id}">
         ${icon(p.id)}
         <span class="name">${p.name}</span>
-        <p class="desc">${p.blurb}</p>
+        <small class="desc">${p.blurb}</small>
       </label>`)}`,
 });
 
@@ -296,9 +296,9 @@ export const boardSlots = (live) => {
   const race = ranked.map((c, i) => html`
       <li class="${i < 3 && c.gifts > 0 ? 'leader' : ''}">
         <span class="rank">${i + 1}</span>
-        <span class="room">${c.teacher}<span class="grade">${gradeName(c.grade)}</span></span>
+        <span class="room">${c.teacher}<small class="grade">${gradeName(c.grade)}</small></span>
         <span class="trail">${trailSVG(c.pct)}</span>
-        <span class="pct">${Math.round(c.pct * 100)}%<span class="families">${c.gifts} gift${c.gifts === 1 ? '' : 's'} &middot; class of ${c.students}</span></span>
+        <span class="pct">${Math.round(c.pct * 100)}%<small class="families">${c.gifts} gift${c.gifts === 1 ? '' : 's'} &middot; class of ${c.students}</small></span>
       </li>`);
 
   /* Named gifts newest first; anonymous gifts are tallied in one
@@ -319,14 +319,14 @@ export const boardSlots = (live) => {
       return html`
         <li>
           <span class="who">${d.name}</span>
-          <span class="what">${what.filter(Boolean).join(' · ')}</span>
+          <small class="what">${what.filter(Boolean).join(' · ')}</small>
         </li>`;
     });
     if (anonCount > 0) {
       items.push(html`
         <li class="anon-tally">
           <span class="who">&hellip; and ${anonCount} anonymous gift${anonCount === 1 ? '' : 's'}</span>
-          <span class="what">every one moves a rocket</span>
+          <small class="what">every one moves a rocket</small>
         </li>`);
     }
     roll = html`${items}`;
