@@ -19,11 +19,12 @@ this file is the operating manual.
 | `npm run dev` | `wrangler dev` on http://localhost:8787 |
 | `npm test` | vitest (84 tests, ~3 s) |
 | `npm run audit` | Lighthouse on every page, mobile + desktop (needs Chrome); defaults to the live site (`npm run audit -- --url http://localhost:8787` for local). `--runs 3 --min 98` reproduces the CI gate, `--form mobile` limits it to one form factor |
-| `npm run deploy` | **Ships to production**: the worker and every file under `site/`. The `predeploy` step runs the tests, then applies pending D1 migrations to the remote database, so schema and code ship together |
+| `npm run deploy` | **Ships to production**: the worker and every file under `site/`. The `predeploy` step runs the tests, then applies pending D1 migrations to the remote database, so schema and code ship together. Every push to `main` runs this through Cloudflare Workers Builds (dashboard → the worker → Settings → Build), so merging a PR deploys it |
 | `npx wrangler tail red-hill-rally` | Production logs |
 
 Don't run `npm run deploy`, `wrangler d1 execute … --remote`, or
-`wrangler secret put` unless asked; they all touch production.
+`wrangler secret put` unless asked; they all touch production. The
+normal way to ship is a PR into `main`.
 `npm test` runs with fake keys, so contributors can work without
 secrets; the maintainer reviews and ships PRs.
 
