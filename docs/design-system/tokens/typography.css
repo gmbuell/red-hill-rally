@@ -1,0 +1,25 @@
+:root{
+--font-display:'Bebas Neue',sans-serif;
+--font-body:'Montserrat',sans-serif;
+/* display scale (Bebas, caps, tight) */
+--text-hero:clamp(64px,10vw,140px);
+--text-display:64px;
+--text-headline:40px;
+--text-title:28px;
+/* body scale (Montserrat) */
+--text-body-size:16px;
+--text-small:14px;
+--text-label:13px;
+/* treatments */
+--tracking-label:.14em;
+--leading-display:.9;
+--leading-body:1.55;
+--weight-body:500;
+--weight-bold:700;
+--weight-black:800;
+}
+body{font-family:var(--font-body);color:var(--text-body);font-size:var(--text-body-size);line-height:var(--leading-body);font-weight:var(--weight-body)}
+h1,h2,h3,.display{font-family:var(--font-display);font-weight:400;line-height:var(--leading-display);letter-spacing:.01em;text-transform:uppercase;margin:0}
+.label{font-family:var(--font-body);font-size:var(--text-label);font-weight:var(--weight-bold);letter-spacing:var(--tracking-label);text-transform:uppercase}
+a{color:var(--text-body);text-decoration:underline;text-underline-offset:3px}
+a:hover{color:var(--accent)}

@@ -1,0 +1,20 @@
+:root{
+/* base */
+--black:#000000;
+--white:#FFFFFF;
+--paper:#F4F2ED;
+--red:#E31E24;
+--red-press:#A31419;
+/* semantic */
+--surface-page:var(--paper);
+--surface-panel:var(--white);
+--surface-inverse:var(--black);
+--text-body:var(--black);
+--text-inverse:var(--white);
+--text-muted:rgba(0,0,0,.72);
+--text-muted-inverse:rgba(255,255,255,.78);
+--accent:var(--red);
+--accent-press:var(--red-press);
+--border-strong:var(--black);
+--border-inverse:var(--white);
+}

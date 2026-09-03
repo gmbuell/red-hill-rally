@@ -12,8 +12,9 @@ is in the PR's "Workers Builds" check (details link), and
 <https://red-hill-rally-preview.gmbuell.workers.dev> tracks `main`.
 
 Product decisions: `docs/design-decisions.md`. Brand
-system: `docs/brand-guide.html`. The README is a two-sentence pointer;
-this file is the operating manual.
+system: `docs/design-system/` (its readme first; tokens, guideline
+cards, and a reference UI kit sit beside it). The README is a
+two-sentence pointer; this file is the operating manual.
 
 ## Commands
 
@@ -22,7 +23,7 @@ this file is the operating manual.
 | `npm install` | wrangler, vitest + workers pool, lighthouse |
 | `npx wrangler d1 migrations apply red-hill-rally --local` | once per clone: local D1 schema |
 | `npm run dev` | `wrangler dev` on http://localhost:8787 |
-| `npm test` | vitest (86 tests, ~3 s) |
+| `npm test` | vitest (91 tests, ~3 s) |
 | `npm run audit` | Lighthouse on every page, mobile + desktop (needs Chrome); defaults to the live site (`npm run audit -- --url http://localhost:8787` for local). `--runs 3 --min 98` reproduces the CI gate, `--form mobile` limits it to one form factor |
 | `npm run wcag` | WCAG 2.2 checks on every page, mobile + desktop (needs Chrome): text contrast, non-text contrast, focus rings, target size, body leading ≥ 1.5, body text ≥ 16px and labels ≥ 13px. Defaults to the live site (`npm run wcag -- --url http://localhost:8787` for local, `--page donate --form mobile` to narrow). Each cell shows how many elements the check examined |
 | `npm run deploy` | **Ships to production**: the worker and every file under `site/`. The `predeploy` step runs the tests, then applies pending D1 migrations to the remote database, so schema and code ship together. Every push to `main` runs this through Cloudflare Workers Builds (dashboard → the worker → Settings → Build), so merging a PR deploys it |
@@ -224,7 +225,10 @@ flip to live, in this order:
   dashboard, and find employer-match follow-ups with
   `employer_match = 1` in D1.
 - **Goals, copy, tiers, roster, partners** — edit `site/js/data.js`
-  (page copy lives in the HTML files); redeploy.
+  (page copy lives in the HTML files); redeploy. The campaign goal is
+  the ticker figure; a priority's goal is its annual program cost and
+  only shapes copy and the card trails. An Annual Partner carries
+  `annual`, and `presenting: true` names the one the home hero credits.
 - **Partner logos** — businesses upload a logo on the thank-you page
   right after paying; images **auto-publish** to /partners and the
   Rally Board (a PDF converts in the partner's browser, print original

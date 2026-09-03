@@ -1,0 +1,222 @@
+{
+  "plugins": [
+    "react",
+    "import"
+  ],
+  "rules": {
+    "react/forbid-elements": [
+      "warn",
+      {
+        "forbid": []
+      }
+    ],
+    "no-restricted-imports": [
+      "warn",
+      {
+        "patterns": [
+          {
+            "group": [
+              "components/campaign/**",
+              "components/core/**",
+              "ui_kits/rally-site/**"
+            ],
+            "message": "Import design-system components from 'index.js', not component internals."
+          }
+        ]
+      }
+    ],
+    "no-restricted-syntax": [
+      "warn",
+      {
+        "selector": "Literal[value=/#[0-9a-fA-F]{3,8}\\b/]",
+        "message": "Raw hex color — use a design-system color token via var()."
+      },
+      {
+        "selector": "Literal[value=/\\b\\d+px\\b/]",
+        "message": "Raw px value — use a design-system spacing token via var()."
+      },
+      {
+        "selector": "Literal[value=/font-family\\s*:\\s*(?!['\\\"]?(?:Bebas Neue|Montserrat))/i]",
+        "message": "Font not provided by the design system. Available: Bebas Neue, Montserrat."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Badge'] > JSXAttribute > JSXIdentifier[name!=/^(?:variant|children|key|ref|className|style|children)$/]",
+        "message": "<Badge> doesn't accept that prop. Declared props: variant, children."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Badge'] > JSXAttribute[name.name='variant'] > Literal[value!=/^(?:outline|solid|accent)$/]",
+        "message": "<Badge> variant must be one of 'outline' | 'solid' | 'accent'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Button'] > JSXAttribute > JSXIdentifier[name!=/^(?:variant|size|disabled|children|onClick|key|ref|className|style|children)$/]",
+        "message": "<Button> doesn't accept that prop. Declared props: variant, size, disabled, children, onClick."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Button'] > JSXAttribute[name.name='variant'] > Literal[value!=/^(?:primary|accent|secondary|ghost)$/]",
+        "message": "<Button> variant must be one of 'primary' | 'accent' | 'secondary' | 'ghost'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Button'] > JSXAttribute[name.name='size'] > Literal[value!=/^(?:sm|md|lg)$/]",
+        "message": "<Button> size must be one of 'sm' | 'md' | 'lg'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Card'] > JSXAttribute > JSXIdentifier[name!=/^(?:inverse|headline|accentWord|meta|children|key|ref|className|style|children)$/]",
+        "message": "<Card> doesn't accept that prop. Declared props: inverse, headline, accentWord, meta, children."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='CountdownTile'] > JSXAttribute > JSXIdentifier[name!=/^(?:days|label|key|ref|className|style|children)$/]",
+        "message": "<CountdownTile> doesn't accept that prop. Declared props: days, label."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Input'] > JSXAttribute > JSXIdentifier[name!=/^(?:label|hint|placeholder|type|value|onChange|key|ref|className|style|children)$/]",
+        "message": "<Input> doesn't accept that prop. Declared props: label, hint, placeholder, type, value, onChange."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='ProgressMeter'] > JSXAttribute > JSXIdentifier[name!=/^(?:percent|label|attribution|key|ref|className|style|children)$/]",
+        "message": "<ProgressMeter> doesn't accept that prop. Declared props: percent, label, attribution."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='SponsorBoard'] > JSXAttribute > JSXIdentifier[name!=/^(?:title|sponsors|key|ref|className|style|children)$/]",
+        "message": "<SponsorBoard> doesn't accept that prop. Declared props: title, sponsors."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='StatTile'] > JSXAttribute > JSXIdentifier[name!=/^(?:value|unit|label|sublabel|inverse|key|ref|className|style|children)$/]",
+        "message": "<StatTile> doesn't accept that prop. Declared props: value, unit, label, sublabel, inverse."
+      }
+    ]
+  },
+  "overrides": [
+    {
+      "files": [
+        "**/index.js"
+      ],
+      "rules": {
+        "no-restricted-imports": "off"
+      }
+    }
+  ],
+  "x-omelette": {
+    "components": {
+      "Badge": {
+        "replaces": []
+      },
+      "Button": {
+        "replaces": []
+      },
+      "Card": {
+        "replaces": []
+      },
+      "CountdownTile": {
+        "replaces": []
+      },
+      "Input": {
+        "replaces": []
+      },
+      "ProgressMeter": {
+        "replaces": []
+      },
+      "SponsorBoard": {
+        "replaces": []
+      },
+      "StatTile": {
+        "replaces": []
+      }
+    },
+    "tokens": [
+      "--accent",
+      "--accent-press",
+      "--black",
+      "--border",
+      "--border-inverse",
+      "--border-strong",
+      "--border-w",
+      "--font-body",
+      "--font-display",
+      "--leading-body",
+      "--leading-display",
+      "--paper",
+      "--radius",
+      "--red",
+      "--red-press",
+      "--shadow",
+      "--space-1",
+      "--space-2",
+      "--space-3",
+      "--space-4",
+      "--space-5",
+      "--space-6",
+      "--space-7",
+      "--space-8",
+      "--space-9",
+      "--surface-inverse",
+      "--surface-page",
+      "--surface-panel",
+      "--text-body",
+      "--text-body-size",
+      "--text-display",
+      "--text-headline",
+      "--text-hero",
+      "--text-inverse",
+      "--text-label",
+      "--text-muted",
+      "--text-muted-inverse",
+      "--text-small",
+      "--text-title",
+      "--tracking-label",
+      "--weight-black",
+      "--weight-body",
+      "--weight-bold",
+      "--white"
+    ],
+    "tokenKinds": {
+      "--black": "color",
+      "--white": "color",
+      "--paper": "color",
+      "--red": "color",
+      "--red-press": "color",
+      "--surface-page": "color",
+      "--surface-panel": "color",
+      "--surface-inverse": "color",
+      "--text-body": "font",
+      "--text-inverse": "font",
+      "--text-muted": "font",
+      "--text-muted-inverse": "font",
+      "--accent": "color",
+      "--accent-press": "color",
+      "--border-strong": "color",
+      "--border-inverse": "color",
+      "--font-display": "font",
+      "--font-body": "font",
+      "--text-hero": "font",
+      "--text-display": "font",
+      "--text-headline": "font",
+      "--text-title": "font",
+      "--text-body-size": "font",
+      "--text-small": "font",
+      "--text-label": "font",
+      "--tracking-label": "font",
+      "--leading-display": "font",
+      "--leading-body": "font",
+      "--weight-body": "font",
+      "--weight-bold": "font",
+      "--weight-black": "font",
+      "--space-1": "spacing",
+      "--space-2": "spacing",
+      "--space-3": "spacing",
+      "--space-4": "spacing",
+      "--space-5": "spacing",
+      "--space-6": "spacing",
+      "--space-7": "spacing",
+      "--space-8": "spacing",
+      "--space-9": "spacing",
+      "--radius": "radius",
+      "--border-w": "spacing",
+      "--border": "color",
+      "--shadow": "shadow"
+    },
+    "fontFamilies": [
+      "Bebas Neue",
+      "Montserrat"
+    ]
+  }
+}

@@ -1,0 +1,2 @@
+# Rally campaign site UI kit
+Interactive recreation of the Rocket Rally campaign microsite, composed from the moodboard's tiles: hero, countdown, mission ask, rally status, funding priorities, sponsor board, and a pledge form (fake submit). No original site existed — layout is assembled strictly from moodboard panels and voice tiles. B&W event photography is not extractable from the JPG; black photo-slot panels stand in, labeled.
