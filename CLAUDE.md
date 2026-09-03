@@ -32,7 +32,11 @@ two-sentence pointer; this file is the operating manual.
 
 Don't run `npm run deploy`, `wrangler d1 execute … --remote`, or
 `wrangler secret put` unless asked; they all touch production. The
-normal way to ship is a PR into `main`.
+normal way to ship is a PR into `main`, landed by fast-forward: rebase
+the branch onto `main`, let the checks pass, then `git merge --ff-only`
+on `main` and push (this checkout has `merge.ff=only`). GitHub offers
+only Rebase and merge, and branch protection requires linear history;
+the button keeps history linear but gives the commits new hashes.
 `npm test` runs with fake keys, so contributors can work without
 secrets; the maintainer reviews and ships PRs.
 
