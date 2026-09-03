@@ -120,6 +120,13 @@ const CAMPAIGN = {
   goal: 50000,
 };
 
+/* A priority's share of the campaign goal, in proportion to its
+   annual cost. A home card's trail runs toward this figure, which is
+   never printed: the cards reach the star together when the Rally
+   reaches its goal. */
+const priorityTarget = (p) =>
+  CAMPAIGN.goal * p.goal / PRIORITIES.reduce((s, q) => s + q.goal, 0);
+
 /* The classroom roster, keyed by teacher. `students` is the class
    size and sets the participation denominator in the classroom race. */
 const CLASSROOMS = [
@@ -183,11 +190,13 @@ const ANNUAL_LEVELS = [
    Rally Board. `annual` is an ANNUAL_LEVELS id for a year-round
    partner and outranks `tier`, a PARTNER_TIERS id filled in as each
    Rally gift arrives (null shows a logo without a tier label;
-   'friend' lists the name instead of a logo, per the ladder). Web
-   logos live in site/img/partners/; print-quality originals stay out
-   of the repo (assets/partner-logos/, gitignored). */
+   'friend' lists the name instead of a logo, per the ladder).
+   `presenting` marks the one partner the home hero credits by name,
+   text only, per the partnership terms. Web logos live in
+   site/img/partners/; print-quality originals stay out of the repo
+   (assets/partner-logos/, gitignored). */
 const PARTNERS = [
-  { name: 'Earthco Landscape Services', logo: 'earthco-landscape.webp', annual: 'apollo' },
+  { name: 'Earthco Landscape Services', logo: 'earthco-landscape.webp', annual: 'apollo', presenting: true },
   { name: 'The O’Dell Group Real Estate', logo: 'odell-group.webp', annual: 'apollo' },
   { name: 'AOQ Sports', logo: 'aoq-sports.webp', annual: 'orbit' },
   { name: 'Galaxy Automotive & Tire', logo: 'galaxy-automotive.webp', annual: 'orbit' },
@@ -199,6 +208,7 @@ const priorityById = (id) => PRIORITIES.find((p) => p.id === id) || null;
 const classroomById = (id) => CLASSROOMS.find((c) => c.id === id) || null;
 const partnerTierById = (id) => PARTNER_TIERS.find((t) => t.id === id) || null;
 const annualLevelById = (id) => ANNUAL_LEVELS.find((l) => l.id === id) || null;
+const presentingPartner = () => PARTNERS.find((p) => p.presenting) || null;
 
 /* Display names for the roster's grade codes; any other code reads
    "<code> grade". */
@@ -213,5 +223,6 @@ if (typeof module !== 'undefined' && module.exports) {
     ANNUAL_LEVELS,
     MAX_NAME, MAX_AMOUNT, MAX_STUDENTS, feeCoverCents,
     priorityById, classroomById, partnerTierById, annualLevelById, gradeName,
+    priorityTarget, presentingPartner,
   };
 }

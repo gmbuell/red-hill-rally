@@ -7,7 +7,7 @@
 import data from '../site/js/data.js';
 import ui from '../site/js/ui.js';
 
-const { ORG, PRIORITIES, CAMPAIGN, CLASSROOMS, PARTNER_TIERS, PARTNERS, ANNUAL_LEVELS, priorityById, partnerTierById, annualLevelById, gradeName } = data;
+const { ORG, PRIORITIES, CAMPAIGN, CLASSROOMS, PARTNER_TIERS, PARTNERS, ANNUAL_LEVELS, priorityById, partnerTierById, annualLevelById, gradeName, priorityTarget, presentingPartner } = data;
 const { html, raw, money, nameList, studentRowsMarkup, LINK_ROWS, dartUp } = ui;
 
 /* ---- motifs (from the brand guide's Spirit Kit) -------------------- */
@@ -254,8 +254,12 @@ export const footer = () => html`
 export const homeSlots = (live) => {
   const raised = live ? live.campaign.raised : 0;
   const per = (live && live.priorities) || {};
+  const presenter = presentingPartner();
   return {
     trajectory: trajectorySVG(raised / CAMPAIGN.goal),
+    presented: presenter
+      ? html`<p class="presented">The 2026 Rocket Rally is generously presented by our Annual Partner <strong>${presenter.name}</strong></p>`
+      : '',
     'stat-raised': html`${money(raised)}`,
     'stat-goal': html`${money(CAMPAIGN.goal)}`,
     'priority-grid': html`${PRIORITIES.map((p) => {
@@ -266,7 +270,7 @@ export const homeSlots = (live) => {
         <h3>${p.name}</h3>
         <p class="blurb">${p.blurb}</p>
         <div class="trail-row">
-          ${trailSVG(pRaised / p.goal)}
+          ${trailSVG(pRaised / priorityTarget(p))}
           <small class="raised-line"><strong>${money(pRaised)}</strong> raised</small>
         </div>
         <a class="go" href="/donate?p=${p.id}">Give to this</a>
