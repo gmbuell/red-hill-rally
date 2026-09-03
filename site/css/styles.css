@@ -29,10 +29,10 @@
 }
 
 :root {
-  /* Rocket Rally 2026: black, white, and one red. The mood board runs
-     on hard edges and heavy condensed caps, so there is no third
-     brand color — `--gold` stays as a token name because the chrome
-     and focus rings reference it, and now resolves to the red. */
+  /* Rocket Rally 2026 (docs/design-system): black, white, and one
+     red. The mood board runs on hard edges and heavy condensed caps,
+     so there is no third brand color; `--navy` keeps its name as the
+     dark ink and `--sky` as the panel ground. */
   --navy: #000000;
   --red: #E31E24;
   /* The brand red is 4.26:1 on the paper ground, under the 4.5:1 floor
@@ -41,17 +41,14 @@
      the true brand red. */
   --red-ink: #C81419;
   --red-glow: #FF5A57;
-  --gold: #E31E24;
-  --sky: #F4F4F2;
+  /* A pressed red control deepens rather than shrinks. */
+  --red-press: #A31419;
+  --sky: #F4F2ED;
   --paper: #FFFFFF;
   --white: #FFFFFF;
   --grey: #6B6B6B;
 
   --display: 'Bebas Neue', 'Oswald', 'Arial Narrow', Impact, sans-serif;
-  /* The board has no script face; its accent voice is small heavy
-     caps in red, so `--script` resolves to the body face and the
-     `.script` rule sets the treatment. */
-  --script: 'Montserrat', 'Segoe UI', Verdana, sans-serif;
   --body: 'Montserrat', 'Segoe UI', Verdana, sans-serif;
   --serif: var(--body);
 
@@ -93,7 +90,7 @@ select:focus-visible,
 }
 .on-navy a:focus-visible,
 .on-navy button:focus-visible {
-  outline-color: var(--gold);
+  outline-color: var(--red);
 }
 
 .wrap { max-width: var(--wrap); margin: 0 auto; padding: 0 1.25rem; }
@@ -119,14 +116,13 @@ select:focus-visible,
 }
 
 .script {
-  font-family: var(--script);
+  font-family: var(--body);
   font-weight: 800;
   font-size: 0.95rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--red-ink);
 }
-.script.red { color: var(--red-ink); }
 
 .label {
   font-weight: 800;
@@ -283,7 +279,7 @@ select:focus-visible,
   text-transform: uppercase;
   text-decoration: none;
 }
-.site-footer nav a:hover { color: var(--gold); }
+.site-footer nav a:hover { color: var(--red-glow); }
 
 /* ---------- section headers ---------- */
 
@@ -428,7 +424,7 @@ select:focus-visible,
   color: var(--navy);
   text-decoration: none;
 }
-.priority-card .go:hover { color: var(--red); }
+.priority-card .go:hover { color: var(--red-ink); }
 .priority-card .go::after { content: " →"; }
 /* whole-card click target without nesting links */
 .priority-card .go::before { content: ""; position: absolute; inset: 0; }
@@ -633,7 +629,7 @@ select:focus-visible,
 .field .error {
   display: none;
   font-weight: 700;
-  color: var(--red);
+  color: var(--red-ink);
   margin: 0.35rem 0 0;
 }
 .field.invalid .error { display: block; }
@@ -641,7 +637,7 @@ select:focus-visible,
 /* Standalone form errors (checkout / link creation), aria-live style */
 .form-error {
   font-weight: 700;
-  color: var(--red);
+  color: var(--red-ink);
   margin: 0.6rem 0 0;
   text-align: center;
 }
@@ -700,7 +696,7 @@ select:focus-visible,
   text-decoration: underline;
   cursor: pointer;
 }
-.linklike:hover { color: var(--red); }
+.linklike:hover { color: var(--red-ink); }
 
 .optional-note {
   font-family: var(--body);
@@ -940,7 +936,7 @@ select:focus-visible,
     color: #000;
   }
   .pc-script {
-    font-family: var(--script);
+    font-family: var(--body);
     font-size: 20pt;
   }
   .pc-name {
@@ -1064,7 +1060,7 @@ select:focus-visible,
   gap: 0 1rem;
   align-items: start;
 }
-.student-row + .student-row { border-top: 1px solid rgba(10, 43, 78, 0.12); padding-top: 1.1rem; }
+.student-row + .student-row { border-top: 1px solid rgba(0, 0, 0, 0.12); padding-top: 1.1rem; }
 .student-row .remove-student { margin-top: 2.2rem; font-size: 0.85rem; color: var(--grey); }
 #add-student, #add-sibling { display: flex; width: max-content; }
 #add-sibling { margin-bottom: 1.3rem; }
@@ -1125,12 +1121,15 @@ select:focus-visible,
   padding: 0;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(16rem, 100%), 1fr));
+  /* Dense packing: a two-column Apollo card otherwise strands the
+     cell beside it when the next card also spans two. */
+  grid-auto-flow: dense;
   gap: 1rem;
   margin: 1.4rem 0 0;
 }
 .partner-card {
   background: var(--white);
-  border: 1px solid rgba(10, 43, 78, 0.14);
+  border: 1px solid rgba(0, 0, 0, 0.14);
   padding: 1.1rem 1rem 0.9rem;
   display: flex;
   flex-direction: column;
@@ -1207,7 +1206,7 @@ select:focus-visible,
   gap: 1.1rem;
   align-items: flex-start;
   padding: 0.9rem 0;
-  border-bottom: 1px solid rgba(10, 43, 78, 0.14);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.14);
 }
 .prize-list li:last-child { border-bottom: none; }
 .prize-key {
