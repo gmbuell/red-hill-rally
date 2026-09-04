@@ -282,20 +282,20 @@ describe('checkout', () => {
     expect(res.status).toBe(200);
     const sent = new URLSearchParams(String(calls[0].body));
     // The gift line is unchanged; the gross-up rides as its own line
-    // item ($100 needs $3.30 extra to net $100 after 2.9% + 30¢).
+    // item ($100 needs $2.56 extra to net $100 after 2.2% + 30¢).
     expect(sent.get('line_items[0][price_data][unit_amount]')).toBe('10000');
     expect(sent.get('line_items[1][quantity]')).toBe('1');
-    expect(sent.get('line_items[1][price_data][unit_amount]')).toBe('330');
+    expect(sent.get('line_items[1][price_data][unit_amount]')).toBe('256');
     expect(sent.get('line_items[1][price_data][product_data][name]')).toBe('Covering processing fees');
-    expect(sent.get('metadata[fee_cents]')).toBe('330');
+    expect(sent.get('metadata[fee_cents]')).toBe('256');
   });
 
   it('rounds the fee-cover gross-up to the nearest cent', async () => {
     const calls = stubStripe();
     await checkoutDirect({ ...validCheckout, amount: 1, coverFees: true });
     const sent = new URLSearchParams(String(calls[0].body));
-    // ($1.00 + 30¢) / 0.971 = $1.34 charged → 34¢ fee cover.
-    expect(sent.get('line_items[1][price_data][unit_amount]')).toBe('34');
+    // ($1.00 + 30¢) / 0.978 = $1.33 charged → 33¢ fee cover.
+    expect(sent.get('line_items[1][price_data][unit_amount]')).toBe('33');
   });
 
   it('omits the fee line when the donor declines', async () => {

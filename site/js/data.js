@@ -18,9 +18,9 @@ const MAX_STUDENTS = 4;   // Rockets credited per gift, and per family link
 
 /* Optional donor-paid fee cover, shared by the worker (authoritative)
    and the donate form (display). The gross-up finds the extra cents so
-   the PTA nets the full gift after Stripe's 2.9% + 30¢:
-   total = (gift + 30¢) / (1 − 2.9%). */
-const FEE_RATE = 0.029;
+   the PTA nets the full gift after Stripe's nonprofit rate,
+   2.2% + 30¢: total = (gift + 30¢) / (1 − 2.2%). */
+const FEE_RATE = 0.022;
 const FEE_FLAT_CENTS = 30;
 const feeCoverCents = (amountCents) =>
   Math.round((amountCents + FEE_FLAT_CENTS) / (1 - FEE_RATE)) - amountCents;

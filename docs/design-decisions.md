@@ -135,7 +135,7 @@ HTML and CSS.
   no-goods-or-services statement; the receipt supplies amount and date.
 - Donors can add a voluntary fee cover: a default-checked opt-out
   checkbox on the amount step adds a gross-up,
-  `(gift + 30¢) / (1 − 2.9%)`, as a second Checkout line item
+  `(gift + 30¢) / (1 − 2.2%)`, as a second Checkout line item
   ("Covering card processing"), disclosed with the total on the
   summary step. Because it is voluntary it is a gift rather than a
   card surcharge, so it stays outside the card-network surcharge
