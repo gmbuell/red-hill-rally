@@ -98,8 +98,11 @@ describe('rendered pages', () => {
 
   it('lists a paid partnership on the partner wall and the board', async () => {
     await partner('Galaxy Automotive');
-    expect((await page('/partners')).text).toContain('With thanks to Galaxy Automotive.');
-    expect((await page('/rally-board')).text).toContain('With thanks to Galaxy Automotive.');
+    // The curated list carries name-only partners of its own, so the
+    // paid one joins the thanks line rather than being all of it.
+    const thanks = /With thanks to [^<]*Galaxy Automotive/;
+    expect((await page('/partners')).text).toMatch(thanks);
+    expect((await page('/rally-board')).text).toMatch(thanks);
   });
 
   it('escapes donor and partner names', async () => {

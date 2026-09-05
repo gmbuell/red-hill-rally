@@ -201,6 +201,12 @@ const PARTNERS = [
   { name: 'AOQ Sports', logo: 'aoq-sports.webp', annual: 'orbit' },
   { name: 'Galaxy Automotive & Tire', logo: 'galaxy-automotive.webp', annual: 'orbit' },
   { name: 'Felton Ninja Academy', logo: 'felton-ninja-academy.webp', annual: 'orbit' },
+  // Thanked by name, no level recorded: recognition the PTA is giving
+  // now, not a ledger. A tier here would claim a dollar figure nobody
+  // has settled, and one arriving through checkout still outranks it.
+  { name: 'Black Gold Pump & Supply' },
+  { name: 'CH Design & Renovation' },
+  { name: 'Sakura Smiles Pediatric Dentistry' },
 ];
 
 /* Lookup helpers shared by the worker and every page script. */
