@@ -1077,7 +1077,9 @@ select:focus-visible,
   gap: 0.8rem;
   margin: 1.8rem 0 0.8rem;
 }
-.tier-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
+/* Wraps so a long amount (a range, on Why We Rally) drops under the
+   name instead of crushing it. */
+.tier-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 1rem; }
 .tier-card {
   background: var(--sky);
   padding: 1.3rem 1.4rem 1.2rem;

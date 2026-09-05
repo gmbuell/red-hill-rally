@@ -216,9 +216,13 @@ const partnerWall = (all, empty) => {
 
 /* ---- the shared chrome ---------------------------------------------- */
 
+/* Five links is what fits two rows on a 375px phone, and the header is
+   sticky, so a sixth costs every family 37px of screen for the whole
+   visit. Business Partners is the one aimed at businesses rather than
+   families, so it comes out of the bar and stays in the footer. */
 const NAV = [
-  ['/', 'Home'], ['/rally-board', 'Rally Board'], ['/prizes', 'Prizes'],
-  ['/student-link', 'Student Link'], ['/partners', 'Business Partners'],
+  ['/', 'Home'], ['/student-link', 'Student Link'], ['/rally-board', 'Rally Board'],
+  ['/prizes', 'Prizes'], ['/why-we-rally', 'Why We Rally'],
 ];
 const current = (path, here) => (path === here ? raw(' aria-current="page"') : '');
 
@@ -239,10 +243,11 @@ export const footer = () => html`
   <nav aria-label="Footer">
     <a href="/">Home</a>
     <a href="/donate">Donate</a>
+    <a href="/student-link">Student Link</a>
     <a href="/rally-board">Rally Board</a>
     <a href="/prizes">Prizes</a>
-    <a href="/student-link">Student Link</a>
     <a href="/partners">Business Partners</a>
+    <a href="/why-we-rally">Why We Rally</a>
   </nav>
   <p>${ORG.name} &middot; Home of the Rockets &middot; Tustin Unified School District</p>
   <p>Red Hill PTA is a 501(c)(3) nonprofit, EIN ${ORG.ein} &mdash; donations are tax-deductible. Many employers match gifts &mdash; <a href="/matching">here&rsquo;s how</a>.</p>`;
