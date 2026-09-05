@@ -34,7 +34,7 @@ const PRIORITIES = [
     id: 'people',
     name: 'Essential Support Staff',
     goal: 90000,
-    blurb: 'Red Hill’s PTA funds what district budgets don’t: a school counselor for every child navigating a hard moment, a dedicated PE teacher, and Tier II academic support that catches struggling readers and mathematicians early. About $90,000 a year — the quiet backbone of the whole school.',
+    blurb: 'PTA funding helps provide the people and support our district budget doesn’t fully cover, including counseling, PE and academic intervention.',
     circle: { min: 500, label: 'Counselor Circle' },
     tiers: [
       { amount: 25, impact: 'Joins hundreds of families powering the annual fund' },
@@ -47,7 +47,7 @@ const PRIORITIES = [
     id: 'stem',
     name: 'The STEM Lab',
     goal: 25000,
-    blurb: 'New this year: a hands-on STEM enrichment lab in our library run by All Things Science — circuits, chemistry, coding, and engineering challenges for every class, TK through 5th. The kind of science one teacher with thirty kids can’t stage alone, made routine. The program costs $25,000 a year and scales directly with support: your gift literally buys lab time for all 510 Rockets.',
+    blurb: 'A hands-on STEM enrichment lab where every student explores science, engineering, coding and more through grade-level activities.',
     circle: { min: 500, label: 'Lab Sponsor' },
     tiers: [
       { amount: 25, impact: 'Materials for a classroom’s experiment day' },
@@ -60,7 +60,7 @@ const PRIORITIES = [
     id: 'sports',
     name: 'Play With Purpose',
     goal: 15000,
-    blurb: 'Recess is a third of a kid’s social day, and the hardest part for many. Beyond Athletics coaches now turn lunch recess into organized games where everyone plays, sportsmanship is taught, and energy gets burned — teachers see it instantly in calmer, more focused afternoons.',
+    blurb: 'Beyond Athletics coaches turn lunch recess into organized games that build confidence, sportsmanship and positive play.',
     circle: { min: 500, label: 'Season Sponsor' },
     tiers: [
       { amount: 25, impact: 'Equipment: balls, cones, pinnies' },
@@ -73,7 +73,7 @@ const PRIORITIES = [
     id: 'garden',
     name: 'The Red Hill Garden',
     goal: 15000,
-    blurb: 'The garden is Red Hill’s outdoor classroom — planting, patience, nutrition, and the joy of eating something you grew. This year we’re funding repairs, supplies, improvements, and a curriculum refresh ($15,000 budgeted; every donated dollar and seedling reduces that cost).',
+    blurb: 'Our outdoor classroom brings learning to life through planting, harvesting and a new grade-level-specific curriculum.',
     circle: { min: 500, label: 'Garden Bed Sponsor' },
     tiers: [
       { amount: 25, impact: 'Soil, seeds, and tools' },
@@ -86,7 +86,7 @@ const PRIORITIES = [
     id: 'arts',
     name: 'Arts at Red Hill',
     goal: 20000,
-    blurb: 'Every Rocket gets visual art instruction, classical music education, enrichment assemblies, and access to a thriving performing-arts program — more than $20,000 a year of arts, nearly all of it PTA-funded and almost none of it, until now, ever presented to donors as something they could choose to support.',
+    blurb: 'PTA funding brings visual art, music, enrichment assemblies and performing arts experiences to Red Hill students.',
     circle: { min: 500, label: 'Season Patron' },
     tiers: [
       { amount: 25, impact: 'Art supplies for a classroom’s Art Masters unit' },
@@ -99,7 +99,7 @@ const PRIORITIES = [
     id: 'safety',
     name: 'A Safer, Brighter Campus',
     goal: 40000,
-    blurb: 'Most Red Hill classrooms have broken blinds. The fix is security window tinting in every classroom — letting staff block visibility into rooms when needed — plus improvements to the multi-purpose room our whole community uses. Total one-time cost: $40,000.',
+    blurb: 'PTA-funded campus improvements include classroom window tinting and upgrades to shared spaces used by our entire school community.',
     circle: { min: 500, label: 'Wing Sponsor' },
     tiers: [
       { amount: 25, impact: 'Joins hundreds of families powering the goal' },
