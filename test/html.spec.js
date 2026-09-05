@@ -3,7 +3,20 @@ import ui from '../site/js/ui.js';
 import uiSource from '../site/js/ui.js?raw';
 import data from '../site/js/data.js';
 
-const { html, raw, studentRowsMarkup, LINK_ROWS } = ui;
+const { html, raw, nameList, studentRowsMarkup, LINK_ROWS } = ui;
+
+describe('nameList', () => {
+  it('joins student names with an ampersand', () => {
+    expect(nameList(['Mia'])).toBe('Mia');
+    expect(nameList(['Mia', 'Leo'])).toBe('Mia & Leo');
+    expect(nameList(['Mia', 'Leo', 'Sam'])).toBe('Mia, Leo & Sam');
+  });
+  it('switches to "and" when a name carries its own ampersand', () => {
+    expect(nameList(['Pump & Supply', 'CH Design & Renovation', 'Sakura Smiles']))
+      .toBe('Pump & Supply, CH Design & Renovation, and Sakura Smiles');
+    expect(nameList(['Galaxy & Tire', 'Felton Ninja'])).toBe('Galaxy & Tire and Felton Ninja');
+  });
+});
 
 describe('html tag', () => {
   it('escapes interpolated strings', () => {
