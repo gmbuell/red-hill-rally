@@ -207,6 +207,7 @@ const PARTNERS = [
   { name: 'Black Gold Pump & Supply' },
   { name: 'CH Design & Renovation' },
   { name: 'Sakura Smiles Pediatric Dentistry' },
+  { name: 'OC Mom Trainer' },
 ];
 
 /* Lookup helpers shared by the worker and every page script. */

@@ -843,7 +843,6 @@ select:focus-visible,
   color: var(--navy);
   white-space: nowrap;
 }
-.race .pct .families { display: block; font-weight: 700; font-size: 0.8125rem; color: var(--grey); }
 @media (max-width: 48rem) {
   .race li { grid-template-columns: 1.6rem 1fr auto; }
   .race .trail { grid-column: 2 / 4; grid-row: 2; }

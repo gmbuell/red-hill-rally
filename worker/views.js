@@ -304,16 +304,16 @@ export const donateSlots = () => ({
    participation), the honor roll, and the partner strip. */
 export const boardSlots = (live) => {
   const raised = live ? live.campaign.raised : 0;
-  const gifts = live ? live.campaign.gifts : 0;
   const perClass = (live && live.classrooms) || {};
   const donors = (live && live.donors) || [];
   const partners = mergedPartners(live && live.partners);
 
+  // Dollars only. A gift count, a partner count and a classroom count
+  // beside the total invited arithmetic no family should be doing, and
+  // early in a campaign the small numbers read as bad news next to the
+  // one number that matters.
   const totals = [
     [money(raised), 'raised of ' + money(CAMPAIGN.goal)],
-    [gifts, 'family gifts so far'],
-    [partners.length, 'business partners'],
-    [CLASSROOMS.length, 'classrooms flying'],
   ].map(([num, label]) => html`
       <div class="total"><span class="num money">${num}</span><span class="label">${label}</span></div>`);
 
@@ -328,7 +328,7 @@ export const boardSlots = (live) => {
         <span class="rank">${i + 1}</span>
         <span class="room">${c.teacher}<small class="grade">${gradeName(c.grade)}</small></span>
         <span class="trail">${trailSVG(c.pct)}</span>
-        <span class="pct">${Math.round(c.pct * 100)}%<small class="families">${c.gifts} gift${c.gifts === 1 ? '' : 's'} &middot; class of ${c.students}</small></span>
+        <span class="pct">${Math.round(c.pct * 100)}%</span>
       </li>`);
 
   /* Named gifts newest first; anonymous gifts are tallied in one

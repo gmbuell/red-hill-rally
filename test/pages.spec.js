@@ -90,9 +90,11 @@ describe('rendered pages', () => {
     await gift();
     const { text } = await page('/rally-board');
     const room = data.classroomById(ROOM_A);
-    expect(text).toContain('<span class="num money">1</span><span class="label">family gifts so far</span>');
     expect(text).toContain(`${room.teacher}<small class="grade">`);
-    expect(text).toContain(`1 gift &middot; class of ${room.students}`);
+    // The board shows dollars and participation percentages, nothing else.
+    expect(text).toContain(`<span class="pct">${Math.round(100 / room.students)}%</span>`);
+    expect(text).not.toContain('family gifts so far');
+    expect(text).not.toContain(`class of ${room.students}`);
     expect(text).toContain('<span class="who">The Rodriguez Family</span>');
     expect(text).toContain(`<small class="what">${P_MAIN.name}</small>`);
   });
@@ -155,7 +157,7 @@ describe('rendered pages', () => {
     expect(home.res.headers.get('cache-control')).toBe('no-store');
     const board = await page('/rally-board');
     expect(board.res.status).toBe(200);
-    expect(board.text).toContain('<span class="num money">0</span><span class="label">family gifts so far</span>');
+    expect(board.text).toContain('<span class="num money">$0</span>');
     expect(board.text).toContain('class="empty-roll"');
   });
 
@@ -179,7 +181,7 @@ describe('rendered pages', () => {
     });
     const res = await worker.fetch(new Request('https://rally.test/rally-board'), { ...env, ASSETS, DB }, createExecutionContext());
     expect(res.status).toBe(200);
-    expect(await res.text()).toContain('family gifts so far');
+    expect(await res.text()).toContain('raised of');
     expect(order.indexOf('db')).toBeLessThan(order.indexOf('asset done'));
   });
 
