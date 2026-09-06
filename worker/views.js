@@ -269,6 +269,9 @@ export const homeSlots = (live) => {
       : '',
     'stat-raised': html`${money(raised)}`,
     'stat-goal': html`${money(CAMPAIGN.goal)}`,
+    // The year-round partners, named on the home page. Reads the same
+    // roster the wall does, so a new Annual Partner appears in both.
+    'partner-names': html`${BUSINESS_LIST.format(PARTNERS.filter((p) => p.annual).map((p) => p.name))}`,
     'priority-grid': html`${PRIORITIES.map((p) => {
       const pRaised = per[p.id] || 0;
       return html`

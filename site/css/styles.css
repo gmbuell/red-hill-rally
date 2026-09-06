@@ -345,7 +345,16 @@ select:focus-visible,
   color: var(--navy);
   font-weight: 700;
 }
-.hero .presented strong { font-weight: 800; }
+/* The partner's own name carries the brand red. --red-ink, not --red:
+   the true brand red is 4.26:1 on this ground, under the floor for
+   text this size. */
+.hero .presented strong { font-weight: 800; color: var(--red-ink); }
+.hero .partner-cta {
+  margin: 0.5rem auto 0;
+  font-size: 1rem;
+  line-height: 1.5;
+  font-weight: 700;
+}
 .hero .assurance {
   display: block;
   margin: 0.7rem auto 0;
@@ -353,7 +362,6 @@ select:focus-visible,
   color: var(--grey);
   font-weight: 700;
 }
-.hero .sparkle { position: absolute; }
 
 /* the flight-trail campaign meter */
 .trajectory { max-width: 46rem; margin: 1.6rem auto 0; }
@@ -452,6 +460,22 @@ select:focus-visible,
   .parent-callout { grid-template-columns: 1fr; text-align: center; }
   .parent-callout .qr-demo { margin: 0 auto; }
   .parent-callout p { margin: 0 auto; }
+}
+
+/* The seventh way to give, sitting under the six cards at the width of
+   a callout rather than as a card, so it reads as the way out of
+   choosing rather than a seventh thing to choose between. */
+.support-all { margin-top: 1.2rem; }
+.support-all .fine-print { margin: 0.4rem 0 0; }
+
+/* Home page partner thanks, under the parents block. */
+.home-partner-thanks { text-align: center; }
+.home-partner-thanks .script { display: block; margin-bottom: 0.6rem; }
+.home-partner-thanks p {
+  max-width: 44rem;
+  margin: 0 auto 1.1rem;
+  font-size: 1rem;
+  line-height: 1.5;
 }
 
 /* ---------- donate flow ---------- */
