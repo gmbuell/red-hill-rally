@@ -11,11 +11,6 @@ describe('nameList', () => {
     expect(nameList(['Mia', 'Leo'])).toBe('Mia & Leo');
     expect(nameList(['Mia', 'Leo', 'Sam'])).toBe('Mia, Leo & Sam');
   });
-  it('switches to "and" when a name carries its own ampersand', () => {
-    expect(nameList(['Pump & Supply', 'CH Design & Renovation', 'Sakura Smiles']))
-      .toBe('Pump & Supply, CH Design & Renovation, and Sakura Smiles');
-    expect(nameList(['Galaxy & Tire', 'Felton Ninja'])).toBe('Galaxy & Tire and Felton Ninja');
-  });
 });
 
 describe('html tag', () => {

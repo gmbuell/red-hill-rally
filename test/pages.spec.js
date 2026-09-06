@@ -49,6 +49,7 @@ describe('rendered pages', () => {
   it('marks the current page in the nav', async () => {
     expect((await page('/')).text).toContain('<a href="/" aria-current="page">Home</a>');
     expect((await page('/rally-board')).text).toContain('<a href="/rally-board" aria-current="page">Rally Board</a>');
+    expect((await page('/why-we-rally')).text).toContain('<a href="/why-we-rally" aria-current="page">Why We Rally</a>');
     expect((await page('/donate')).text).toContain('href="/donate" aria-current="page">Donate');
     expect((await page('/matching')).text).not.toContain('aria-current');
   });
@@ -98,11 +99,8 @@ describe('rendered pages', () => {
 
   it('lists a paid partnership on the partner wall and the board', async () => {
     await partner('Galaxy Automotive');
-    // The curated list carries name-only partners of its own, so the
-    // paid one joins the thanks line rather than being all of it.
-    const thanks = /With thanks to [^<]*Galaxy Automotive/;
-    expect((await page('/partners')).text).toMatch(thanks);
-    expect((await page('/rally-board')).text).toMatch(thanks);
+    expect((await page('/partners')).text).toContain(', and Galaxy Automotive.');
+    expect((await page('/rally-board')).text).toContain(', and Galaxy Automotive.');
   });
 
   it('escapes donor and partner names', async () => {

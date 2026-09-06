@@ -43,16 +43,10 @@ const RH = (() => {
   const moneyCents = (cents) => '$' + (cents / 100)
     .toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-  /* "Mia", "Mia & Leo", "Mia, Leo & Sam". Business names carry their
-     own ampersands, and three in one sentence stop reading as a list,
-     so a list holding one joins with "and" instead. */
-  const nameList = (names) => {
-    if (names.length <= 1) return names.join('');
-    const rest = names.slice(0, -1);
-    const last = names[names.length - 1];
-    if (!names.some((n) => n.includes('&'))) return `${rest.join(', ')} & ${last}`;
-    return `${rest.join(', ')}${rest.length > 1 ? ',' : ''} and ${last}`;
-  };
+  /* "Mia", "Mia & Leo", "Mia, Leo & Sam". */
+  const nameList = (names) => names.length <= 1
+    ? names.join('')
+    : `${names.slice(0, -1).join(', ')} & ${names[names.length - 1]}`;
 
   /* "Mrs. Hesseltine · TK" for each distinct classroom in a student list. */
   const roomLabels = (students) => [...new Set(students.map((st) => {

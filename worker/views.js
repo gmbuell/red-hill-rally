@@ -8,7 +8,7 @@ import data from '../site/js/data.js';
 import ui from '../site/js/ui.js';
 
 const { ORG, PRIORITIES, CAMPAIGN, CLASSROOMS, PARTNER_TIERS, PARTNERS, ANNUAL_LEVELS, priorityById, partnerTierById, annualLevelById, gradeName, priorityTarget, presentingPartner } = data;
-const { html, raw, money, nameList, studentRowsMarkup, LINK_ROWS, dartUp } = ui;
+const { html, raw, money, studentRowsMarkup, LINK_ROWS, dartUp } = ui;
 
 /* ---- motifs (from the brand guide's Spirit Kit) -------------------- */
 
@@ -198,6 +198,7 @@ const wallRank = (p) => {
    full-size logo cards (name, tier badge), or `empty` when nobody is
    listed yet, plus the thanks line for name-only tiers. `all` is the
    mergedPartners list. */
+const BUSINESS_LIST = new Intl.ListFormat('en', { type: 'conjunction' });
 const partnerWall = (all, empty) => {
   const logos = all.filter((p) => p.src).sort((a, b) => wallRank(a) - wallRank(b));
   const names = all.filter((p) => !p.src);
@@ -209,8 +210,9 @@ const partnerWall = (all, empty) => {
         ${p.tierName ? html`<small class="partner-tier">${p.tierName}</small>` : ''}
       </li>`)}
     </ul>` : (names.length ? '' : empty);
+  // Business names carry their own ampersands, so this list joins with "and".
   const thanks = names.length ? html`
-      <p class="partner-friends">With thanks to ${nameList(names.map((p) => p.name))}.</p>` : '';
+      <p class="partner-friends">With thanks to ${BUSINESS_LIST.format(names.map((p) => p.name))}.</p>` : '';
   return html`${cards}${thanks}`;
 };
 
