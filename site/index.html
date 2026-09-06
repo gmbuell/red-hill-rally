@@ -20,11 +20,20 @@
       <span class="kicker">One school. One community. One rally.</span>
       <h1>
         <span class="visually-hidden">Rocket Rally 2026</span>
+        <!-- The stars live in the title's own viewBox, not in page
+             pixels: the arc scales with the viewport, so anything
+             positioned against the page drifts away from it at every
+             width. The text measures x 62-498 here, which leaves each
+             margin free at any size. -->
         <svg class="arc-title" viewBox="0 0 560 118" aria-hidden="true">
           <defs><path id="hero-arc" d="M 14 102 Q 280 44 546 102" fill="none"/></defs>
           <text style="font-family:'Bebas Neue','Arial Narrow',Impact,sans-serif;font-size:64px;letter-spacing:0.03em;" fill="#000000">
             <textPath href="#hero-arc" startOffset="50%" text-anchor="middle">ROCKET RALLY 2026</textPath>
           </text>
+          <g fill="#E31E24">
+            <path transform="translate(30,70) scale(1.3) translate(-12,-12)" d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z"/>
+            <path transform="translate(530,70) scale(1.3) translate(-12,-12)" d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z"/>
+          </g>
         </svg>
       </h1>
       <div class="trajectory" id="trajectory"></div>
@@ -69,7 +78,7 @@
           <p>Can&rsquo;t pick just one? Neither can we. Your gift spreads across all six.</p>
           <small class="fine-print">Counts for your Rocket and their class, same as any other gift.</small>
         </div>
-        <a class="btn secondary" href="/donate">Support it all <span class="arrow" aria-hidden="true">→</span></a>
+        <a class="btn secondary" href="/donate?p=all">Support it all <span class="arrow" aria-hidden="true">→</span></a>
       </div>
     </div>
   </section>

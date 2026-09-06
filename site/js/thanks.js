@@ -17,7 +17,7 @@
     const tier = p.tiers.find((t) => t.amount === amt)
       || (top && top.plus && amt >= top.amount ? top : null);
     line.innerHTML = tier
-      ? html`Your <strong>${RH.money(amt)}</strong> gift to <strong>${p.name}</strong>: ${tier.impact}.`
+      ? html`Your <strong>${RH.money(amt)}</strong> gift to <strong>${p.sentenceName || p.name}</strong>: ${tier.impact}.`
       : html`Your <strong>${RH.money(amt)}</strong> is real, visible support for <strong>${p.name}</strong>.`;
   } else {
     line.textContent =

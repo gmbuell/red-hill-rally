@@ -580,6 +580,9 @@ select:focus-visible,
   cursor: pointer;
 }
 .option-card:hover { border-color: var(--navy); }
+/* The seventh choice sits below the six with a little air, so it reads
+   as "or" rather than as a seventh program. */
+.support-all-option { margin-top: 0.7rem; }
 .option-card input { accent-color: var(--navy); width: 1.15rem; height: 1.15rem; margin: 0; }
 .option-card:has(input:checked) { border-color: var(--navy); background: var(--paper); }
 .option-card .icon { width: 46px; height: 36px; grid-row: span 2; }

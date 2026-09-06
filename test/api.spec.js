@@ -179,6 +179,15 @@ describe('student links', () => {
 /* ---- checkout ---- */
 
 describe('checkout', () => {
+  it('accepts Support It All as a choice and names it on the charge', async () => {
+    const calls = stubStripe();
+    const res = await checkoutDirect({ ...validCheckout, priority: data.SUPPORT_ALL.id });
+    expect(res.status).toBe(200);
+    const sent = new URLSearchParams(String(calls[0].body));
+    expect(sent.get('metadata[priority]')).toBe(data.SUPPORT_ALL.id);
+    expect(sent.get('line_items[0][price_data][product_data][name]')).toContain(data.SUPPORT_ALL.name);
+  });
+
   it('creates a Stripe session with full metadata', async () => {
     const calls = stubStripe();
     const res = await checkoutDirect(validCheckout);

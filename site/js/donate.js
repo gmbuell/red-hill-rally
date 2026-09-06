@@ -46,7 +46,8 @@
 
   /* Designated-gift disclosure, named for the chosen priority. */
   const renderRedirectNote = () => {
-    const program = state.priority ? state.priority.name : 'the program you selected';
+    const p = state.priority;
+    const program = p ? (p.sentenceName || p.name) : 'the program you selected';
     RH.qs('#redirect-note').innerHTML =
       html`Your gift will be used to support <strong>${program}</strong>. If a program becomes fully funded, or if unforeseen circumstances prevent us from executing a program, Red Hill Elementary PTA reserves the right to redirect these funds to the area of greatest need that most closely aligns with your original intent.`;
   };

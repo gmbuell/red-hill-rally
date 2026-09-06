@@ -7,7 +7,7 @@
 import data from '../site/js/data.js';
 import ui from '../site/js/ui.js';
 
-const { ORG, PRIORITIES, CAMPAIGN, CLASSROOMS, PARTNER_TIERS, PARTNERS, ANNUAL_LEVELS, priorityById, partnerTierById, annualLevelById, gradeName, priorityTarget, presentingPartner } = data;
+const { ORG, PRIORITIES, CAMPAIGN, CLASSROOMS, PARTNER_TIERS, PARTNERS, ANNUAL_LEVELS, SUPPORT_ALL, priorityById, partnerTierById, annualLevelById, gradeName, priorityTarget, presentingPartner } = data;
 const { html, raw, money, studentRowsMarkup, LINK_ROWS, dartUp } = ui;
 
 /* ---- motifs (from the brand guide's Spirit Kit) -------------------- */
@@ -61,6 +61,8 @@ const ICONS = {
     <g fill="#000000"><rect x="18.5" y="30" width="7" height="7" rx="1"/><rect x="38.5" y="30" width="7" height="7" rx="1"/></g>
     <g stroke="#FFFFFF" stroke-width="1"><path d="M22 30.5v6.5"/><path d="M18.5 33.5h7"/><path d="M42 30.5v6.5"/><path d="M38.5 33.5h7"/></g>`),
 };
+
+ICONS.all = raw(`<path d="${STAR}" transform="translate(9.2,5.2) scale(1.9)" fill="#E31E24"/>`);
 
 const icon = (id, cls = 'icon') =>
   html`<svg class="${cls}" viewBox="0 0 64 56" aria-hidden="true">${ICONS[id] || ''}</svg>`;
@@ -297,7 +299,13 @@ export const donateSlots = () => ({
         ${icon(p.id)}
         <span class="name">${p.name}</span>
         <small class="desc">${p.blurb}</small>
-      </label>`)}`,
+      </label>`)}
+      <label class="option-card with-icon support-all-option">
+        <input type="radio" name="priority" value="${SUPPORT_ALL.id}">
+        ${icon(SUPPORT_ALL.id)}
+        <span class="name">${SUPPORT_ALL.name}</span>
+        <small class="desc">${SUPPORT_ALL.blurb}</small>
+      </label>`,
 });
 
 /* Rally Board: campaign totals, the classroom race (ranked by

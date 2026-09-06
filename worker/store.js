@@ -9,7 +9,7 @@
 
 import data from '../site/js/data.js';
 
-const { CAMPAIGN, CLASSROOMS, priorityById, classroomById, MAX_STUDENTS } = data;
+const { CAMPAIGN, CLASSROOMS, PRIORITIES, SUPPORT_ALL, priorityById, classroomById, MAX_STUDENTS } = data;
 
 /* A session's Rockets: the `students` JSON our checkout stamps into
    metadata (a partnership carries none). */
@@ -106,7 +106,24 @@ export async function campaignStats(db) {
     partnersStmt(db),
   ]);
   const priorities = {};
-  for (const row of byPriority.results) priorities[row.priority] = Math.round(row.cents / 100);
+  let sharedCents = 0;
+  for (const row of byPriority.results) {
+    if (row.priority === SUPPORT_ALL.id) sharedCents += row.cents;
+    else priorities[row.priority] = Math.round(row.cents / 100);
+  }
+  // A Support It All gift is one gift that lands on all six. The cards
+  // print whole dollars, so the split is made in dollars with the
+  // remainder going to the first few: $100 reads 17/17/17/17/16/16,
+  // which adds back to exactly what was given. Splitting the cents
+  // instead rounds each card up and shows $102.
+  if (sharedCents) {
+    const dollars = Math.round(sharedCents / 100);
+    const each = Math.floor(dollars / PRIORITIES.length);
+    let extra = dollars - each * PRIORITIES.length;
+    for (const p of PRIORITIES) {
+      priorities[p.id] = (priorities[p.id] || 0) + each + (extra-- > 0 ? 1 : 0);
+    }
+  }
   return { campaign: campaignShape(totals), priorities, partners: partnerShape(partnerRows) };
 }
 

@@ -110,6 +110,26 @@ const PRIORITIES = [
   },
 ];
 
+/* The seventh way to give: one gift divided evenly across all six.
+   Deliberately not a member of PRIORITIES — the home cards, the goal
+   share math and the per-priority tallies are all keyed to the six —
+   but `priorityById` answers for it, so the donate wizard, checkout,
+   the thank-you page and the honor roll treat it like any other
+   choice. `sentenceName` is the form that reads correctly inside a
+   sentence, where "your gift to Support It All" would not. */
+const SUPPORT_ALL = {
+  id: 'all',
+  name: 'Support It All',
+  sentenceName: 'all six fundraising priorities',
+  blurb: 'Can’t pick just one? Neither can we. Your gift spreads evenly across all six.',
+  tiers: [
+    { amount: 25, impact: 'A share into every one of the six' },
+    { amount: 100, impact: 'Every program on the list feels this' },
+    { amount: 250, impact: 'A real lift for all six at once' },
+    { amount: 500, plus: true, impact: 'Backs the whole Rally, top to bottom' },
+  ],
+};
+
 /* The campaign goal is the number on the ticker and the thermometer
    outside school: what the Rally itself is trying to raise this fall.
    It is deliberately not the sum of the priority goals — those are
@@ -211,7 +231,8 @@ const PARTNERS = [
 ];
 
 /* Lookup helpers shared by the worker and every page script. */
-const priorityById = (id) => PRIORITIES.find((p) => p.id === id) || null;
+const priorityById = (id) =>
+  (id === SUPPORT_ALL.id ? SUPPORT_ALL : PRIORITIES.find((p) => p.id === id) || null);
 const classroomById = (id) => CLASSROOMS.find((c) => c.id === id) || null;
 const partnerTierById = (id) => PARTNER_TIERS.find((t) => t.id === id) || null;
 const annualLevelById = (id) => ANNUAL_LEVELS.find((l) => l.id === id) || null;
@@ -226,7 +247,7 @@ const gradeName = (g) => GRADE_NAMES[g] || `${g} grade`;
    never defines `module`. */
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
-    ORG, PRIORITIES, CAMPAIGN, CLASSROOMS, PARTNER_TIERS, PARTNERS,
+    ORG, PRIORITIES, SUPPORT_ALL, CAMPAIGN, CLASSROOMS, PARTNER_TIERS, PARTNERS,
     ANNUAL_LEVELS,
     MAX_NAME, MAX_AMOUNT, MAX_STUDENTS, feeCoverCents,
     priorityById, classroomById, partnerTierById, annualLevelById, gradeName,

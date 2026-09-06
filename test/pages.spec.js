@@ -67,6 +67,25 @@ describe('rendered pages', () => {
     expect(text).toContain('<clipPath id="traj-clip">');
   });
 
+  it('spreads a Support It All gift evenly across the six cards', async () => {
+    await gift({ metadata: { priority: data.SUPPORT_ALL.id } });
+    const { text } = await page('/');
+    // $100 over six is $16.67 each, and the six must add back to $100:
+    // the cards read $17, $17, $17, $17, $16, $16.
+    const raised = [...text.matchAll(/<strong>\$(\d+)<\/strong> raised</g)].map((m) => Number(m[1]));
+    expect(raised).toHaveLength(data.PRIORITIES.length);
+    expect(raised.reduce((a, b) => a + b, 0)).toBe(100);
+    expect(Math.max(...raised) - Math.min(...raised)).toBeLessThanOrEqual(1);
+    // The ticker still counts it once, as one gift of the whole amount.
+    expect(text).toContain('id="stat-raised">$100</span>');
+  });
+
+  it('offers Support It All as a seventh choice on the donate form', async () => {
+    const { text } = await page('/donate');
+    expect(text).toContain(`<input type="radio" name="priority" value="${data.SUPPORT_ALL.id}">`);
+    expect(text).toContain(data.SUPPORT_ALL.name);
+  });
+
   it('names the grand prize and how participation is counted on prizes', async () => {
     const { text } = await page('/prizes');
     expect(text).toContain('Principal for the Day');
