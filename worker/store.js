@@ -174,8 +174,10 @@ const cell = (value) => {
   return `"${s.replace(/"/g, '""')}"`;
 };
 const dollars = (cents) => (cents / 100).toFixed(2);
-const csv = (header, rows) =>
-  '﻿' + [header, ...rows.map((r) => r.map(cell).join(','))].join('\n') + '\n'; // BOM so Excel reads UTF-8 names
+/* A report is { columns, rows }; the CSV form opens in Excel/Sheets
+   (BOM so UTF-8 names read), the JSON form feeds /admin. */
+export const csv = ({ columns, rows }) =>
+  '﻿' + [columns.join(','), ...rows.map((r) => r.map(cell).join(','))].join('\n') + '\n';
 
 /* Roster order, then any classroom the roster no longer lists. */
 const roomOrder = (seen) => {
@@ -227,7 +229,7 @@ const tally = (credits) => {
 /* The student sheet: what each Rocket has raised, under their class,
    biggest first. Family gifts that named no Rocket close the sheet so
    it still adds up to the board. */
-export async function studentsCsv(db) {
+export async function studentsReport(db) {
   const [credits, uncredited] = await db.batch([
     creditsStmt(db),
     db.prepare(`SELECT COUNT(*) AS gifts, COALESCE(SUM(amount_cents), 0) AS cents
@@ -243,12 +245,12 @@ export async function studentsCsv(db) {
   }
   const rest = uncredited.results[0];
   if (rest.gifts) rows.push(['', '', 'No Rocket named', rest.gifts, dollars(rest.cents)]);
-  return csv('grade,teacher,student,gifts,raised', rows);
+  return { columns: ['grade', 'teacher', 'student', 'gifts', 'raised'], rows };
 }
 
 /* The classroom sheet for the marquee: every roster classroom with its
    participation and dollars, so a class with nothing yet shows a zero. */
-export async function classroomsCsv(db) {
+export async function classroomsReport(db) {
   const rooms = tally((await creditsStmt(db).all()).results);
   const rows = roomOrder(rooms).map((room) => {
     const students = Object.values(rooms[room.id] || {});
@@ -256,12 +258,12 @@ export async function classroomsCsv(db) {
     const pct = room.students > 0 ? Math.round(Math.min(sum('gifts') / room.students, 1) * 100) : 0;
     return [room.grade, room.teacher, room.students, sum('gifts'), pct, dollars(sum('cents')), sum('shirts')];
   });
-  return csv('grade,teacher,students,gifts,participation_pct,raised,shirts', rows);
+  return { columns: ['grade', 'teacher', 'students', 'gifts', 'participation_pct', 'raised', 'shirts'], rows };
 }
 
 /* The printer's sheet: each Rocket's shirts by size, merged across
    orders, in roster then name then size order. */
-export async function shirtsCsv(db) {
+export async function shirtsReport(db) {
   const credits = (await creditsStmt(db).all()).results.filter((c) => c.shirts);
   const rooms = {};
   for (const c of credits) {
@@ -279,5 +281,5 @@ export async function shirtsCsv(db) {
       }
     }
   }
-  return csv('grade,teacher,student,size,quantity', rows);
+  return { columns: ['grade', 'teacher', 'student', 'size', 'quantity'], rows };
 }

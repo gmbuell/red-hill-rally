@@ -46,6 +46,14 @@ describe('rendered pages', () => {
     }
   });
 
+  it('keeps the admin page out of search and empty until a key opens it', async () => {
+    await gift();
+    const { text } = await page('/admin');
+    expect(text).toContain('<meta name="robots" content="noindex">');
+    expect(text).toContain('id="admin-key"');
+    for (const needle of PII) expect(text).not.toContain(needle);
+  });
+
   it('marks the current page in the nav', async () => {
     expect((await page('/')).text).toContain('<a href="/" aria-current="page">Home</a>');
     expect((await page('/rally-board')).text).toContain('<a href="/rally-board" aria-current="page">Rally Board</a>');

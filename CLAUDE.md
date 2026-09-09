@@ -24,7 +24,7 @@ two-sentence pointer; this file is the operating manual.
 | `npx wrangler d1 migrations apply red-hill-rally --local` | once per clone: local D1 schema |
 | `npm run dev` | `wrangler dev` on http://localhost:8787 |
 | `npm test` | vitest (106 tests, ~4 s) |
-| `npm run audit` | Lighthouse on every page, mobile + desktop (needs Chrome); defaults to the live site (`npm run audit -- --url http://localhost:8787` for local). `--runs 3 --min 98` reproduces the CI gate, `--form mobile` limits it to one form factor |
+| `npm run audit` | Lighthouse on every page but `/admin` (noindex), mobile + desktop (needs Chrome); defaults to the live site (`npm run audit -- --url http://localhost:8787` for local). `--runs 3 --min 98` reproduces the CI gate, `--form mobile` limits it to one form factor |
 | `npm run wcag` | WCAG 2.2 checks on every page, mobile + desktop (needs Chrome): text contrast, non-text contrast, focus rings, target size, body leading ≥ 1.5, body text ≥ 16px and labels ≥ 13px. Defaults to the live site (`npm run wcag -- --url http://localhost:8787` for local, `--page donate --form mobile` to narrow). Each cell shows how many elements the check examined |
 | `npm run deploy` | **Ships to production**: the worker and every file under `site/`. The `predeploy` step runs the tests, then applies pending D1 migrations to the remote database, so schema and code ship together. Every push to `main` runs this through Cloudflare Workers Builds (dashboard → the worker → Settings → Build), so merging a PR deploys it |
 | `npm run preview` | What Workers Builds runs for every branch except `main` (the preview worker's Settings → Build holds the two triggers): applies pending migrations to the preview database, then uploads a version of the preview worker; the PR's "Workers Builds" check carries the preview URL, and `<branch>-red-hill-rally-preview.gmbuell.workers.dev` follows the branch. `npm run preview:deploy` is the `main` counterpart, a full deploy of the preview worker. Both need a Cloudflare login and touch only the preview worker |
@@ -87,8 +87,9 @@ secrets; the maintainer reviews and ships PRs.
 
 - **Student names, donor email, and billing address never leave the
   backend.** `campaignStats` and `boardStats` must not select them.
-  Only `exportCsv` (the admin student sheet behind `ADMIN_KEY`) reads
-  student names; nothing serves email or address. No student picker or
+  Only the report builders in `store.js` (behind `ADMIN_KEY`, as CSV
+  and as `/api/admin.json`) read student names; nothing serves email
+  or address. No student picker or
   roster on any page. `test/pages.spec.js` probes the rendered pages
   for a seeded student name, email, and address.
 - The classroom race ranks by participation (gifts ÷ class size),
@@ -149,6 +150,10 @@ secrets; the maintainer reviews and ships PRs.
   and error copy, empty or `display: none` until something goes wrong,
   are unchecked. A control drawn as a box keeps a 3:1
   background or border against its surroundings.
+- `/admin` is a `noindex` page whose HTML holds no data: everything
+  on it arrives from `/api/admin.json` behind the admin key, so the
+  page-level PII probes pass and Lighthouse skips it (the SEO
+  category scores `noindex` as a fault).
 - Every navigation runs the worker: `run_worker_first` is `/*` minus
   the static folders. A new static folder under `site/` must be added
   to the exclusions in `wrangler.jsonc`. A stats failure renders the
@@ -216,7 +221,10 @@ flip to live, in this order:
 
 ## Operations
 
-- **Reports** — three CSVs behind the key `ADMIN_KEY` in `.dev.vars`:
+- **Reports** — <https://rocketrally.org/admin> ("Mission Control")
+  shows all three sheets behind the key `ADMIN_KEY` in `.dev.vars`,
+  with a download button for each; the key stays in the tab's session
+  storage and travels as a Bearer header. The same CSVs by curl:
 
   ```sh
   curl -H "Authorization: Bearer <ADMIN_KEY>" \

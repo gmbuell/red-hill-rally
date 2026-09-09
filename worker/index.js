@@ -7,7 +7,7 @@
 import { createLink, resolveLink } from './links.js';
 import { normalizeStudents, shirtsMetadata } from './students.js';
 import { createCheckoutSession, verifyWebhook } from './stripe.js';
-import { recordDonation, campaignStats, boardStats, studentsCsv, shirtsCsv, classroomsCsv } from './store.js';
+import { recordDonation, campaignStats, boardStats, studentsReport, shirtsReport, classroomsReport, csv } from './store.js';
 import { renderPage } from './pages.js';
 import data from '../site/js/data.js';
 import ui from '../site/js/ui.js';
@@ -301,10 +301,11 @@ async function handleWebhook(request, env) {
   return json({ received: true });
 }
 
-/* The PTA's reports. Prefer `Authorization: Bearer <ADMIN_KEY>` — the
-   ?key= form works too but leaves the key in browser history and
-   logged request URLs. */
-const REPORTS = { students: studentsCsv, shirts: shirtsCsv, classrooms: classroomsCsv };
+/* The PTA's reports: each as a CSV, and all three at once as JSON
+   for /admin. Prefer `Authorization: Bearer <ADMIN_KEY>` — the ?key=
+   form works too but leaves the key in browser history and logged
+   request URLs. */
+const REPORTS = { students: studentsReport, shirts: shirtsReport, classrooms: classroomsReport };
 
 async function handleReport(request, url, env, name) {
   const auth = request.headers.get('authorization') || '';
@@ -313,7 +314,15 @@ async function handleReport(request, url, env, name) {
   if (!env.ADMIN_KEY || !(await timingSafeStringEqual(key, env.ADMIN_KEY))) {
     return json({ error: 'unauthorized' }, 401);
   }
-  return new Response(await REPORTS[name](env.DB), {
+  if (name === 'admin') {
+    const [stats, ...reports] = await Promise.all([
+      campaignStats(env.DB), ...Object.values(REPORTS).map((report) => report(env.DB)),
+    ]);
+    const body = { campaign: stats.campaign };
+    Object.keys(REPORTS).forEach((key, i) => { body[key] = reports[i]; });
+    return json(body, 200, { 'cache-control': 'no-store' });
+  }
+  return new Response(csv(await REPORTS[name](env.DB)), {
     headers: {
       'content-type': 'text/csv; charset=utf-8',
       'content-disposition': `attachment; filename="rocket-rally-${name}.csv"`,
@@ -395,7 +404,8 @@ export default {
         case 'GET /api/students.csv':
         case 'GET /api/shirts.csv':
         case 'GET /api/classrooms.csv':
-          return await handleReport(request, url, env, url.pathname.slice(5, -4));
+        case 'GET /api/admin.json':
+          return await handleReport(request, url, env, url.pathname.slice(5).replace(/\.(csv|json)$/, ''));
         default: return json({ error: 'not found' }, 404);
       }
     } catch (err) {

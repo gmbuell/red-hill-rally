@@ -1268,3 +1268,67 @@ select:focus-visible,
   .prize-list li { flex-direction: column; gap: 0.4rem; }
   .prize-key { width: auto; }
 }
+
+/* ---------- mission control (/admin) ---------- */
+
+.key-form { max-width: 24rem; margin-bottom: 3rem; }
+.key-form .field { margin-bottom: 1rem; }
+.admin-totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.2rem 3.5rem;
+  background: var(--navy);
+  color: var(--white);
+  padding: 1.6rem 1.8rem;
+  margin-bottom: 0.8rem;
+}
+.admin-totals .num {
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 2.6rem;
+  line-height: 1;
+  display: block;
+}
+.admin-totals .label { color: rgba(255, 255, 255, 0.86); }
+.admin-asof { color: var(--grey); margin-bottom: 1rem; }
+.admin-asof .linklike { color: var(--navy); font-weight: 700; }
+.sheet { margin-top: 3rem; }
+.sheet-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 1rem 2rem;
+  border-top: 2px solid var(--navy);
+  padding-top: 1.4rem;
+  margin-bottom: 1rem;
+}
+.sheet-head h2 { margin: 0 0 0.4rem; }
+.sheet-head p { max-width: 36rem; margin: 0; }
+.sheet-scroll { overflow-x: auto; }
+.sheet table { border-collapse: collapse; width: 100%; }
+.sheet th, .sheet td {
+  text-align: left;
+  padding: 0.55rem 0.9rem 0.55rem 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.18);
+  white-space: nowrap;
+  line-height: 1.5;
+}
+.sheet th { border-bottom: 2px solid var(--navy); padding-top: 0; }
+.sheet th button {
+  font: inherit;
+  font-weight: 800;
+  color: var(--navy);
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+}
+.sheet th button:hover, .sheet th[aria-sort] button { text-decoration-color: var(--red); }
+.sheet th[aria-sort="descending"] button::after { content: ' \25BE'; color: var(--red); }
+.sheet th[aria-sort="ascending"] button::after { content: ' \25B4'; color: var(--red); }
+.sheet .num { text-align: right; font-variant-numeric: tabular-nums; }
+.sheet td.num { font-weight: 700; }
+.sheet td.empty { color: var(--grey); white-space: normal; }

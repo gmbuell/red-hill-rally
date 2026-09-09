@@ -922,6 +922,23 @@ describe('admin reports', () => {
     expect(await report('shirts')).toContain(row(roomA, "'@SUM(A1)", data.SHIRT.sizes[0].label, 1));
   });
 
+  it('serves every report at once as JSON for the admin page', async () => {
+    await deliverWebhook(sessionEvent({ amount_total: 10000 + SHIRT_CENTS, metadata: { shirts: `0:${SIZE_A}` } }));
+    expect((await SELF.fetch('https://rally.test/api/admin.json')).status).toBe(401);
+    const res = await SELF.fetch('https://rally.test/api/admin.json', {
+      headers: { authorization: 'Bearer test-admin-key' },
+    });
+    expect(res.status).toBe(200);
+    expect(res.headers.get('cache-control')).toBe('no-store');
+    const body = await res.json();
+    expect(body.campaign).toEqual({ raised: 100 + data.SHIRT.credit, goal: data.CAMPAIGN.goal, gifts: 1 });
+    expect(body.students.columns).toEqual(['grade', 'teacher', 'student', 'gifts', 'raised']);
+    expect(body.students.rows).toContainEqual([roomA.grade, roomA.teacher, 'Mia Rodriguez', 1, dollars(10000 + CREDIT_CENTS)]);
+    expect(body.classrooms.rows).toContainEqual([roomA.grade, roomA.teacher, roomA.students, 1, Math.round(100 / roomA.students), dollars(10000 + CREDIT_CENTS), 1]);
+    expect(body.shirts.rows).toEqual([[roomA.grade, roomA.teacher, 'Mia Rodriguez', data.SHIRT.sizes[0].label, 1]]);
+    expect(JSON.stringify(body)).not.toContain('example.com');
+  });
+
   it('lists shirts by Rocket and size for the printer, quantities merged across orders', async () => {
     await deliverWebhook(sessionEvent({
       amount_total: 10000 + 2 * SHIRT_CENTS, metadata: { shirts: `0:${SIZE_A},0:${SIZE_B}` },

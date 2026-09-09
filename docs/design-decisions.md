@@ -118,6 +118,7 @@ HTML and CSS.
 | `partners.html` | Partnership ladder + checkout + partner wall |
 | `matching.html` | Employer gift-matching how-to |
 | `thanks.html` | Celebration thank-you, personalized impact line, matching nudge; partner logo uploader |
+| `admin.html` | Mission Control, PTA only and `noindex`: the classroom, Rocket, and shirt sheets as sortable tables behind the admin key, with a download for each CSV |
 
 ## Checkout
 

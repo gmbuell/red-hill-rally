@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Mission Control · Red Hill Elementary PTA</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preload" href="/fonts/montserrat-var.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/bebasneue-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<header class="site-header"></header>
+
+<main class="wrap admin-page">
+  <div class="board-masthead">
+    <span class="label">Red Hill Elementary PTA &middot; Rocket Rally 2026</span>
+    <span class="label">PTA only</span>
+  </div>
+
+  <h1 class="board-title">Mission Control</h1>
+  <p class="board-lede">The Rally&rsquo;s working numbers: the marquee standings, the shout-outs, and the shirt order.</p>
+
+  <form id="key-form" class="key-form" novalidate>
+    <div class="field">
+      <label for="admin-key">Admin key</label>
+      <input type="password" id="admin-key" autocomplete="current-password" required>
+      <p class="error" id="key-error">That key didn&rsquo;t open the reports. It&rsquo;s the admin key from the site&rsquo;s settings.</p>
+    </div>
+    <button type="submit" class="btn" id="open-btn">Open the reports</button>
+  </form>
+
+  <div id="reports" hidden>
+    <div class="admin-totals" id="admin-totals"></div>
+    <p class="admin-asof"><span id="as-of"></span> <button type="button" class="linklike" id="refresh-btn">Refresh</button> &middot; <button type="button" class="linklike" id="close-btn">Close the reports</button></p>
+
+    <section class="sheet" aria-labelledby="classrooms-head">
+      <div class="sheet-head">
+        <div>
+          <h2 id="classrooms-head">Classrooms</h2>
+          <p>For the marquee. Ranked by participation, the way the Rally Board ranks them; click any column to re-sort.</p>
+        </div>
+        <button type="button" class="btn secondary small" data-download="classrooms">Download classrooms.csv</button>
+      </div>
+      <div class="sheet-scroll"><table id="classrooms-table"></table></div>
+    </section>
+
+    <section class="sheet" aria-labelledby="students-head">
+      <div class="sheet-head">
+        <div>
+          <h2 id="students-head">Rockets</h2>
+          <p>For shout-outs. Every named Rocket under their class, biggest first; sort by raised for the school-wide list. A gift naming several kids splits its dollars, and each shirt&rsquo;s share goes to its own Rocket.</p>
+        </div>
+        <button type="button" class="btn secondary small" data-download="students">Download students.csv</button>
+      </div>
+      <div class="sheet-scroll"><table id="students-table"></table></div>
+    </section>
+
+    <section class="sheet" aria-labelledby="shirts-head">
+      <div class="sheet-head">
+        <div>
+          <h2 id="shirts-head">Shirt order</h2>
+          <p>For the printer. One row per Rocket and size, merged across orders.</p>
+        </div>
+        <button type="button" class="btn secondary small" data-download="shirts">Download shirts.csv</button>
+      </div>
+      <div class="sheet-scroll"><table id="shirts-table"></table></div>
+    </section>
+  </div>
+  <p class="form-error" id="admin-error" role="alert" hidden></p>
+</main>
+
+<footer class="site-footer on-navy"></footer>
+
+<script src="js/data.js" defer></script>
+<script src="js/ui.js" defer></script>
+<script src="js/admin.js" defer></script>
+</body>
+</html>
