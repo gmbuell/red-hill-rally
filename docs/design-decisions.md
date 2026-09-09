@@ -111,7 +111,7 @@ HTML and CSS.
 | Page | Role |
 |---|---|
 | `index.html` | Campaign hero + goal meter, six priority cards with progress, how-it-works, parent-link callout, trust strip |
-| `donate.html` | 4-step wizard: priority → amount → Rockets (up to four, optional; prefilled+banner via `?link=`) → public/anonymous + summary. `?p=<id>` preselects a priority |
+| `donate.html` | 4-step wizard: priority → Rockets (up to four, optional; prefilled+banner via `?link=`), each with an optional Rally shirt → amount (optional once a shirt is in the order) → public/anonymous + summary. `?p=<id>` preselects a priority |
 | `student-link.html` | Parent QR/link generator; copy/share/print handout card |
 | `rally-board.html` | Classroom race (participation) + donor honor roll + partner strip |
 | `prizes.html` | Grand prize, classroom and student prizes, how participation is counted |
@@ -133,6 +133,16 @@ HTML and CSS.
   acknowledgment" donors need for gifts of $250+ (Pub 1771): the
   charge description carries the org name, EIN, and
   no-goods-or-services statement; the receipt supplies amount and date.
+  When the order holds shirts, the description instead names them,
+  states their good-faith value, and gives the deductible remainder,
+  with the shirts itemized as their own line item.
+- A Rally shirt is an add-on under each Rocket, $20 each, and stands
+  on its own: a family can order a shirt with no gift. $10 of each
+  shirt is fundraising for that Rocket and their classroom and counts
+  wherever a gift counts; the other $10 is the shirt. The Rocket step
+  comes before the amount step so the amount can stay blank once a
+  shirt is in the order. A shirt needs the Rocket's name, so the
+  printer's sheet says whose it is.
 - Donors can add a voluntary fee cover: a default-checked opt-out
   checkbox on the amount step adds a gross-up,
   `(gift + 30¢) / (1 − 2.2%)`, as a second Checkout line item

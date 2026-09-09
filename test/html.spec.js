@@ -32,13 +32,21 @@ describe('html tag', () => {
     expect(row).toContain('student’s name');
     expect(row).not.toContain('&amp;');
     expect(row).not.toContain('remove-student');
+    expect(row).not.toContain('shirt'); // the link page sells nothing
+  });
+  it('offers a shirt picker under a donate row: chosen sizes plus one empty slot', () => {
+    const [a, b] = data.SHIRT.sizes.map((z) => z.id);
+    const row = String(studentRowsMarkup([{ c: '', n: '', s: [a, b] }], { prefix: 'rocket', shirts: true, classError: 'x' }));
+    expect(row.match(/data-field="s"/g)).toHaveLength(3);
+    expect(row).toContain('Recommend sizing up. Shirts run small.');
+    for (const z of data.SHIRT.sizes) expect(row).toContain(`<option value="${z.id}">${z.label}</option>`);
   });
 });
 
 describe('ui.js as a page script', () => {
   it('uses the page globals even when something defines a `module` global', () => {
-    const load = new Function('module', 'CLASSROOMS', 'classroomById', 'MAX_NAME', 'MAX_STUDENTS', `${uiSource}\nreturn RH;`);
-    const rh = load({}, data.CLASSROOMS, data.classroomById, data.MAX_NAME, data.MAX_STUDENTS);
+    const load = new Function('module', 'CLASSROOMS', 'classroomById', 'MAX_NAME', 'MAX_STUDENTS', 'SHIRT', `${uiSource}\nreturn RH;`);
+    const rh = load({}, data.CLASSROOMS, data.classroomById, data.MAX_NAME, data.MAX_STUDENTS, data.SHIRT);
     expect(String(rh.html`<b>${'<'}</b>`)).toBe('<b>&lt;</b>');
   });
 });

@@ -1,4 +1,5 @@
-/* Donate flow: a four-step wizard ending in Stripe Checkout.
+/* Donate flow: a four-step wizard (priority, Rockets and shirts,
+   amount, thanks) ending in Stripe Checkout.
    URL params:
      p     — preselect a priority (e.g. /donate?p=stem)
      link  — a parent-created student link: a short code the server
@@ -13,6 +14,7 @@
     priority: priorityById(RH.param('p')),
     amount: 0,
     link: null, // verified {code, students: [{c, n}]}
+    linkShirts: [], // sizes per linked Rocket, in link order
   };
 
   const form = RH.qs('#donate-form');
@@ -20,28 +22,43 @@
   const nextBtn = RH.qs('#next-btn');
   const errorEl = RH.qs('#checkout-error');
 
-  /* Step 3's rows: classroom first, name optional. */
+  /* Step 2's rows: classroom first, name optional, shirts under each. */
   const rows = RH.studentRows({
     rowsEl: RH.qs('#student-rows'),
     addBtn: RH.qs('#add-student'),
     prefix: 'rocket',
+    shirts: true,
     classError: 'Please pick a classroom for this Rocket.',
   });
+
+  /* Shirts in the order: the link's Rockets or the rows. */
+  const shirtCount = () => (state.link ? state.linkShirts : rows.students.map((st) => st.s))
+    .reduce((n, sizes) => n + (sizes ? sizes.length : 0), 0);
+  const shirtCents = () => shirtCount() * SHIRT.price * 100;
+  const giftCents = () => Math.round(state.amount) * 100;
+  const shirtsLabel = () => `${shirtCount()} Rally shirt${shirtCount() === 1 ? '' : 's'}`;
 
   const visibility = () => RH.qs('input[name="visibility"]:checked').value;
 
   /* ---- step 1: priority cards — rendered by the worker; the wiring
      below only checks the chosen one ---- */
 
-  /* ---- step 2: amounts ---- */
-  const feeCents = () => feeCoverCents(Math.round(state.amount) * 100);
+  /* ---- step 3: amounts ---- */
+  const feeCents = () => feeCoverCents(giftCents() + shirtCents());
 
   const feeLabel = RH.qs('#fee-label');
   const feeLabelIdle = feeLabel.textContent; // the HTML's no-amount-yet copy
   const renderFeeLabel = () => {
-    feeLabel.textContent = state.amount > 0
+    feeLabel.textContent = giftCents() + shirtCents() > 0
       ? `Add ${RH.moneyCents(feeCents())} to cover processing fees — 100% of my gift reaches the school.`
       : feeLabelIdle;
+  };
+
+  /* With shirts in the order, a gift on top is optional. */
+  const renderShirtNote = () => {
+    const note = RH.qs('#shirt-note');
+    note.hidden = !shirtCount();
+    note.innerHTML = html`<strong>${shirtsLabel()}</strong> in your order (${RH.moneyCents(shirtCents())}). A gift on top is optional &mdash; leave the amount blank to skip it.`;
   };
 
   /* Designated-gift disclosure, named for the chosen priority. */
@@ -60,10 +77,11 @@
         <span class="impact">${t.impact}</span>
       </button>`)}`;
     renderFeeLabel();
+    renderShirtNote();
     renderRedirectNote();
   };
 
-  /* ---- step 3: the Rockets this gift credits ---- */
+  /* ---- step 2: the Rockets this gift credits, and their shirts ---- */
 
   /* "Ms. Convery’s class" / "Ms. Convery’s & Mr. Zweber’s classes". */
   const classLabel = (ids) => {
@@ -77,6 +95,7 @@
   const linkRooms = () => classLabel(state.link.students.map((st) => st.c));
   const dropLink = () => {
     state.link = null;
+    state.linkShirts = [];
     const banner = RH.qs('.link-banner');
     if (banner) banner.remove();
   };
@@ -96,17 +115,28 @@
         <span class="who">Supporting ${linkNames()}</span>
         <span class="meta">${RH.roomLabels(state.link.students).join(' \u00a0·\u00a0 ')}</span>
       </div>
-      <small class="fine-print">Not who you meant to support? <button type="button" class="linklike" id="clear-link">Remove</button></small>`;
+      <small class="fine-print">Not who you meant to support? <button type="button" class="linklike" id="clear-link">Remove</button></small>
+      ${state.link.students.map((st, i) => RH.shirtPickerMarkup('linked', i, state.linkShirts[i] || [], st.n))}`;
+    holder.querySelectorAll('.shirts').forEach((el, i) => RH.setShirts(el, state.linkShirts[i] || []));
     RH.qs('#clear-link').addEventListener('click', () => {
       dropLink();
       renderDedication();
     });
   };
+  RH.qs('#link-chip-holder').addEventListener('change', (e) => {
+    const picker = e.target.closest('.shirts');
+    if (!picker) return;
+    state.linkShirts[Number(picker.dataset.row)] = RH.shirtsIn(picker);
+    renderDedication();
+  });
 
   /* ---- step 4: summary ---- */
   const renderSummary = () => {
     const p = state.priority;
-    const parts = [html`<strong>${RH.money(state.amount)}</strong> to <strong>${p ? p.name : ''}</strong>`];
+    const name = p ? p.name : '';
+    const parts = [state.amount > 0
+      ? html`<strong>${RH.money(state.amount)}</strong> to <strong>${name}</strong>${shirtCount() ? html`, plus <strong>${shirtsLabel()}</strong> (${RH.moneyCents(shirtCents())})` : ''}`
+      : html`<strong>${shirtsLabel()}</strong> (${RH.moneyCents(shirtCents())}), ${RH.money(shirtCount() * SHIRT.credit)} of it to <strong>${name}</strong>`];
     if (state.link) {
       const rooms = linkRooms();
       parts.push(html`. Supporting <strong>${linkNames()}</strong>${rooms ? ` (${rooms})` : ''}.`);
@@ -115,10 +145,9 @@
       parts.push(rooms ? html`. Credited to <strong>${rooms}</strong>.` : '.');
     }
     // Full price disclosure before Stripe: the fee cover and the total.
-    if (coverFees()) {
-      const gift = Math.round(state.amount) * 100;
-      parts.push(html` You’re adding <strong>${RH.moneyCents(feeCents())}</strong> to cover processing fees &mdash; <strong>${RH.moneyCents(gift + feeCents())}</strong> total.`);
-    }
+    const fee = coverFees() ? feeCents() : 0;
+    if (fee) parts.push(html` You’re adding <strong>${RH.moneyCents(fee)}</strong> to cover processing fees.`);
+    if (fee || shirtCount()) parts.push(html` <strong>${RH.moneyCents(giftCents() + shirtCents() + fee)}</strong> total.`);
     RH.qs('#summary-text').innerHTML = html`${parts}`;
   };
 
@@ -137,8 +166,8 @@
       ? 'Continue to payment <span class="arrow" aria-hidden="true">→</span>'
       : 'Next <span class="arrow" aria-hidden="true">→</span>';
     errorEl.hidden = true;
-    if (state.step === 2) renderAmounts();
-    if (state.step === 3) renderDedication();
+    if (state.step === 2) renderDedication();
+    if (state.step === 3) renderAmounts();
     if (state.step === 4) renderSummary();
     window.scrollTo({ top: 0, behavior: 'auto' });
   };
@@ -155,7 +184,15 @@
         return false;
       }
     }
-    if (state.step === 2) {
+    if (state.step === 2 && !state.link) {
+      // A name with no classroom can't be credited, and a shirt needs
+      // the Rocket's name — say so, per row.
+      if (!rows.validate((st) => ({
+        c: !!(st.n.trim() || st.s.length) && !st.c,
+        n: !!st.s.length && !st.n.trim(),
+      }))) return false;
+    }
+    if (state.step === 3) {
       const custom = Number(RH.qs('#custom-amount').value);
       if (!state.amount && custom > 0) state.amount = custom;
       state.amount = Math.round(state.amount);
@@ -165,11 +202,8 @@
       RH.qs('#custom-field .error').textContent = overMax
         ? `Online gifts max out at ${RH.money(MAX_AMOUNT)}.`
         : 'Please pick an amount or enter your own.';
-      if (invalid('#custom-field', overMax || !(state.amount > 0))) return false;
-    }
-    if (state.step === 3 && !state.link) {
-      // A name with no classroom can't be credited — say so, per row.
-      if (!rows.validate((st) => ({ c: !!st.n.trim() && !st.c }))) return false;
+      // Shirts alone are a complete order.
+      if (invalid('#custom-field', overMax || !(state.amount > 0 || shirtCount()))) return false;
     }
     if (state.step === 4) {
       const name = RH.qs('#donor-name').value.trim();
@@ -191,6 +225,7 @@
       priority: state.priority.id,
       amount: state.amount,
       link: state.link ? state.link.code : '',
+      shirts: state.linkShirts,
       students: rows.students,
       visibility: visibility(),
       donorName: RH.qs('#donor-name').value.trim(),
@@ -258,7 +293,7 @@
   RH.qs('#custom-amount').max = MAX_AMOUNT;
   RH.qs('#donor-name').maxLength = MAX_NAME;
   /* A ?p= arrival (home-page tile, or Stripe's cancel URL) has already
-     chosen a priority — check its card and start on the amount step;
+     chosen a priority — check its card and start on the Rocket step;
      Back still reaches the cards with that choice checked. */
   if (state.priority) {
     RH.qs(`input[name="priority"][value="${state.priority.id}"]`).checked = true;
@@ -280,7 +315,7 @@
       const rooms = linkRooms();
       RH.qs('.flow-header').insertAdjacentHTML('beforeend',
         html`<p class="link-banner">Supporting <strong>${linkNames()}</strong>${rooms ? html` &middot; ${rooms}` : ''}</p>`);
-      if (state.step === 3) renderDedication();
+      if (state.step === 2) renderDedication();
       if (state.step === 4) renderSummary(); // a slow verify can land after the donor advanced
     }).catch(linkFailed);
   }

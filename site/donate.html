@@ -23,8 +23,8 @@
 
   <ol class="stepper wrap-narrow" aria-label="Donation steps">
     <li data-step="1"><span class="dot"></span><small class="s-label">Priority</small></li>
-    <li data-step="2"><span class="dot"></span><small class="s-label">Amount</small></li>
-    <li data-step="3"><span class="dot"></span><small class="s-label">Your Rocket</small></li>
+    <li data-step="2"><span class="dot"></span><small class="s-label">Your Rocket</small></li>
+    <li data-step="3"><span class="dot"></span><small class="s-label">Amount</small></li>
     <li data-step="4"><span class="dot"></span><small class="s-label">Thanks</small></li>
   </ol>
 
@@ -36,8 +36,21 @@
     </section>
 
     <section class="flow-panel" data-panel="2" hidden>
+      <h2>Cheering for a Rocket? <span class="optional-note">(optional)</span></h2>
+      <p class="hint">Every gift counts for your Rocket and their class &mdash; and a Rally shirt does too.</p>
+
+      <div id="link-chip-holder" hidden></div>
+
+      <div id="manual-dedication">
+        <div id="student-rows"></div>
+        <button type="button" class="btn secondary small" id="add-student">+ Add another Rocket</button>
+      </div>
+    </section>
+
+    <section class="flow-panel" data-panel="3" hidden>
       <h2>How much feels right?</h2>
       <p class="hint">Any amount is appreciated and makes an impact!</p>
+      <p class="hint" id="shirt-note" hidden></p>
       <div class="amount-grid" id="amount-grid"></div>
       <div class="field" id="custom-field">
         <label for="custom-amount">Or choose your own amount</label>
@@ -49,17 +62,6 @@
         <span id="fee-label">Add a little extra to cover processing fees &mdash; 100% of my gift reaches the school.</span>
       </label>
       <small class="fine-print redirect-note" id="redirect-note"></small>
-    </section>
-
-    <section class="flow-panel" data-panel="3" hidden>
-      <h2>Cheering for a Rocket? <span class="optional-note">(optional)</span></h2>
-
-      <div id="link-chip-holder" hidden></div>
-
-      <div id="manual-dedication">
-        <div id="student-rows"></div>
-        <button type="button" class="btn secondary small" id="add-student">+ Add another Rocket</button>
-      </div>
     </section>
 
     <section class="flow-panel" data-panel="4" hidden>

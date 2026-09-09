@@ -15,6 +15,31 @@ const ORG = {
 const MAX_NAME = 80;      // characters, donor and student names
 const MAX_AMOUNT = 50000; // dollars, per gift
 const MAX_STUDENTS = 4;   // Rockets credited per gift, and per family link
+const MAX_SHIRTS = 10;    // shirts per checkout
+
+/* The Rally shirt, an add-on under each Rocket on the donate form. A
+   family pays `price`; `credit` of it counts as fundraising for that
+   Rocket and their classroom (the rest is the shirt), and `value` is
+   the good-faith fair-market value the receipt states, the part of
+   the payment a donor may not deduct (IRS Pub 1771). */
+const SHIRT = {
+  price: 20,
+  credit: 10,
+  value: 10,
+  sizes: [
+    { id: 'YXS', label: 'Youth XS' },
+    { id: 'YS', label: 'Youth S' },
+    { id: 'YM', label: 'Youth M' },
+    { id: 'YL', label: 'Youth L' },
+    { id: 'YXL', label: 'Youth XL' },
+    { id: 'AS', label: 'Adult S' },
+    { id: 'AM', label: 'Adult M' },
+    { id: 'AL', label: 'Adult L' },
+    { id: 'AXL', label: 'Adult XL' },
+    { id: 'A2XL', label: 'Adult 2XL' },
+  ],
+};
+const shirtSizeById = (id) => SHIRT.sizes.find((z) => z.id === id) || null;
 
 /* Optional donor-paid fee cover, shared by the worker (authoritative)
    and the donate form (display). The gross-up finds the extra cents so
@@ -249,8 +274,8 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     ORG, PRIORITIES, SUPPORT_ALL, CAMPAIGN, CLASSROOMS, PARTNER_TIERS, PARTNERS,
     ANNUAL_LEVELS,
-    MAX_NAME, MAX_AMOUNT, MAX_STUDENTS, feeCoverCents,
-    priorityById, classroomById, partnerTierById, annualLevelById, gradeName,
+    MAX_NAME, MAX_AMOUNT, MAX_STUDENTS, MAX_SHIRTS, SHIRT, feeCoverCents,
+    priorityById, classroomById, partnerTierById, annualLevelById, gradeName, shirtSizeById,
     priorityTarget, presentingPartner,
   };
 }

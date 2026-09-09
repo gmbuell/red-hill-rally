@@ -5,23 +5,30 @@
    run_worker_first in wrangler.jsonc. */
 
 import { createLink, resolveLink } from './links.js';
-import { normalizeStudents } from './students.js';
+import { normalizeStudents, shirtsMetadata } from './students.js';
 import { createCheckoutSession, verifyWebhook } from './stripe.js';
-import { recordDonation, campaignStats, boardStats, exportCsv } from './store.js';
+import { recordDonation, campaignStats, boardStats, studentsCsv, shirtsCsv, classroomsCsv } from './store.js';
 import { renderPage } from './pages.js';
 import data from '../site/js/data.js';
+import ui from '../site/js/ui.js';
 
-const { ORG, MAX_NAME, MAX_AMOUNT, feeCoverCents, priorityById, partnerTierById } = data;
+const { moneyCents } = ui;
+const { ORG, MAX_NAME, MAX_AMOUNT, SHIRT, feeCoverCents, priorityById, partnerTierById } = data;
 
 /* The charge description prints on every Stripe receipt, making it the
-   donor's IRS written acknowledgment (Pub 1771): org name + the
-   no-goods-or-services statement; amount and date are on the receipt
-   itself. Required for donors to deduct gifts of $250+ — edit with
-   care. */
-const TAX_ACKNOWLEDGMENT =
-  `Tax-deductible donation to ${ORG.name}` +
-  (ORG.ein ? ` (EIN ${ORG.ein})` : '') +
-  '. No goods or services were provided in exchange for this contribution.';
+   donor's IRS written acknowledgment (Pub 1771): org name, and either
+   the no-goods-or-services statement or, when the payment bought
+   shirts, their description and good-faith value with the deductible
+   remainder; date is on the receipt itself. Required for donors to
+   deduct gifts of $250+ — edit with care. */
+const TAX_ACKNOWLEDGMENT = (totalCents, shirts) => {
+  const org = `Tax-deductible donation to ${ORG.name}${ORG.ein ? ` (EIN ${ORG.ein})` : ''}.`;
+  if (!shirts) return `${org} No goods or services were provided in exchange for this contribution.`;
+  const value = shirts * SHIRT.value * 100;
+  return `${org} Of this ${moneyCents(totalCents)} payment, ${moneyCents(value)} is the estimated fair market value of ` +
+    `${shirts} Rocket Rally shirt${shirts === 1 ? '' : 's'} provided in return; ` +
+    `the remaining ${moneyCents(totalCents - value)} is a contribution for which no other goods or services were provided.`;
+};
 
 const json = (body, status = 200, headers = {}) =>
   new Response(JSON.stringify(body), {
@@ -68,17 +75,19 @@ async function handleLinkVerify(request, env) {
    voluntary fee cover (computed here, never client-side — the webhook
    subtracts fee_cents back out so stats count the gift), the receipt
    description, and the hand-off to Stripe's page. */
-const startCheckout = async (env, { amountCents, coverFees, productName, successUrl, cancelUrl, metadata }) => {
+const startCheckout = async (env, { amountCents, shirts = 0, coverFees, productName, successUrl, cancelUrl, metadata }) => {
   if (!env.STRIPE_SECRET_KEY) {
     return json({ error: 'Online giving isn’t quite open yet — please check back soon!' }, 503);
   }
-  const feeCents = coverFees === true ? feeCoverCents(amountCents) : 0;
+  const lineItems = [];
+  if (amountCents > 0) lineItems.push({ name: productName, cents: amountCents });
+  if (shirts > 0) lineItems.push({ name: 'Rocket Rally shirt', cents: SHIRT.price * 100, quantity: shirts });
+  const charged = amountCents + shirts * SHIRT.price * 100;
+  const feeCents = coverFees === true ? feeCoverCents(charged) : 0;
+  if (feeCents > 0) lineItems.push({ name: 'Covering processing fees', cents: feeCents });
   const session = await createCheckoutSession(env, {
-    amountCents,
-    productName,
-    feeCents,
-    feeName: 'Covering processing fees',
-    description: TAX_ACKNOWLEDGMENT,
+    lineItems,
+    description: TAX_ACKNOWLEDGMENT(charged + feeCents, shirts),
     successUrl,
     cancelUrl,
     metadata: { ...metadata, fee_cents: String(feeCents) },
@@ -96,8 +105,10 @@ async function handleCheckout(request, env, url) {
   const priority = priorityById(body.priority);
   if (!priority) return json({ error: 'Please pick a priority to fund.' }, 400);
 
+  // $0 is allowed for a shirt-only order; that is checked once the
+  // Rockets and their shirts are known.
   const amount = Number(body.amount);
-  if (!Number.isInteger(amount) || amount < 1 || amount > MAX_AMOUNT) {
+  if (!Number.isInteger(amount) || amount < 0 || amount > MAX_AMOUNT) {
     return json({ error: `Please choose a whole-dollar amount between $1 and $${MAX_AMOUNT.toLocaleString('en-US')}.` }, 400);
   }
 
@@ -109,37 +120,45 @@ async function handleCheckout(request, env, url) {
 
   // The Rockets this gift credits: from the link if there is one,
   // otherwise the wizard's rows (validated here, never trusted).
-  let students;
+  let raw = body.students;
   let viaLink = false;
   if (body.link) {
-    students = await linkStudents(env.DB, body.link);
-    if (!students) {
+    const linked = await linkStudents(env.DB, body.link);
+    if (!linked) {
       // `reason` lets the wizard drop the dead link and show the rows.
       return json({ error: 'That student link is no longer valid — you can still type the student’s name on the previous step.', reason: 'link' }, 400);
     }
+    // The wizard's shirt sizes arrive in link order, one list per Rocket.
+    const shirts = Array.isArray(body.shirts) ? body.shirts : [];
+    raw = linked.map((st, i) => ({ ...st, s: shirts[i] }));
     viaLink = true;
-  } else {
-    const norm = normalizeStudents(body.students);
-    if (norm.error) return json({ error: norm.error }, 400);
-    students = norm.students;
+  }
+  const norm = normalizeStudents(raw);
+  if (norm.error) return json({ error: norm.error }, 400);
+  const students = norm.students;
+  const shirts = students.reduce((n, st) => n + (st.s ? st.s.length : 0), 0);
+  if (!amount && !shirts) {
+    return json({ error: 'Please choose a gift amount, or add a Rally shirt.' }, 400);
   }
   // Stripe caps a metadata value at 500 characters. Four 80-character
   // names fit (~425) unless a name is mostly quotes and backslashes.
-  const studentsJson = JSON.stringify(students);
+  const studentsJson = JSON.stringify(students.map(({ c, n }) => ({ c, n })));
   if (studentsJson.length > 500) {
     return json({ error: 'Please shorten the student names.' }, 400);
   }
 
   return startCheckout(env, {
     amountCents: amount * 100,
+    shirts,
     coverFees: body.coverFees,
     productName: `Rocket Rally — ${priority.name}`,
-    successUrl: `${url.origin}/thanks?p=${priority.id}&amt=${amount}&sid={CHECKOUT_SESSION_ID}`,
+    successUrl: `${url.origin}/thanks?p=${priority.id}&amt=${amount}&shirts=${shirts}&sid={CHECKOUT_SESSION_ID}`,
     // Backing out of Stripe returns to the wizard with the link intact.
     cancelUrl: `${url.origin}/donate?p=${priority.id}${viaLink ? `&link=${encodeURIComponent(body.link)}` : ''}`,
     metadata: {
       priority: priority.id,
       students: studentsJson,
+      shirts: shirtsMetadata(students),
       donor_name: donorName,
       visibility,
       employer_match: body.match ? '1' : '0',
@@ -282,19 +301,22 @@ async function handleWebhook(request, env) {
   return json({ received: true });
 }
 
-/* Prefer `Authorization: Bearer <ADMIN_KEY>` — the ?key= form works too
-   but leaves the key in browser history and logged request URLs. */
-async function handleExport(request, url, env) {
+/* The PTA's reports. Prefer `Authorization: Bearer <ADMIN_KEY>` — the
+   ?key= form works too but leaves the key in browser history and
+   logged request URLs. */
+const REPORTS = { students: studentsCsv, shirts: shirtsCsv, classrooms: classroomsCsv };
+
+async function handleReport(request, url, env, name) {
   const auth = request.headers.get('authorization') || '';
   const key = (auth.startsWith('Bearer ') ? auth.slice(7) : '') ||
     url.searchParams.get('key') || '';
   if (!env.ADMIN_KEY || !(await timingSafeStringEqual(key, env.ADMIN_KEY))) {
     return json({ error: 'unauthorized' }, 401);
   }
-  return new Response(await exportCsv(env.DB), {
+  return new Response(await REPORTS[name](env.DB), {
     headers: {
       'content-type': 'text/csv; charset=utf-8',
-      'content-disposition': 'attachment; filename="rocket-rally-students.csv"',
+      'content-disposition': `attachment; filename="rocket-rally-${name}.csv"`,
     },
   });
 }
@@ -370,7 +392,10 @@ export default {
         case 'POST /api/partner/checkout': return await handlePartnerCheckout(request, env, url);
         case 'POST /api/partner/logo': return await handleLogoUpload(request, env, url);
         case 'POST /api/stripe/webhook': return await handleWebhook(request, env);
-        case 'GET /api/export.csv': return await handleExport(request, url, env);
+        case 'GET /api/students.csv':
+        case 'GET /api/shirts.csv':
+        case 'GET /api/classrooms.csv':
+          return await handleReport(request, url, env, url.pathname.slice(5, -4));
         default: return json({ error: 'not found' }, 404);
       }
     } catch (err) {

@@ -8,7 +8,7 @@
    worker bundle. */
 const DATA = typeof module !== 'undefined' && module.exports
   ? require('./data.js')
-  : { CLASSROOMS, classroomById, MAX_NAME, MAX_STUDENTS };
+  : { CLASSROOMS, classroomById, MAX_NAME, MAX_STUDENTS, SHIRT };
 
 const RH = (() => {
 
@@ -63,12 +63,36 @@ const RH = (() => {
 
   const classId = (prefix, i) => `${prefix}-class-${i}`;
   const nameId = (prefix, i) => `${prefix}-name-${i}`;
+  const shirtId = (prefix, i, k) => `${prefix}-shirt-${i}-${k}`;
+
+  /* A Rocket's shirts: one select per shirt chosen plus an empty one
+     for the next, so a family can take a youth and an adult size for
+     the same kid. `who` names the Rocket when the row doesn't (link
+     mode). Selects are set after render, like the classroom. */
+  const shirtPickerMarkup = (prefix, i, sizes, who = '') => html`
+      <div class="shirts" data-row="${i}">
+        ${[...sizes, ''].map((size, k) => html`
+        <div class="field shirt">
+          <label for="${shirtId(prefix, i, k)}">${size ? 'Rally shirt' : `Add a${sizes.length ? 'nother' : ''} Rally shirt${who ? ` for ${who}` : ''}`} <span class="optional">&middot; ${money(DATA.SHIRT.price)}</span></label>
+          <select id="${shirtId(prefix, i, k)}" data-field="s">
+            <option value="">${size ? 'Remove this shirt' : 'No shirt, thanks'}</option>
+            ${DATA.SHIRT.sizes.map((z) => html`<option value="${z.id}">${z.label}</option>`)}
+          </select>
+        </div>`)}
+        <small class="fine-print">Recommend sizing up. Shirts run small.</small>
+      </div>`;
+
+  /* A picker's chosen sizes, read back from its selects. */
+  const shirtsIn = (rowEl) =>
+    [...rowEl.querySelectorAll('[data-field="s"]')].map((el) => el.value).filter(Boolean);
+  const setShirts = (rowEl, sizes) =>
+    rowEl.querySelectorAll('[data-field="s"]').forEach((el, k) => { el.value = sizes[k] || ''; });
 
   /* Markup for a list of Rocket rows — classroom + name — shared by the
      donate wizard (classroom first, name optional) and the Student Link
      page (name first, required); the worker renders the link page's
      first row with it. */
-  const studentRowsMarkup = (students, { prefix, nameFirst = false, classError, nameError = '' }) => {
+  const studentRowsMarkup = (students, { prefix, nameFirst = false, shirts = false, classError, nameError = '' }) => {
     const classField = (i) => html`
         <div class="field">
           <label for="${classId(prefix, i)}">Classroom</label>
@@ -88,6 +112,7 @@ const RH = (() => {
       <div class="student-row" data-row="${i}">
         ${nameFirst ? [nameField(i), classField(i)] : [classField(i), nameField(i)]}
         ${students.length > 1 ? html`<button type="button" class="linklike remove-student">Remove</button>` : ''}
+        ${shirts ? shirtPickerMarkup(prefix, i, st.s || []) : ''}
       </div>`)}`;
   };
 
@@ -124,12 +149,13 @@ const RH = (() => {
      and returns whether every row passed. */
   const studentRows = ({ rowsEl, addBtn, ...shape }) => {
     const { prefix, nameFirst = false } = shape;
-    const students = [{ c: '', n: '' }];
+    const students = [{ c: '', n: '', s: [] }];
     const render = () => {
       rowsEl.innerHTML = studentRowsMarkup(students, shape);
       students.forEach((st, i) => {
         qs(`#${classId(prefix, i)}`).value = st.c;
         qs(`#${nameId(prefix, i)}`).value = st.n;
+        if (shape.shirts) setShirts(qs(`.shirts[data-row="${i}"]`), st.s);
       });
       addBtn.hidden = students.length >= DATA.MAX_STUDENTS;
     };
@@ -137,7 +163,15 @@ const RH = (() => {
       const row = e.target.closest('.student-row');
       const field = e.target.dataset.field;
       if (!row || !field) return;
-      students[Number(row.dataset.row)][field] = e.target.value;
+      const st = students[Number(row.dataset.row)];
+      if (field === 's') {
+        // Re-render so a chosen size grows the list and a cleared one
+        // drops out; the empty slot is always last.
+        st.s = shirtsIn(row);
+        render();
+        return;
+      }
+      st[field] = e.target.value;
       e.target.closest('.field').classList.remove('invalid');
     };
     rowsEl.addEventListener('input', onEdit);
@@ -150,7 +184,7 @@ const RH = (() => {
     });
     addBtn.addEventListener('click', () => {
       if (students.length >= DATA.MAX_STUDENTS) return;
-      students.push({ c: '', n: '' });
+      students.push({ c: '', n: '', s: [] });
       render();
       qs(`#${(nameFirst ? nameId : classId)(prefix, students.length - 1)}`).focus();
     });
@@ -215,7 +249,7 @@ const RH = (() => {
 
   return {
     html, raw, money, moneyCents, nameList, roomLabels,
-    classroomOptions, studentRowsMarkup, LINK_ROWS, dartUp,
+    classroomOptions, studentRowsMarkup, shirtPickerMarkup, shirtsIn, setShirts, LINK_ROWS, dartUp,
     qs, param, postJson, studentRows, checkout,
   };
 })();

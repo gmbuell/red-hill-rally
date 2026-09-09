@@ -23,7 +23,7 @@ two-sentence pointer; this file is the operating manual.
 | `npm install` | wrangler, vitest + workers pool, lighthouse |
 | `npx wrangler d1 migrations apply red-hill-rally --local` | once per clone: local D1 schema |
 | `npm run dev` | `wrangler dev` on http://localhost:8787 |
-| `npm test` | vitest (91 tests, ~3 s) |
+| `npm test` | vitest (106 tests, ~4 s) |
 | `npm run audit` | Lighthouse on every page, mobile + desktop (needs Chrome); defaults to the live site (`npm run audit -- --url http://localhost:8787` for local). `--runs 3 --min 98` reproduces the CI gate, `--form mobile` limits it to one form factor |
 | `npm run wcag` | WCAG 2.2 checks on every page, mobile + desktop (needs Chrome): text contrast, non-text contrast, focus rings, target size, body leading ≥ 1.5, body text ≥ 16px and labels ≥ 13px. Defaults to the live site (`npm run wcag -- --url http://localhost:8787` for local, `--page donate --form mobile` to narrow). Each cell shows how many elements the check examined |
 | `npm run deploy` | **Ships to production**: the worker and every file under `site/`. The `predeploy` step runs the tests, then applies pending D1 migrations to the remote database, so schema and code ship together. Every push to `main` runs this through Cloudflare Workers Builds (dashboard → the worker → Settings → Build), so merging a PR deploys it |
@@ -68,7 +68,8 @@ secrets; the maintainer reviews and ships PRs.
   mints adjective-animal codes.
 - `migrations/` — numbered D1 migrations. D1 tables: `donations` (id =
   Stripe session id, primary key), `donation_students` (one row per
-  credited Rocket), `links` (code → students JSON + signature).
+  credited Rocket, with that Rocket's shirt sizes), `links` (code →
+  students JSON + signature).
 - `test/` — vitest on `@cloudflare/vitest-pool-workers`; migrations are
   read from disk and re-applied before each test.
 - `seed/demo-donations.sql` — prototype-scale demo donations on the
@@ -93,8 +94,11 @@ secrets; the maintainer reviews and ships PRs.
 - The classroom race ranks by participation (gifts ÷ class size),
   never dollars.
 - Money is decided server-side: the worker computes the fee cover from
-  the `coverFees` boolean, and every stat counts `amount_cents` (the
-  gift), never `fee_cents`.
+  the `coverFees` boolean and prices shirts from `SHIRT` in `data.js`,
+  and every stat counts `amount_cents` (the gift plus each shirt's
+  `credit`), never `fee_cents` or the rest of a shirt's price.
+- A shirt needs a named Rocket, and a shirt alone is a complete order:
+  `amount` may be 0 when the order holds a shirt.
 - The webhook records only sessions carrying this site's metadata
   (`priority` or `kind=partner`) with `payment_status=paid`; inserts
   are idempotent on the session id.
@@ -155,7 +159,9 @@ secrets; the maintainer reviews and ships PRs.
   addition must be elementary-school-safe in every adjective+animal
   pairing.
 - `TAX_ACKNOWLEDGMENT` in `worker/index.js` is the donors' IRS written
-  acknowledgment. Change the wording with care.
+  acknowledgment; with shirts in the order it states their good-faith
+  value (`SHIRT.value`) and the deductible remainder. Change the
+  wording with care.
 - Stripe caps a metadata value at 500 characters; the students JSON is
   checked against that in checkout.
 
@@ -210,24 +216,31 @@ flip to live, in this order:
 
 ## Operations
 
-- **Student sheet** (what each class and each Rocket has raised) —
-  the key is `ADMIN_KEY` in `.dev.vars`:
+- **Reports** — three CSVs behind the key `ADMIN_KEY` in `.dev.vars`:
 
   ```sh
   curl -H "Authorization: Bearer <ADMIN_KEY>" \
-    https://rocketrally.org/api/export.csv > students.csv
+    https://rocketrally.org/api/students.csv > students.csv
   ```
 
-  `…/api/export.csv?key=<ADMIN_KEY>` also works in a browser but
-  leaves the key in history and request logs. Columns are grade,
-  teacher, student, gifts, raised: every roster classroom lists its
-  Rockets, biggest first, then a `Class total` row. A gift naming
-  several kids counts once for each and splits its dollars evenly;
-  family gifts that named no Rocket sit in a last `No Rocket named`
-  row so the sheet adds up to the board. Partnerships are left out.
-  Donor contact details stay in the backend: read them in the Stripe
-  dashboard, and find employer-match follow-ups with
-  `employer_match = 1` in D1.
+  and likewise `classrooms.csv` and `shirts.csv`. `…?key=<ADMIN_KEY>`
+  also works in a browser but leaves the key in history and request
+  logs. Partnerships and donor details are left out of all three;
+  read donor contact details in the Stripe dashboard, and find
+  employer-match follow-ups with `employer_match = 1` in D1.
+  - *students.csv* (the shout-out sheet): grade, teacher, student,
+    gifts, raised; each classroom's Rockets in roster order, biggest
+    first. A gift naming several kids counts once for each and splits
+    its dollars evenly, and each shirt's credit goes to its own
+    Rocket; family gifts that named no Rocket sit in a last
+    `No Rocket named` row so the sheet adds up to the board.
+  - *classrooms.csv* (the marquee sheet): grade, teacher, students
+    (class size), gifts, participation_pct, raised, shirts; every
+    roster classroom, zeros included.
+  - *shirts.csv* (for the printer): grade, teacher, student, size,
+    quantity; one row per Rocket and size, merged across orders.
+- **Shirts** — price, fundraising credit, receipt value, and sizes
+  are `SHIRT` in `site/js/data.js`; `MAX_SHIRTS` caps an order.
 - **Goals, copy, tiers, roster, partners** — edit `site/js/data.js`
   (page copy lives in the HTML files); redeploy. The campaign goal is
   the ticker figure; a priority's goal is its annual program cost and

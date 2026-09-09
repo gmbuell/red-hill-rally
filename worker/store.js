@@ -8,8 +8,9 @@
    Stripe dashboard). */
 
 import data from '../site/js/data.js';
+import { shirtsFromMetadata } from './students.js';
 
-const { CAMPAIGN, CLASSROOMS, PRIORITIES, SUPPORT_ALL, priorityById, classroomById, MAX_STUDENTS } = data;
+const { CAMPAIGN, CLASSROOMS, PRIORITIES, SUPPORT_ALL, SHIRT, priorityById, classroomById, shirtSizeById, MAX_STUDENTS } = data;
 
 /* A session's Rockets: the `students` JSON our checkout stamps into
    metadata (a partnership carries none). */
@@ -31,10 +32,14 @@ export async function recordDonation(db, session, createdSec) {
   const md = session.metadata || {};
   const cd = session.customer_details || {};
   const addr = cd.address || {};
-  // amount_cents is the intended gift: the charge total minus the
-  // opt-in fee cover our checkout endpoint stamped into metadata.
-  // Every stat (campaign, board, circles) counts the gift alone.
+  // amount_cents is the fundraising: the charge total minus the opt-in
+  // fee cover our checkout endpoint stamped into metadata, minus the
+  // part of each shirt that is the shirt. Every stat (campaign, board,
+  // circles) counts that alone.
   const total = session.amount_total || 0;
+  const shirts = shirtsFromMetadata(md.shirts);
+  const shirtCount = Object.values(shirts).reduce((n, sizes) => n + sizes.length, 0);
+  const shirtCost = shirtCount * (SHIRT.price - SHIRT.credit) * 100;
   const feeCents = Math.min(Math.max(Number(md.fee_cents) || 0, 0), total);
   const gift = db.prepare(`
     INSERT INTO donations
@@ -45,7 +50,7 @@ export async function recordDonation(db, session, createdSec) {
     ON CONFLICT(id) DO NOTHING`)
     .bind(
       session.id,
-      total - feeCents,
+      Math.max(total - feeCents - shirtCost, 0),
       feeCents,
       md.priority || '',
       md.partner_tier || '',
@@ -66,8 +71,8 @@ export async function recordDonation(db, session, createdSec) {
   // One row per Rocket. The (donation_id, position) key makes Stripe's
   // webhook retries no-ops here, as ON CONFLICT does for the gift.
   const credits = studentsFromMetadata(md).map((s, i) => db.prepare(`
-    INSERT OR IGNORE INTO donation_students (donation_id, position, classroom, student_name)
-    VALUES (?1, ?2, ?3, ?4)`).bind(session.id, i, s.c, s.n));
+    INSERT OR IGNORE INTO donation_students (donation_id, position, classroom, student_name, shirts)
+    VALUES (?1, ?2, ?3, ?4, ?5)`).bind(session.id, i, s.c, s.n, (shirts[i] || []).join(',')));
   await db.batch([gift, ...credits]);
 }
 
@@ -159,74 +164,120 @@ export async function boardStats(db) {
   return { campaign: campaignShape(totals), classrooms, donors, partners: partnerShape(partnerRows) };
 }
 
-/* The PTA's student sheet (admin-only): what each classroom and each
-   Rocket has raised, one row per student under their class and a
-   class-total row after each. Every roster classroom appears, so a
-   class with nothing yet shows a zero. */
-export async function exportCsv(db) {
-  const [credits, uncredited] = await db.batch([
-    // Joined so a gift deleted by hand (refund, the go-live wipe)
-    // takes its classroom credits with it.
-    db.prepare(`SELECT s.donation_id, s.classroom, s.student_name, d.amount_cents
-                FROM donation_students s JOIN donations d ON d.id = s.donation_id
-                ORDER BY d.created, d.id, s.position`),
-    // Family gifts that named no Rocket, so the sheet still adds up to
-    // the board. Partnerships are not family fundraising and stay out.
-    db.prepare(`SELECT COUNT(*) AS gifts, COALESCE(SUM(amount_cents), 0) AS cents
-                FROM donations d WHERE partner_tier = ''
-                AND NOT EXISTS (SELECT 1 FROM donation_students s WHERE s.donation_id = d.id)`),
-  ]);
+/* ---- the PTA's reports (admin-only) ---- */
 
-  // A gift naming several Rockets counts once for each (as the race
-  // does) and splits its dollars evenly, so class totals stay real
-  // money; leftover cents go to the first named.
-  const rocketsPerGift = {};
-  for (const c of credits.results) rocketsPerGift[c.donation_id] = (rocketsPerGift[c.donation_id] || 0) + 1;
+const cell = (value) => {
+  let s = String(value == null ? '' : value);
+  // Student names are attacker-supplied and these files' purpose is to
+  // be opened in Excel/Sheets — neutralize formula-leading characters.
+  if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+  return `"${s.replace(/"/g, '""')}"`;
+};
+const dollars = (cents) => (cents / 100).toFixed(2);
+const csv = (header, rows) =>
+  '﻿' + [header, ...rows.map((r) => r.map(cell).join(','))].join('\n') + '\n'; // BOM so Excel reads UTF-8 names
+
+/* Roster order, then any classroom the roster no longer lists. */
+const roomOrder = (seen) => {
+  const known = CLASSROOMS.map((r) => r.id);
+  return [...known, ...Object.keys(seen).filter((id) => !known.includes(id))]
+    .map((id) => classroomById(id) || { id, grade: '', teacher: id, students: 0 });
+};
+
+/* Every Rocket credit with its gift: joined so a gift deleted by hand
+   (refund, the go-live wipe) takes its classroom credits with it.
+   Partnerships carry no credits and stay out. */
+const creditsStmt = (db) => db.prepare(`
+  SELECT s.donation_id, s.classroom, s.student_name, s.shirts, d.amount_cents
+  FROM donation_students s JOIN donations d ON d.id = s.donation_id
+  ORDER BY d.created, d.id, s.position`);
+
+/* Credits -> classroom id -> lowercase name -> { name, gifts, cents,
+   shirts }. A gift naming several Rockets counts once for each (as the
+   race does) and splits its dollars evenly, so class totals stay real
+   money; each shirt's share goes to its own Rocket first, and leftover
+   cents go to the first named. */
+const tally = (credits) => {
+  const perGift = {};
+  for (const c of credits) {
+    const g = (perGift[c.donation_id] ||= { rockets: 0, shirts: 0 });
+    g.rockets += 1;
+    g.shirts += c.shirts ? c.shirts.split(',').length : 0;
+  }
   const handedOut = {};
-  const rooms = {}; // classroom id -> lowercase name -> { name, gifts, cents }
-  for (const c of credits.results) {
-    const n = rocketsPerGift[c.donation_id];
+  const rooms = {};
+  for (const c of credits) {
+    const g = perGift[c.donation_id];
     const i = handedOut[c.donation_id] = (handedOut[c.donation_id] || 0) + 1;
-    const share = Math.floor(c.amount_cents / n) + (i <= c.amount_cents % n ? 1 : 0);
+    const own = c.shirts ? c.shirts.split(',').length : 0;
+    const gift = c.amount_cents - g.shirts * SHIRT.credit * 100;
+    const share = Math.floor(gift / g.rockets) + (i <= gift % g.rockets ? 1 : 0) + own * SHIRT.credit * 100;
     // Grandparents and parents spell a kid differently; keep the first
     // spelling seen and merge the rest.
     const name = c.student_name.trim();
     const room = (rooms[c.classroom] ||= {});
-    const student = (room[name.toLowerCase()] ||= { name: name || '(no name given)', gifts: 0, cents: 0 });
+    const student = (room[name.toLowerCase()] ||= { name: name || '(no name given)', gifts: 0, cents: 0, shirts: 0 });
     student.gifts += 1;
     student.cents += share;
+    student.shirts += own;
   }
+  return rooms;
+};
 
-  const cell = (value) => {
-    let s = String(value == null ? '' : value);
-    // Student names are attacker-supplied and this file's purpose is to
-    // be opened in Excel/Sheets — neutralize formula-leading characters.
-    if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
-    return `"${s.replace(/"/g, '""')}"`;
-  };
-  const dollars = (cents) => (cents / 100).toFixed(2);
-  const rows = ['grade,teacher,student,gifts,raised'];
-  const line = (...values) => rows.push(values.map(cell).join(','));
-
-  // Roster order, then any classroom the roster no longer lists.
-  const known = CLASSROOMS.map((r) => r.id);
-  const order = [...known, ...Object.keys(rooms).filter((id) => !known.includes(id))];
-  for (const id of order) {
-    const room = classroomById(id);
-    const grade = room ? room.grade : '';
-    const teacher = room ? room.teacher : id;
-    const students = Object.entries(rooms[id] || {}).sort(([ka, a], [kb, b]) =>
+/* The student sheet: what each Rocket has raised, under their class,
+   biggest first. Family gifts that named no Rocket close the sheet so
+   it still adds up to the board. */
+export async function studentsCsv(db) {
+  const [credits, uncredited] = await db.batch([
+    creditsStmt(db),
+    db.prepare(`SELECT COUNT(*) AS gifts, COALESCE(SUM(amount_cents), 0) AS cents
+                FROM donations d WHERE partner_tier = ''
+                AND NOT EXISTS (SELECT 1 FROM donation_students s WHERE s.donation_id = d.id)`),
+  ]);
+  const rooms = tally(credits.results);
+  const rows = [];
+  for (const room of roomOrder(rooms)) {
+    const students = Object.entries(rooms[room.id] || {}).sort(([ka, a], [kb, b]) =>
       (ka === '') - (kb === '') || b.cents - a.cents || b.gifts - a.gifts || a.name.localeCompare(b.name));
-    let gifts = 0;
-    let cents = 0;
-    for (const [, s] of students) {
-      line(grade, teacher, s.name, s.gifts, dollars(s.cents));
-      gifts += s.gifts;
-      cents += s.cents;
-    }
-    line(grade, teacher, 'Class total', gifts, dollars(cents));
+    for (const [, s] of students) rows.push([room.grade, room.teacher, s.name, s.gifts, dollars(s.cents)]);
   }
   const rest = uncredited.results[0];
-  if (rest.gifts) line('', '', 'No Rocket named', rest.gifts, dollars(rest.cents));
-  return '\ufeff' + rows.join('\n') + '\n'; // BOM so Excel reads UTF-8 names
+  if (rest.gifts) rows.push(['', '', 'No Rocket named', rest.gifts, dollars(rest.cents)]);
+  return csv('grade,teacher,student,gifts,raised', rows);
+}
+
+/* The classroom sheet for the marquee: every roster classroom with its
+   participation and dollars, so a class with nothing yet shows a zero. */
+export async function classroomsCsv(db) {
+  const rooms = tally((await creditsStmt(db).all()).results);
+  const rows = roomOrder(rooms).map((room) => {
+    const students = Object.values(rooms[room.id] || {});
+    const sum = (key) => students.reduce((n, s) => n + s[key], 0);
+    const pct = room.students > 0 ? Math.round(Math.min(sum('gifts') / room.students, 1) * 100) : 0;
+    return [room.grade, room.teacher, room.students, sum('gifts'), pct, dollars(sum('cents')), sum('shirts')];
+  });
+  return csv('grade,teacher,students,gifts,participation_pct,raised,shirts', rows);
+}
+
+/* The printer's sheet: each Rocket's shirts by size, merged across
+   orders, in roster then name then size order. */
+export async function shirtsCsv(db) {
+  const credits = (await creditsStmt(db).all()).results.filter((c) => c.shirts);
+  const rooms = {};
+  for (const c of credits) {
+    const name = c.student_name.trim();
+    const student = ((rooms[c.classroom] ||= {})[name.toLowerCase()] ||= { name, sizes: {} });
+    for (const z of c.shirts.split(',')) student.sizes[z] = (student.sizes[z] || 0) + 1;
+  }
+  const sizeOrder = SHIRT.sizes.map((z) => z.id);
+  const rows = [];
+  for (const room of roomOrder(rooms)) {
+    const students = Object.values(rooms[room.id] || {}).sort((a, b) => a.name.localeCompare(b.name));
+    for (const s of students) {
+      for (const z of sizeOrder.filter((id) => s.sizes[id])) {
+        rows.push([room.grade, room.teacher, s.name, shirtSizeById(z).label, s.sizes[z]]);
+      }
+    }
+  }
+  return csv('grade,teacher,student,size,quantity', rows);
 }

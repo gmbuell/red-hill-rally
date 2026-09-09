@@ -4,6 +4,10 @@
   const { html } = RH;
   const p = priorityById(RH.param('p'));
   const amt = Number(RH.param('amt')) || 0;
+  const shirts = Number(RH.param('shirts')) || 0;
+  const shirtLine = shirts
+    ? html` Your <strong>${shirts} Rally shirt${shirts === 1 ? '' : 's'}</strong> will reach your Rocket at school.`
+    : '';
   const partnerTier = partnerTierById(RH.param('partner'));
   const line = RH.qs('#impact-line');
 
@@ -16,9 +20,11 @@
     const top = p.tiers[p.tiers.length - 1];
     const tier = p.tiers.find((t) => t.amount === amt)
       || (top && top.plus && amt >= top.amount ? top : null);
-    line.innerHTML = tier
+    line.innerHTML = html`${tier
       ? html`Your <strong>${RH.money(amt)}</strong> gift to <strong>${p.sentenceName || p.name}</strong>: ${tier.impact}.`
-      : html`Your <strong>${RH.money(amt)}</strong> is real, visible support for <strong>${p.name}</strong>.`;
+      : html`Your <strong>${RH.money(amt)}</strong> is real, visible support for <strong>${p.name}</strong>.`}${shirtLine}`;
+  } else if (p && shirts) {
+    line.innerHTML = html`<strong>${RH.money(shirts * SHIRT.credit)}</strong> of your shirt order goes to <strong>${p.sentenceName || p.name}</strong>, and counts for your Rocket.${shirtLine}`;
   } else {
     line.textContent =
       'Your gift joins hundreds of families powering the Rally.';
