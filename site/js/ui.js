@@ -104,7 +104,7 @@ const RH = (() => {
         </div>`;
     const nameField = (i) => html`
         <div class="field">
-          <label for="${nameId(prefix, i)}">Student name${nameError ? '' : html` <span class="optional">&middot; optional</span>`}</label>
+          <label for="${nameId(prefix, i)}">Student name</label>
           <input type="text" id="${nameId(prefix, i)}" data-field="n" autocomplete="off" maxlength="${DATA.MAX_NAME}" placeholder="${samplePlaceholder(i)}">
           ${nameError ? html`<p class="error">${nameError}</p>` : ''}
         </div>`;
