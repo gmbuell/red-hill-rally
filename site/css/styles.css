@@ -806,6 +806,18 @@ select:focus-visible,
   max-width: 36rem;
   margin-bottom: 2rem;
 }
+/* A deck under the race heading, not a second lede: regular weight and
+   grey, so it explains the percentages without competing with them. */
+.race-note {
+  max-width: 34rem;
+  margin: 0 0 1.5rem;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--grey);
+}
+/* One figure, so it gets the room four used to share. The brand red is
+   under the contrast floor for small text but not for display type at
+   this size, which is where the true red belongs anyway. */
 .board-totals {
   display: flex;
   flex-wrap: wrap;
@@ -815,10 +827,15 @@ select:focus-visible,
 .board-totals .num {
   font-family: var(--display);
   font-weight: 400;
-  font-size: 2rem;
-  line-height: 1.1;
-  color: var(--navy);
+  font-size: clamp(3.4rem, 12vw, 5.5rem);
+  line-height: 1;
+  color: var(--red);
   display: block;
+}
+.board-totals .label {
+  font-size: 1rem;
+  letter-spacing: 0.16em;
+  color: var(--navy);
 }
 
 
