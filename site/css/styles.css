@@ -806,6 +806,19 @@ select:focus-visible,
   max-width: 36rem;
   margin-bottom: 2rem;
 }
+/* Sits outside the wizard, since someone paying by check never starts
+   it. The memo-line ask is the load-bearing part: nothing on a check
+   says whose Rocket it belongs to. */
+.check-note {
+  margin: 2.2rem auto 0;
+  padding-top: 1.4rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.14);
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--grey);
+}
+.check-note strong { color: var(--navy); }
+
 /* A deck under the race heading, not a second lede: regular weight and
    grey, so it explains the percentages without competing with them. */
 .race-note {
