@@ -104,6 +104,72 @@ const partnerShape = (rows) => rows.results.map((row) => ({
 /* Home and /partners payload: campaign progress, per-priority totals,
    and the partner list — no donor rows, so it stays a few hundred
    bytes for the life of the campaign. */
+/* Gifts the PTA takes in by hand — a check left in the office, cash at
+   a Gathering. They land in the same tables as a card gift, so the
+   ticker, the classroom race, the honor roll and the student sheet all
+   count them without knowing the difference.
+
+   The `off_` id prefix is what makes them safe to undo: a Stripe gift
+   is keyed by its `cs_` session id, so the delete below can only ever
+   reach a row the PTA typed in itself. */
+const OFFLINE_PREFIX = 'off_';
+const offlineId = () => OFFLINE_PREFIX + crypto.randomUUID().replace(/-/g, '').slice(0, 20);
+
+export async function recordOfflineGift(db, { amountCents, priority, donorName, visibility, students, createdSec }) {
+  const id = offlineId();
+  const gift = db.prepare(`
+    INSERT INTO donations
+      (id, amount_cents, fee_cents, priority, partner_tier, donor_name,
+       visibility, email, employer_match, via_link, created)
+    VALUES (?1, ?2, 0, ?3, '', ?4, ?5, '', 0, 0, ?6)`)
+    .bind(id, amountCents, priority, donorName, visibility, createdSec);
+  const credits = students.map((s, i) => db.prepare(`
+    INSERT INTO donation_students (donation_id, position, classroom, student_name, shirts)
+    VALUES (?1, ?2, ?3, ?4, '')`).bind(id, i, s.c, s.n));
+  await db.batch([gift, ...credits]);
+  return id;
+}
+
+/* Only ever an offline row: the LIKE guard means a mistyped id, or a
+   pasted Stripe session id, deletes nothing. */
+export async function deleteOfflineGift(db, id) {
+  if (typeof id !== 'string' || !id.startsWith(OFFLINE_PREFIX)) return false;
+  const [, gone] = await db.batch([
+    db.prepare("DELETE FROM donation_students WHERE donation_id = ?1 AND ?1 LIKE 'off\\_%' ESCAPE '\\'").bind(id),
+    db.prepare("DELETE FROM donations WHERE id = ?1 AND id LIKE 'off\\_%' ESCAPE '\\'").bind(id),
+  ]);
+  return (gone.meta && gone.meta.changes) > 0;
+}
+
+/* What the PTA has entered by hand, newest first, so a wrong amount can
+   be found and removed without anyone touching the database. */
+export async function offlineGifts(db) {
+  const { results } = await db.prepare(
+    `SELECT d.id, d.amount_cents, d.priority, d.donor_name, d.visibility, d.created,
+            COALESCE(GROUP_CONCAT(s.classroom || '|' || s.student_name, ';'), '') AS rockets
+     FROM donations d LEFT JOIN donation_students s ON s.donation_id = d.id
+     WHERE d.id LIKE 'off\\_%' ESCAPE '\\'
+     GROUP BY d.id ORDER BY d.created DESC, d.id DESC`,
+  ).all();
+  return results.map((row) => {
+    const named = row.rockets ? row.rockets.split(';').map((pair) => {
+      const [c, ...rest] = pair.split('|');
+      const room = classroomById(c);
+      const name = rest.join('|').trim();
+      return [name || '(no name)', room ? room.teacher : c].join(' · ');
+    }) : [];
+    const p = priorityById(row.priority);
+    return {
+      id: row.id,
+      amount: row.amount_cents / 100,
+      priority: p ? p.name : row.priority,
+      donor: row.visibility === 'anon' ? 'Anonymous' : row.donor_name,
+      rockets: named.join(', '),
+      created: row.created,
+    };
+  });
+}
+
 export async function campaignStats(db) {
   const [totals, byPriority, partnerRows] = await db.batch([
     totalsStmt(db),

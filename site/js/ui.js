@@ -132,10 +132,10 @@ const RH = (() => {
   const param = (name) => new URLSearchParams(location.search).get(name);
 
   /* POST JSON, parse JSON back; {ok, data} — network errors still throw. */
-  const postJson = async (path, body) => {
+  const postJson = async (path, body, headers = {}) => {
     const res = await fetch(path, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', ...headers },
       body: JSON.stringify(body),
     });
     return { ok: res.ok, data: await res.json().catch(() => ({})) };

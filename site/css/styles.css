@@ -1362,3 +1362,20 @@ select:focus-visible,
 .sheet .num { text-align: right; font-variant-numeric: tabular-nums; }
 .sheet td.num { font-weight: 700; }
 .sheet td.empty { color: var(--grey); white-space: normal; }
+
+/* Recording a check: the same fields as the donate form, laid out to
+   be filled from a check in hand rather than stepped through. */
+.offline-form { margin-bottom: 2.4rem; }
+.offline-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 0 1.6rem;
+  margin-bottom: 0.6rem;
+}
+.offline-form .form-error, .offline-done { text-align: left; }
+.offline-done {
+  font-weight: 700;
+  color: var(--navy);
+  margin: 0.6rem 0 0;
+}
+#offline-table td { white-space: normal; }

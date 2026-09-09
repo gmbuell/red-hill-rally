@@ -23,7 +23,7 @@ two-sentence pointer; this file is the operating manual.
 | `npm install` | wrangler, vitest + workers pool, lighthouse |
 | `npx wrangler d1 migrations apply red-hill-rally --local` | once per clone: local D1 schema |
 | `npm run dev` | `wrangler dev` on http://localhost:8787 |
-| `npm test` | vitest (106 tests, ~4 s) |
+| `npm test` | vitest (114 tests, ~4 s) |
 | `npm run audit` | Lighthouse on every page but `/admin` (noindex), mobile + desktop (needs Chrome); defaults to the live site (`npm run audit -- --url http://localhost:8787` for local). `--runs 3 --min 98` reproduces the CI gate, `--form mobile` limits it to one form factor |
 | `npm run wcag` | WCAG 2.2 checks on every page, mobile + desktop (needs Chrome): text contrast, non-text contrast, focus rings, target size, body leading ≥ 1.5, body text ≥ 16px and labels ≥ 13px. Defaults to the live site (`npm run wcag -- --url http://localhost:8787` for local, `--page donate --form mobile` to narrow). Each cell shows how many elements the check examined |
 | `npm run deploy` | **Ships to production**: the worker and every file under `site/`. The `predeploy` step runs the tests, then applies pending D1 migrations to the remote database, so schema and code ship together. Every push to `main` runs this through Cloudflare Workers Builds (dashboard → the worker → Settings → Build), so merging a PR deploys it |
@@ -247,6 +247,15 @@ flip to live, in this order:
     roster classroom, zeros included.
   - *shirts.csv* (for the printer): grade, teacher, student, size,
     quantity; one row per Rocket and size, merged across orders.
+- **Checks and cash** — "Record a check" on /admin takes a gift the PTA
+  received by hand and counts it exactly like a card gift: the ticker,
+  the classroom race, the honor roll, the Rocket's own total. It takes
+  no fee and sells no shirt, and it never touches Stripe, so there is
+  no receipt — the PTA writes those itself. Recorded gifts carry an
+  `off_` id instead of a session id and are the only rows the page can
+  delete: the list under the form has a Remove button per gift, which
+  is how a wrong amount gets fixed. A donor who wants their check
+  listed as Anonymous gets the same treatment a card gift does.
 - **Shirts** — price, fundraising credit, receipt value, and sizes
   are `SHIRT` in `site/js/data.js`; `MAX_SHIRTS` caps an order.
 - **Goals, copy, tiers, roster, partners** — edit `site/js/data.js`
@@ -276,7 +285,9 @@ flip to live, in this order:
   deleted. After refunding, delete the gift's row by its Stripe session id (`cs_…`,
   shown on the payment in the dashboard):
   `npx wrangler d1 execute red-hill-rally --remote --command "DELETE FROM donations WHERE id = 'cs_…'"`.
-  Totals, honor roll, and classroom credits drop off with it.
+  Totals, honor roll, and classroom credits drop off with it. A gift
+  recorded by hand comes off from /admin instead — see **Checks and
+  cash**.
 - **Ad-hoc questions** — `npx wrangler d1 execute red-hill-rally
   --remote --command "SELECT ..."`, or the D1 console in the
   Cloudflare dashboard.

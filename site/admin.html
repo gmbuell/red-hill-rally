@@ -68,6 +68,49 @@
       </div>
       <div class="sheet-scroll"><table id="shirts-table"></table></div>
     </section>
+
+    <section class="sheet" aria-labelledby="offline-head">
+      <div class="sheet-head">
+        <div>
+          <h2 id="offline-head">Record a check</h2>
+          <p>A check left in the office, or cash at a Gathering. It counts exactly like a card gift: the ticker, the classroom race, the honor roll and the Rocket&rsquo;s own total.</p>
+        </div>
+      </div>
+
+      <form id="offline-form" class="offline-form" novalidate>
+        <div class="offline-grid">
+          <div class="field">
+            <label for="off-amount">Amount</label>
+            <input type="number" id="off-amount" inputmode="numeric" min="1" step="1" placeholder="$">
+          </div>
+          <div class="field">
+            <label for="off-priority">Priority</label>
+            <select id="off-priority"></select>
+          </div>
+          <div class="field">
+            <label for="off-donor">Name for the honor roll</label>
+            <input type="text" id="off-donor" autocomplete="off" placeholder="e.g. The Nguyen Family">
+          </div>
+          <div class="field">
+            <label for="off-class">Rocket&rsquo;s classroom</label>
+            <select id="off-class"></select>
+          </div>
+          <div class="field">
+            <label for="off-student">Rocket&rsquo;s name <span class="optional">&middot; optional</span></label>
+            <input type="text" id="off-student" autocomplete="off" placeholder="from the memo line">
+          </div>
+        </div>
+        <label class="check-row">
+          <input type="checkbox" id="off-anon">
+          <span>List this one as Anonymous</span>
+        </label>
+        <button type="submit" class="btn" id="off-save">Record it</button>
+        <p class="form-error" id="off-error" role="alert" hidden></p>
+        <p class="offline-done" id="off-done" role="status" hidden></p>
+      </form>
+
+      <div class="sheet-scroll"><table id="offline-table"></table></div>
+    </section>
   </div>
   <p class="form-error" id="admin-error" role="alert" hidden></p>
 </main>

@@ -2,6 +2,7 @@ import { env, SELF, createExecutionContext, reset } from 'cloudflare:test';
 import { afterEach, describe, it, expect, vi } from 'vitest';
 import worker from '../worker/index.js';
 import data from '../site/js/data.js';
+import { recordDonation, campaignStats, boardStats } from '../worker/store.js';
 import { paidSession, paidPartnership, PII } from './fixtures.js';
 
 /* Fixture config derives from data.js, so the edits contributors make
@@ -798,6 +799,78 @@ describe('partner logo upload', () => {
 });
 
 /* ---- admin reports ---- */
+
+describe('gifts recorded by hand', () => {
+  const KEY = { authorization: 'Bearer test-admin-key' };
+  const add = (body, headers = KEY) => SELF.fetch('https://rally.test/api/offline-gift', {
+    method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify(body),
+  });
+  const check = {
+    amount: 250,
+    priority: P_MAIN.id,
+    donorName: 'The Nguyen Family',
+    visibility: 'public',
+    students: [{ c: ROOM_A, n: 'Ana Nguyen' }],
+  };
+
+  it('needs the admin key', async () => {
+    expect((await add(check, {})).status).toBe(401);
+    const res = await SELF.fetch('https://rally.test/api/offline-gift?id=off_x', { method: 'DELETE' });
+    expect(res.status).toBe(401);
+  });
+
+  it('counts like a card gift: the ticker, the classroom, the honor roll', async () => {
+    expect((await add(check)).status).toBe(200);
+    const stats = await campaignStats(env.DB);
+    expect(stats.campaign.raised).toBe(250);
+    expect(stats.priorities[P_MAIN.id]).toBe(250);
+    const board = await boardStats(env.DB);
+    expect(board.classrooms[ROOM_A]).toBe(1);
+    expect(board.donors[0].name).toBe('The Nguyen Family');
+  });
+
+  it('takes no fee and no shirt, whatever is sent', async () => {
+    await add({ ...check, students: [{ c: ROOM_A, n: 'Ana', s: [data.SHIRT.sizes[0].id] }] });
+    const row = await env.DB.prepare('SELECT fee_cents, amount_cents FROM donations').first();
+    expect(row.fee_cents).toBe(0);
+    expect(row.amount_cents).toBe(25000);
+    const shirts = await env.DB.prepare('SELECT shirts FROM donation_students').first();
+    expect(shirts.shirts).toBe('');
+  });
+
+  it('validates like checkout does', async () => {
+    expect((await add({ ...check, amount: 0 })).status).toBe(400);
+    expect((await add({ ...check, amount: 1.5 })).status).toBe(400);
+    expect((await add({ ...check, amount: data.MAX_AMOUNT + 1 })).status).toBe(400);
+    expect((await add({ ...check, priority: 'nope' })).status).toBe(400);
+    expect((await add({ ...check, students: [{ c: 'not-a-room', n: 'Ana' }] })).status).toBe(400);
+    expect((await add({ ...check, donorName: '' })).status).toBe(400);
+    // Anonymous needs no name.
+    expect((await add({ ...check, donorName: '', visibility: 'anon' })).status).toBe(200);
+  });
+
+  it('lists what was entered and lets it be removed again', async () => {
+    const { id } = await (await add(check)).json();
+    expect(id).toMatch(/^off_/);
+    const listed = await (await SELF.fetch('https://rally.test/api/admin.json', { headers: KEY })).json();
+    expect(listed.offline).toHaveLength(1);
+    expect(listed.offline[0]).toMatchObject({ id, amount: 250, donor: 'The Nguyen Family' });
+    expect(listed.offline[0].rockets).toContain(data.classroomById(ROOM_A).teacher);
+
+    const gone = await SELF.fetch(`https://rally.test/api/offline-gift?id=${id}`, { method: 'DELETE', headers: KEY });
+    expect(gone.status).toBe(200);
+    expect((await campaignStats(env.DB)).campaign.raised).toBe(0);
+    const board = await boardStats(env.DB);
+    expect(board.classrooms[ROOM_A]).toBeUndefined();
+  });
+
+  it('will not delete a gift that came through Stripe', async () => {
+    await recordDonation(env.DB, paidSession(), 1756100000);
+    const res = await SELF.fetch('https://rally.test/api/offline-gift?id=cs_test_abc', { method: 'DELETE', headers: KEY });
+    expect(res.status).toBe(404);
+    expect((await campaignStats(env.DB)).campaign.raised).toBe(100);
+  });
+});
 
 describe('admin reports', () => {
   const roomA = data.classroomById(ROOM_A);

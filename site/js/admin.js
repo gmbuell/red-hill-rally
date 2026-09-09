@@ -48,7 +48,94 @@
     }));
   };
 
-  const authed = (path) => fetch(path, { headers: { authorization: `Bearer ${keyOf()}` } });
+  const authed = (path, init = {}) => fetch(path, {
+    ...init,
+    headers: { authorization: `Bearer ${keyOf()}`, ...(init.headers || {}) },
+  });
+
+  /* ---- gifts the PTA takes in by hand ---- */
+
+  const offErr = RH.qs('#off-error');
+  const offDone = RH.qs('#off-done');
+
+  /* The two pickers hold the same options the donate form does, so a
+     recorded check can only ever name a real priority and a real
+     classroom — the server checks again regardless. */
+  RH.qs('#off-priority').innerHTML = html`${[...PRIORITIES, SUPPORT_ALL].map((p) =>
+    html`<option value="${p.id}">${p.name}</option>`)}`;
+  RH.qs('#off-class').innerHTML = html`<option value="">No Rocket named</option>${RH.classroomOptions()}`;
+
+  const renderOffline = (rows) => {
+    const table = RH.qs('#offline-table');
+    table.innerHTML = html`
+      <thead><tr>
+        <th scope="col">Recorded</th><th scope="col">Name</th><th scope="col">Rocket</th>
+        <th scope="col">Priority</th><th scope="col" class="num">Amount</th><th scope="col"></th>
+      </tr></thead>
+      <tbody>${rows.length ? rows.map((r) => html`
+        <tr>
+          <td>${new Date(r.created * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</td>
+          <td>${r.donor}</td>
+          <td>${r.rockets || '—'}</td>
+          <td>${r.priority}</td>
+          <td class="num">${RH.money(r.amount)}</td>
+          <td><button type="button" class="linklike" data-remove="${r.id}">Remove</button></td>
+        </tr>`)
+        : html`<tr><td colspan="6" class="empty">Nothing recorded by hand yet.</td></tr>`}
+      </tbody>`;
+  };
+
+  RH.qs('#offline-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    offErr.hidden = true;
+    offDone.hidden = true;
+    const btn = RH.qs('#off-save');
+    const classroom = RH.qs('#off-class').value;
+    const student = RH.qs('#off-student').value.trim();
+    const body = {
+      amount: Number(RH.qs('#off-amount').value),
+      priority: RH.qs('#off-priority').value,
+      donorName: RH.qs('#off-donor').value.trim(),
+      visibility: RH.qs('#off-anon').checked ? 'anon' : 'public',
+      students: classroom ? [{ c: classroom, n: student }] : [],
+    };
+    btn.disabled = true;
+    const { ok, data: res } = await RH.postJson('/api/offline-gift', body, {
+      authorization: `Bearer ${keyOf()}`,
+    }).catch(() => ({ ok: false, data: {} }));
+    btn.disabled = false;
+    if (!ok) {
+      offErr.textContent = res.error || 'That didn’t save — please try again.';
+      offErr.hidden = false;
+      return;
+    }
+    offDone.textContent = `Recorded ${RH.money(body.amount)}. It’s on the board now.`;
+    offDone.hidden = false;
+    /* Clear the Rocket too, not just the name: a classroom left
+       selected would quietly credit the next check to the wrong one. */
+    RH.qs('#off-amount').value = '';
+    RH.qs('#off-donor').value = '';
+    RH.qs('#off-class').value = '';
+    RH.qs('#off-student').value = '';
+    RH.qs('#off-anon').checked = false;
+    load();
+  });
+
+  /* Removing is the reason this list exists: a wrong amount has to be
+     fixable here rather than by asking someone with database access. */
+  RH.qs('#offline-table').addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-remove]');
+    if (!btn) return;
+    btn.disabled = true;
+    const res = await authed(`/api/offline-gift?id=${encodeURIComponent(btn.dataset.remove)}`, { method: 'DELETE' })
+      .catch(() => null);
+    if (!res || !res.ok) {
+      btn.disabled = false;
+      fail('That gift didn’t come off — please refresh and try again.');
+      return;
+    }
+    load();
+  });
 
   const fail = (msg) => { errorEl.textContent = msg; errorEl.hidden = false; };
 
@@ -76,6 +163,7 @@
     renderTable(RH.qs('#classrooms-table'), data.classrooms, { col: 'participation_pct', desc: true });
     renderTable(RH.qs('#students-table'), data.students);
     renderTable(RH.qs('#shirts-table'), data.shirts);
+    renderOffline(data.offline || []);
   };
 
   form.addEventListener('submit', (e) => {

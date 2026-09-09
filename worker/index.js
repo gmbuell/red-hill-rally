@@ -7,7 +7,8 @@
 import { createLink, resolveLink } from './links.js';
 import { normalizeStudents, shirtsMetadata } from './students.js';
 import { createCheckoutSession, verifyWebhook } from './stripe.js';
-import { recordDonation, campaignStats, boardStats, studentsReport, shirtsReport, classroomsReport, csv } from './store.js';
+import { recordDonation, campaignStats, boardStats, studentsReport, shirtsReport, classroomsReport, csv,
+  recordOfflineGift, deleteOfflineGift, offlineGifts } from './store.js';
 import { renderPage } from './pages.js';
 import data from '../site/js/data.js';
 import ui from '../site/js/ui.js';
@@ -307,18 +308,66 @@ async function handleWebhook(request, env) {
    request URLs. */
 const REPORTS = { students: studentsReport, shirts: shirtsReport, classrooms: classroomsReport };
 
-async function handleReport(request, url, env, name) {
+const adminKeyOk = async (request, url, env) => {
   const auth = request.headers.get('authorization') || '';
   const key = (auth.startsWith('Bearer ') ? auth.slice(7) : '') ||
     url.searchParams.get('key') || '';
-  if (!env.ADMIN_KEY || !(await timingSafeStringEqual(key, env.ADMIN_KEY))) {
+  return !!env.ADMIN_KEY && await timingSafeStringEqual(key, env.ADMIN_KEY);
+};
+
+/* A gift the PTA took in by hand: a check left in the office, cash at a
+   Gathering. Validated exactly like a card gift — the same amount
+   limits, the same roster check on the Rockets — because it reaches
+   the same tables and the same public totals. */
+async function handleOfflineGift(request, env, url) {
+  if (!(await adminKeyOk(request, url, env))) return json({ error: 'unauthorized' }, 401);
+
+  if (request.method === 'DELETE') {
+    const removed = await deleteOfflineGift(env.DB, url.searchParams.get('id') || '');
+    return removed ? json({ removed: true }) : json({ error: 'That gift is no longer here.' }, 404);
+  }
+
+  const body = await request.json().catch(() => null);
+  if (!body) return json({ error: 'Please try that again.' }, 400);
+
+  const priority = priorityById(body.priority);
+  if (!priority) return json({ error: 'Pick which priority this gift is for.' }, 400);
+
+  const amount = Number(body.amount);
+  if (!Number.isInteger(amount) || amount < 1 || amount > MAX_AMOUNT) {
+    return json({ error: `Enter a whole-dollar amount between $1 and $${MAX_AMOUNT.toLocaleString('en-US')}.` }, 400);
+  }
+
+  const visibility = body.visibility === 'anon' ? 'anon' : 'public';
+  const donorName = typeof body.donorName === 'string' ? body.donorName.trim().slice(0, MAX_NAME) : '';
+  if (visibility === 'public' && !donorName) {
+    return json({ error: 'Enter the name to list on the honor roll, or mark it anonymous.' }, 400);
+  }
+
+  const norm = normalizeStudents(body.students);
+  if (norm.error) return json({ error: norm.error }, 400);
+
+  const id = await recordOfflineGift(env.DB, {
+    amountCents: amount * 100,
+    priority: priority.id,
+    donorName,
+    visibility,
+    // A shirt is bought, never recorded by hand, so sizes are dropped.
+    students: norm.students.map((s) => ({ c: s.c, n: s.n })),
+    createdSec: Math.floor(Date.now() / 1000),
+  });
+  return json({ id });
+}
+
+async function handleReport(request, url, env, name) {
+  if (!(await adminKeyOk(request, url, env))) {
     return json({ error: 'unauthorized' }, 401);
   }
   if (name === 'admin') {
     const [stats, ...reports] = await Promise.all([
       campaignStats(env.DB), ...Object.values(REPORTS).map((report) => report(env.DB)),
     ]);
-    const body = { campaign: stats.campaign };
+    const body = { campaign: stats.campaign, offline: await offlineGifts(env.DB) };
     Object.keys(REPORTS).forEach((key, i) => { body[key] = reports[i]; });
     return json(body, 200, { 'cache-control': 'no-store' });
   }
@@ -401,6 +450,8 @@ export default {
         case 'POST /api/partner/checkout': return await handlePartnerCheckout(request, env, url);
         case 'POST /api/partner/logo': return await handleLogoUpload(request, env, url);
         case 'POST /api/stripe/webhook': return await handleWebhook(request, env);
+        case 'POST /api/offline-gift':
+        case 'DELETE /api/offline-gift': return await handleOfflineGift(request, env, url);
         case 'GET /api/students.csv':
         case 'GET /api/shirts.csv':
         case 'GET /api/classrooms.csv':
