@@ -60,8 +60,11 @@ describe('page views', () => {
     let raised = 0;
     for (const [i, [share, dollars]] of rooms.entries()) {
       const room = data.CLASSROOMS[i];
-      const rockets = Math.round(room.students * share);
-      expect(rockets / room.students, `room ${i}`).toBeCloseTo(share, 6);
+      // A share above 1 is a Rocket count: some class sizes (19, 33)
+      // cannot express a round percentage, so a test that cares about
+      // the exact figure names the children instead of the fraction.
+      const rockets = share > 1 ? share : Math.round(room.students * share);
+      if (share <= 1) expect(rockets / room.students, `room ${i}`).toBeCloseTo(share, 6);
       classrooms[room.id] = { rockets, raised: dollars };
       raised += dollars;
     }
@@ -81,7 +84,7 @@ describe('page views', () => {
     expect(totals).toContain('$900');
     expect(totals).toContain('raised of');
     expect(totals).toContain(`${Math.round((data.CLASSROOMS[0].students * 0.5 / seats) * 100)}%`);
-    expect(totals).toContain('of Rockets aboard');
+    expect(totals).toContain('of Rockets have participated');
   });
 
   it('never shows the school over 100% when a class draws more Rockets than seats', () => {
@@ -112,7 +115,7 @@ describe('page views', () => {
   });
 
   it('counts every class at 80% or more, and says when none is at 100%', () => {
-    const { prizes } = board([[0.8, 10], [0.9, 10], [0.75, 10]]);
+    const { prizes } = board([[0.8, 10], [17, 10], [0.75, 10]]);
     expect(prizes).toContain('<strong>2 classes</strong> at 80% or more');
     expect(prizes).toContain('<strong>none</strong> at 100% yet');
   });

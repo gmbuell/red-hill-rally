@@ -181,25 +181,25 @@ const priorityTarget = (p) =>
    size and sets the participation denominator in the classroom race. */
 const CLASSROOMS = [
   { id: 'hesseltine', teacher: 'Mrs. Hesseltine', grade: 'TK', students: 20 },
-  { id: 'wass', teacher: 'Mrs. Wass', grade: 'TK', students: 20 },
+  { id: 'wass', teacher: 'Mrs. Wass', grade: 'TK', students: 19 },
   { id: 'montgomery', teacher: 'Mrs. Montgomery', grade: 'TK', students: 20 },
   { id: 'michel', teacher: 'Mrs. Michel', grade: 'K', students: 27 },
-  { id: 'convery', teacher: 'Ms. Convery', grade: 'K', students: 29 },
-  { id: 'marshall', teacher: 'Ms. Marshall', grade: 'K', students: 24 },
+  { id: 'convery', teacher: 'Ms. Convery', grade: 'K', students: 27 },
+  { id: 'marshall', teacher: 'Ms. Marshall', grade: 'K', students: 25 },
   { id: 'knott', teacher: 'Mrs. Knott', grade: '1st', students: 26 },
   { id: 'ludes', teacher: 'Mrs. Ludes', grade: '1st', students: 26 },
   { id: 'miller', teacher: 'Ms. Miller', grade: '1st', students: 26 },
   { id: 'sharp', teacher: 'Mrs. Sharp', grade: '1st/2nd', students: 26 },
   { id: 'bryan', teacher: 'Mrs. Bryan', grade: '2nd', students: 26 },
-  { id: 'bowers', teacher: 'Mrs. Bowers', grade: '2nd', students: 25 },
-  { id: 'zweber', teacher: 'Mr. Zweber', grade: '3rd', students: 32 },
+  { id: 'bowers', teacher: 'Mrs. Bowers', grade: '2nd', students: 26 },
+  { id: 'zweber', teacher: 'Mr. Zweber', grade: '3rd', students: 31 },
   { id: 'harrison', teacher: 'Mrs. Harrison', grade: '3rd', students: 31 },
   { id: 'sianez', teacher: 'Mrs. Sianez', grade: '4th', students: 32 },
-  { id: 'herman', teacher: 'Mrs. Herman', grade: '4th', students: 32 },
+  { id: 'herman', teacher: 'Mrs. Herman', grade: '4th', students: 33 },
   { id: 'crain', teacher: 'Mrs. Crain', grade: '5th', students: 29 },
   { id: 'knutson', teacher: 'Mr. Knutson', grade: '5th', students: 29 },
-  { id: 'bishop', teacher: 'Mr. Bishop', grade: 'SDC', students: 13 },
-  { id: 'smith', teacher: 'Mrs. Smith', grade: 'SDC', students: 11 },
+  { id: 'bishop', teacher: 'Mr. Bishop', grade: 'SDC', students: 14 },
+  { id: 'smith', teacher: 'Mrs. Smith', grade: 'SDC', students: 12 },
 ];
 
 /* Business partnership ladder. Each tier includes every benefit of
