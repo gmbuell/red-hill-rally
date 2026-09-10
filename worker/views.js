@@ -347,9 +347,14 @@ export const boardSlots = (live) => {
     [money(raised), 'raised of ' + money(CAMPAIGN.goal), ''],
     [`${seats > 0 ? Math.round((flying / seats) * 100) : 0}%`, 'of Rockets have participated',
      `${flying} of ${seats} students`],
+  /* The count is a div, not a span: pages and stylesheet are separate
+     caches, so a phone can hold yesterday's CSS against today's markup
+     for a while after a deploy. A span in that window runs straight on
+     from the end of the label ("…PARTICIPATED40 of 505 students"); a
+     div takes its own line with no stylesheet at all. */
   ].map(([num, label, sub]) => html`
       <div class="total"><span class="num money">${num}</span><span class="label">${label}</span>${
-        sub ? html`<span class="sub">${sub}</span>` : ''}</div>`);
+        sub ? html`<div class="sub">${sub}</div>` : ''}</div>`);
 
   const race = ranked.map((c, i) => html`
       <li class="${i < 3 && c.rockets > 0 ? 'leader' : ''}">
