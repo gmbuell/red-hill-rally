@@ -333,7 +333,7 @@ export const boardSlots = (live) => {
     .sort((a, b) => b.shown - a.shown || b.raised - a.raised);
 
   /* Two headline numbers, because the Rally is run on two: dollars and
-     how many kids are in. One number alone taught families that only
+     how many kids are aboard. One number alone taught families that only
      the money counted, which is the opposite of the point — a $5 gift
      moves this second figure exactly as far as a $500 one. Rockets are
      capped per class the way the rows are, so the school can't read
@@ -343,7 +343,7 @@ export const boardSlots = (live) => {
   const flying = ranked.reduce((n, c) => n + Math.min(c.rockets, c.students), 0);
   const totals = [
     [money(raised), 'raised of ' + money(CAMPAIGN.goal)],
-    [`${seats > 0 ? Math.round((flying / seats) * 100) : 0}%`, 'of Rockets flying'],
+    [`${seats > 0 ? Math.round((flying / seats) * 100) : 0}%`, 'of Rockets aboard'],
   ].map(([num, label]) => html`
       <div class="total"><span class="num money">${num}</span><span class="label">${label}</span></div>`);
 

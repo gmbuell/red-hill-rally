@@ -81,7 +81,7 @@ describe('page views', () => {
     expect(totals).toContain('$900');
     expect(totals).toContain('raised of');
     expect(totals).toContain(`${Math.round((data.CLASSROOMS[0].students * 0.5 / seats) * 100)}%`);
-    expect(totals).toContain('of Rockets flying');
+    expect(totals).toContain('of Rockets aboard');
   });
 
   it('never shows the school over 100% when a class draws more Rockets than seats', () => {
