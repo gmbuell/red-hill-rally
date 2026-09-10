@@ -840,9 +840,11 @@ select:focus-visible,
 
 /* A deck under the race heading, not a second lede: regular weight and
    grey, so it explains the percentages without competing with them. */
-.race-note {
-  max-width: 34rem;
-  margin: 0 0 1.5rem;
+/* Sits directly under the two headline figures and explains why there
+   are two, so it hangs off the totals rather than the race below. */
+.totals-note {
+  max-width: 38rem;
+  margin: -2rem 0 3rem;
   font-size: 1rem;
   line-height: 1.5;
   color: var(--grey);
@@ -915,18 +917,53 @@ select:focus-visible,
   text-align: right;
   min-width: 5.5rem;
 }
+/* The two prizes read as one row of cards on a wide screen and stack
+   on a phone. They are deliberately side by side: the whole point is
+   that the dollars race and the participation prizes are different
+   races, which is hard to see when one sits under the other. */
+.race-prizes {
+  display: grid;
+  gap: 0.9rem;
+  grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+  margin: 0 0 1.5rem;
+}
+/* What the order means, directly above the order. A family scanning
+   for their teacher reads the first row within a second of arriving,
+   so this cannot sit below the list. */
+.race-rank {
+  max-width: 40rem;
+  margin: 0 0 1rem;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--grey);
+}
+.race-rank strong { color: var(--navy); }
+.race-prizes .shoe-note {
+  margin: 0;
+  padding: 0.85rem 1rem;
+  background: var(--sky);
+  border-radius: 0.6rem;
+}
 .shoe-note {
   margin: 0 0 1.5rem;
   font-size: 1rem;
   line-height: 1.5;
   color: var(--grey);
 }
+/* The label only has to say which race this is; it is read once and
+   then ignored, so it stays quiet — heavy caps at full ink made two
+   cards of shouting and buried the answer underneath them. */
 .shoe-note .label {
   display: block;
-  color: var(--navy);
-  letter-spacing: 0.14em;
+  margin-bottom: 0.15rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--grey);
 }
-.shoe-note strong { color: var(--navy); }
+/* The answer — the class in front, the count of classes — is what a
+   family came to the card for, so it takes the brand red. `--red-ink`,
+   not `--red`: this is small text on the panel ground. */
+.shoe-note strong { color: var(--red-ink); }
 /* On a phone the two labelled figures won't fit beside the teacher's
    name, so the name takes its own line and the numbers sit under it
    with the trail beneath them. */

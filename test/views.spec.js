@@ -48,6 +48,122 @@ describe('page views', () => {
     }
   });
 
+  /* The board carries two races that are easy to confuse: the Golden
+     Shoe, which one class wins on dollars, and the participation
+     prizes, which every class can win by reaching a threshold.
+
+     Rockets are given as a share of the class, then turned into whole
+     children: a fraction that lands mid-child would make the
+     percentage the board prints drift from what the test meant. */
+  const board = (rooms) => {
+    const classrooms = {};
+    let raised = 0;
+    for (const [i, [share, dollars]] of rooms.entries()) {
+      const room = data.CLASSROOMS[i];
+      const rockets = Math.round(room.students * share);
+      expect(rockets / room.students, `room ${i}`).toBeCloseTo(share, 6);
+      classrooms[room.id] = { rockets, raised: dollars };
+      raised += dollars;
+    }
+    const slots = boardSlots({ campaign: { raised, gifts: 0 }, classrooms, donors: [], partners: [] });
+    return {
+      totals: String(slots['board-totals']),
+      shoe: String(slots['shoe-note']),
+      prizes: String(slots['prize-note']),
+      order: [...String(slots.race).matchAll(/<span class="room">([^<]*)/g)].map((m) => m[1]),
+    };
+  };
+
+  it('heads the board with both measures, so neither reads as the only one', () => {
+    // Half of one class in, nobody else: 10 of the school's seats.
+    const seats = data.CLASSROOMS.reduce((n, c) => n + c.students, 0);
+    const { totals } = board([[0.5, 900]]);
+    expect(totals).toContain('$900');
+    expect(totals).toContain('raised of');
+    expect(totals).toContain(`${Math.round((data.CLASSROOMS[0].students * 0.5 / seats) * 100)}%`);
+    expect(totals).toContain('of Rockets flying');
+  });
+
+  it('never shows the school over 100% when a class draws more Rockets than seats', () => {
+    // Gifts naming nobody each count as a Rocket, so a class can carry
+    // more credits than children; the rows cap it and so must the head.
+    const rooms = {};
+    for (const c of data.CLASSROOMS) rooms[c.id] = { rockets: c.students + 5, raised: 10 };
+    const totals = String(boardSlots({
+      campaign: { raised: 10, gifts: 0 }, classrooms: rooms, donors: [], partners: [],
+    })['board-totals']);
+    expect(totals).toContain('100%');
+    expect(totals).not.toMatch(/1[1-9]\d%|[2-9]\d\d%/);
+  });
+
+  it('names the dollar leader for the shoe and only counts classes for participation', () => {
+    // Second room leads participation; the first raised the most.
+    const { shoe, prizes } = board([[0.5, 900], [1, 100]]);
+    expect(shoe).toContain('dollars raised');
+    expect(shoe).toContain(`${data.CLASSROOMS[0].teacher}&rsquo;s class`);
+    expect(shoe).toContain('$900');
+    // The shoe line must not claim the participation leader.
+    expect(shoe).not.toContain(`${data.CLASSROOMS[1].teacher}&rsquo;s class`);
+    expect(prizes).toContain('Classroom participation');
+    expect(prizes).toContain('<strong>1 class</strong> at 80% or more');
+    expect(prizes).toContain('<strong>1</strong> at 100%');
+    // The participation card never names a class: nobody wins it by leading.
+    for (const room of data.CLASSROOMS) expect(prizes).not.toContain(room.teacher);
+  });
+
+  it('counts every class at 80% or more, and says when none is at 100%', () => {
+    const { prizes } = board([[0.8, 10], [0.9, 10], [0.75, 10]]);
+    expect(prizes).toContain('<strong>2 classes</strong> at 80% or more');
+    expect(prizes).toContain('<strong>none</strong> at 100% yet');
+  });
+
+  it('points an empty board at the prizes instead of naming a leader', () => {
+    const { shoe, prizes } = board([]);
+    expect(shoe).toContain('Still anyone&rsquo;s');
+    expect(prizes).toContain('No class at 80% yet');
+    expect(prizes).not.toContain('<strong>');
+  });
+
+  it('ranks classes level on participation by dollars raised', () => {
+    // Everyone at 100%: participation has stopped separating them.
+    const { order } = board([[1, 100], [1, 700], [1, 400]]);
+    const [a, b, c] = data.CLASSROOMS.map((r) => r.teacher);
+    expect(order.slice(0, 3)).toEqual([b, c, a]);
+  });
+
+  it('breaks a tie on the percentage it prints, not the fraction behind it', () => {
+    /* Two rooms printing the same percentage off different fractions.
+       The lower fraction is given the bigger total, so sorting on the
+       raw fraction and sorting on the printed one disagree, and only
+       the printed one matches the rows a family is reading. */
+    const pair = (() => {
+      for (const a of data.CLASSROOMS) {
+        for (const b of data.CLASSROOMS) {
+          if (a.id === b.id || !a.students || !b.students) continue;
+          for (let ra = 1; ra <= a.students; ra += 1) {
+            for (let rb = 1; rb <= b.students; rb += 1) {
+              const fa = ra / a.students, fb = rb / b.students;
+              if (fa < fb && Math.round(fa * 100) === Math.round(fb * 100)) {
+                return { a, ra, b, rb };
+              }
+            }
+          }
+        }
+      }
+      return null;
+    })();
+    expect(pair, 'roster has no two class sizes that can print the same percent').not.toBeNull();
+
+    const { a, ra, b, rb } = pair;
+    const classrooms = {
+      [a.id]: { rockets: ra, raised: 990 },  // lower fraction, more money
+      [b.id]: { rockets: rb, raised: 10 },
+    };
+    const slots = boardSlots({ campaign: { raised: 1000, gifts: 0 }, classrooms, donors: [], partners: [] });
+    const order = [...String(slots.race).matchAll(/<span class="room">([^<]*)/g)].map((m) => m[1]);
+    expect(order.indexOf(a.teacher)).toBeLessThan(order.indexOf(b.teacher));
+  });
+
   it('has an element in the HTML for every slot a page renders into', async () => {
     // HTMLRewriter ignores a selector nothing matches, so a renamed id
     // would ship an empty element with no error anywhere but here.

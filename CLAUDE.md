@@ -23,7 +23,7 @@ two-sentence pointer; this file is the operating manual.
 | `npm install` | wrangler, vitest + workers pool, lighthouse |
 | `npx wrangler d1 migrations apply red-hill-rally --local` | once per clone: local D1 schema |
 | `npm run dev` | `wrangler dev` on http://localhost:8787 |
-| `npm test` | vitest (152 tests, ~4 s) |
+| `npm test` | vitest (159 tests, ~4 s) |
 | `npm run audit` | Lighthouse on every page but `/admin` (noindex), mobile + desktop (needs Chrome); defaults to the live site (`npm run audit -- --url http://localhost:8787` for local). `--runs 3 --min 98` reproduces the CI gate, `--form mobile` limits it to one form factor |
 | `npm run wcag` | WCAG 2.2 checks on every page, mobile + desktop (needs Chrome): text contrast, non-text contrast, focus rings, target size, body leading ≥ 1.5, body text ≥ 16px and labels ≥ 13px. Defaults to the live site (`npm run wcag -- --url http://localhost:8787` for local, `--page donate --form mobile` to narrow). Each cell shows how many elements the check examined |
 | `npm run deploy` | **Ships to production**: the worker and every file under `site/`. The `predeploy` step runs the tests, then applies pending D1 migrations to the remote database, so schema and code ship together. Every push to `main` runs this through Cloudflare Workers Builds (dashboard → the worker → Settings → Build), so merging a PR deploys it |
@@ -111,6 +111,29 @@ secrets; the maintainer reviews and ships PRs.
   Top Class prize, and a line above the list names whoever is leading
   that one; `classroomTotals` is the single source for both, so the
   board and the PTA's classroom sheet can't disagree about prize money.
+  - Ranking uses the **rounded** percentage the row prints, not the
+    fraction behind it, and ties break on dollars raised. A family
+    reads the order off the rows, so a class shown at 80% sitting below
+    another shown at 80% has to have a visible reason. The tiebreak
+    matters most at 100%, which every class can reach, where
+    participation stops separating anyone.
+  - Two notes sit above the list because the board carries two
+    different races: the Golden Shoe, which **one** class wins on
+    dollars, and the participation prizes, which are thresholds
+    **every** class can reach. The second is a count of classes at 80%
+    and at 100%, never a leader, or the board would imply a prize for
+    leading participation that the prizes page doesn't offer. Both
+    counts use the same rounded percentage the rows print.
+  - The board heads with **two** figures, dollars raised and the
+    school-wide share of Rockets flying, because the Rally is run on
+    both and one number alone taught families that only money counted.
+    The share caps each class's Rockets at its roster the way the rows
+    do, so gifts that named no Rocket can't push the school over 100%.
+    Still no gift or partner count up there: those invite arithmetic
+    nobody should be doing, and read as bad news early in a campaign.
+  - The list says what it is ranked by, in copy directly above the
+    first row. It cannot move below the list: a family scanning for
+    their teacher reads row one within a second of arriving.
 - Money is decided server-side: the worker computes the fee cover from
   the `coverFees` boolean and prices shirts from `SHIRT` in `data.js`,
   and every stat counts `amount_cents` (the gift plus each shirt's

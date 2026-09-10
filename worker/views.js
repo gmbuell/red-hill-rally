@@ -318,27 +318,41 @@ export const boardSlots = (live) => {
   const donors = (live && live.donors) || [];
   const partners = mergedPartners(live && live.partners);
 
-  // Dollars only. A gift count, a partner count and a classroom count
-  // beside the total invited arithmetic no family should be doing, and
-  // early in a campaign the small numbers read as bad news next to the
-  // one number that matters.
-  const totals = [
-    [money(raised), 'raised of ' + money(CAMPAIGN.goal)],
-  ].map(([num, label]) => html`
-      <div class="total"><span class="num money">${num}</span><span class="label">${label}</span></div>`);
-
+  /* Rank and count on the percentage the board prints, not the raw
+     fraction behind it: a family reads the order off the rows, and a
+     class shown at 80% that sorted below one shown at 80% because of a
+     hidden decimal reads as a broken board. Ties break on dollars,
+     which is what happens once classes start piling up at 100% —
+     everyone can reach it, so participation stops separating them. */
   const ranked = [...CLASSROOMS]
     .map((c) => {
       const { rockets = 0, raised = 0 } = perClass[c.id] || {};
-      return { ...c, rockets, raised, pct: c.students > 0 ? Math.min(rockets / c.students, 1) : 0 };
+      const pct = c.students > 0 ? Math.min(rockets / c.students, 1) : 0;
+      return { ...c, rockets, raised, pct, shown: Math.round(pct * 100) };
     })
-    .sort((a, b) => b.pct - a.pct);
+    .sort((a, b) => b.shown - a.shown || b.raised - a.raised);
+
+  /* Two headline numbers, because the Rally is run on two: dollars and
+     how many kids are in. One number alone taught families that only
+     the money counted, which is the opposite of the point — a $5 gift
+     moves this second figure exactly as far as a $500 one. Rockets are
+     capped per class the way the rows are, so the school can't read
+     over 100%. Deliberately not a gift or partner count: those invited
+     arithmetic nobody should be doing, and read as bad news early. */
+  const seats = ranked.reduce((n, c) => n + c.students, 0);
+  const flying = ranked.reduce((n, c) => n + Math.min(c.rockets, c.students), 0);
+  const totals = [
+    [money(raised), 'raised of ' + money(CAMPAIGN.goal)],
+    [`${seats > 0 ? Math.round((flying / seats) * 100) : 0}%`, 'of Rockets flying'],
+  ].map(([num, label]) => html`
+      <div class="total"><span class="num money">${num}</span><span class="label">${label}</span></div>`);
+
   const race = ranked.map((c, i) => html`
       <li class="${i < 3 && c.rockets > 0 ? 'leader' : ''}">
         <span class="rank">${i + 1}</span>
         <span class="room">${c.teacher}<small class="grade">${gradeName(c.grade)}</small></span>
         <span class="trail">${trailSVG(c.pct)}</span>
-        <span class="pct">${Math.round(c.pct * 100)}%<small>participation</small></span>
+        <span class="pct">${c.shown}%<small>participation</small></span>
         <span class="raised">${money(c.raised)}<small>total raised</small></span>
       </li>`);
 
@@ -356,7 +370,22 @@ export const boardSlots = (live) => {
       : leaders.length <= 3
         ? html`<strong>${nameList(leaders.map((c) => `${c.teacher}’s`))} classes</strong>, tied at ${money(most)}`
         : html`<strong>${leaders.length} classes</strong> tied at ${money(most)}`;
-  const goldenShoe = html`<small class="label">Leading for the Golden Shoe</small> ${shoeLine}`;
+  const goldenShoe = html`<small class="label">Leading for the Golden Shoe &middot; dollars raised</small> ${shoeLine}`;
+
+  /* The other race is nothing like the shoe: the participation prizes
+     are thresholds, so every class that reaches one wins it and there
+     is no leader to name. Two counts say that without spelling it out,
+     and keep a class sitting at 84% from reading the board as though
+     it were losing to the room above it. */
+  const at80 = ranked.filter((c) => c.shown >= 80).length;
+  const at100 = ranked.filter((c) => c.shown >= 100).length;
+  const classes = (n) => `${n} class${n === 1 ? '' : 'es'}`;
+  const partLine = !at80
+    ? html`No class at 80% yet. Every class that gets there wins $150.`
+    : html`<strong>${classes(at80)}</strong> at 80% or more &middot; ${at100
+      ? html`<strong>${at100}</strong> at 100%`
+      : html`<strong>none</strong> at 100% yet`}`;
+  const partNote = html`<small class="label">Classroom participation</small> ${partLine}`;
 
   /* Named gifts newest first; anonymous gifts are tallied in one
      closing line so a busy campaign stays readable. */
@@ -393,6 +422,7 @@ export const boardSlots = (live) => {
     'board-totals': html`${totals}`,
     race: html`${race}`,
     'shoe-note': goldenShoe,
+    'prize-note': partNote,
     'honor-roll': roll,
     'board-partners': partnerWall(partners, html`
       <p class="board-lede">Your business could be up here &mdash; the Rally runs September&ndash;October.</p>`),
