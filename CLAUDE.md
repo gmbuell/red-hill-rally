@@ -23,7 +23,7 @@ two-sentence pointer; this file is the operating manual.
 | `npm install` | wrangler, vitest + workers pool, lighthouse |
 | `npx wrangler d1 migrations apply red-hill-rally --local` | once per clone: local D1 schema |
 | `npm run dev` | `wrangler dev` on http://localhost:8787 |
-| `npm test` | vitest (120 tests, ~4 s) |
+| `npm test` | vitest (129 tests, ~4 s) |
 | `npm run audit` | Lighthouse on every page but `/admin` (noindex), mobile + desktop (needs Chrome); defaults to the live site (`npm run audit -- --url http://localhost:8787` for local). `--runs 3 --min 98` reproduces the CI gate, `--form mobile` limits it to one form factor |
 | `npm run wcag` | WCAG 2.2 checks on every page, mobile + desktop (needs Chrome): text contrast, non-text contrast, focus rings, target size, body leading ≥ 1.5, body text ≥ 16px and labels ≥ 13px. Defaults to the live site (`npm run wcag -- --url http://localhost:8787` for local, `--page donate --form mobile` to narrow). Each cell shows how many elements the check examined |
 | `npm run deploy` | **Ships to production**: the worker and every file under `site/`. The `predeploy` step runs the tests, then applies pending D1 migrations to the remote database, so schema and code ship together. Every push to `main` runs this through Cloudflare Workers Builds (dashboard → the worker → Settings → Build), so merging a PR deploys it |
@@ -57,6 +57,10 @@ secrets; the maintainer reviews and ships PRs.
   the same guard (the `html` tag, money and name formatting, student
   rows, the dart motif) plus browser-only form plumbing. Only the core
   is exported.
+- `worker/digest.js` — the Thursday classroom email's text, built from
+  `classroomTotals` and the student sheet; `worker/mail.js` is the
+  provider call (Resend over plain fetch, no SDK), off whenever its
+  secrets are missing.
 - `worker/index.js` — router for `/api/*`, `/l/<code>`, `/logo/<id>`,
   and every page. `pages.js` renders a page: it fetches the static
   HTML from the assets binding and streams it through HTMLRewriter,
@@ -69,7 +73,9 @@ secrets; the maintainer reviews and ships PRs.
 - `migrations/` — numbered D1 migrations. D1 tables: `donations` (id =
   Stripe session id, primary key), `donation_students` (one row per
   credited Rocket, with that Rocket's shirt sizes), `links` (code →
-  students JSON + signature).
+  students JSON + signature), `teacher_emails` (classroom → address,
+  typed into Mission Control) and `digest_log` (one row per classroom
+  per week, so the Thursday send can't run twice).
 - `test/` — vitest on `@cloudflare/vitest-pool-workers`; migrations are
   read from disk and re-applied before each test.
 - `seed/demo-donations.sql` — prototype-scale demo donations on the
@@ -120,6 +126,9 @@ secrets; the maintainer reviews and ships PRs.
   `npx wrangler d1 execute red-hill-rally-preview --env preview --remote --file seed/demo-donations.sql`.
   Bindings are per environment: a new binding goes in both the top
   level and `env.preview`.
+- The worker exports `scheduled` as well as `fetch`: the Thursday
+  digest. Local `wrangler dev` never fires it on its own — trigger one
+  with `curl "http://localhost:8787/__scheduled?cron=0+0+*+*+5"`.
 - `.dev.vars` holds the **production** `ADMIN_KEY`. Never print it.
   `vitest.config.mjs` overrides every secret with fakes; keep that.
   `STRIPE_SECRET_KEY` is absent locally, so local checkout answers 503
@@ -254,6 +263,32 @@ flip to live, in this order:
     size, so three gifts for one kid read as one participant.
   - *shirts.csv* (for the printer): grade, teacher, student, size,
     quantity; one row per Rocket and size, merged across orders.
+- **Thursday emails to teachers** — a cron on the worker mails each
+  classroom teacher their own class every Thursday at 5pm Pacific:
+  participation, dollars, their Rockets by name, and how many more
+  Rockets to the next prize. It reads the same `classroomTotals` the
+  board and the classroom sheet do.
+  - *Addresses* are typed into Mission Control ("Thursday emails to
+    teachers"), one class per line, and stored in D1 — never in this
+    repo, which is public. Saving replaces the whole list, so deleting
+    a line takes that class off the send. The paste matches the roster
+    on surname, so "Miss Convery" and "Ms. Convery" are one teacher.
+  - *Before it goes out*, "Email me a sample" sends one class's copy to
+    whoever asks. It mails no teacher and leaves the week untouched.
+  - *Switching it off* is unsetting a mail secret, or clearing the
+    address list. With `RESEND_API_KEY` or `MAIL_FROM` missing the
+    handler logs `digest_skipped` and mails nobody, which is why the
+    preview worker and local dev are silent.
+  - *Sending twice is not possible in a week*: each classroom claims a
+    row in `digest_log` keyed by the Monday of that week before it is
+    mailed, so a retried cron is a no-op. A failed send releases its
+    row so the next run retries that class. Mission Control shows when
+    each class last got one.
+  - *Setup, once*: a Resend account, `rocketrally.org` verified as a
+    sending domain, then `npx wrangler secret put RESEND_API_KEY`,
+    `MAIL_FROM` (the verified sender) and `MAIL_REPLY_TO` (a PTA inbox
+    a teacher's reply should reach). Cron runs on UTC: `0 0 * * 5` is
+    Thursday 5pm Pacific under daylight time and 4pm once it ends.
 - **Checks and cash** — "Record a check" on /admin takes a gift the PTA
   received by hand and counts it exactly like a card gift: the ticker,
   the classroom race, the honor roll, the Rocket's own total. It takes

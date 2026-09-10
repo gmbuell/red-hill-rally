@@ -8,13 +8,16 @@ import { createLink, resolveLink } from './links.js';
 import { normalizeStudents, shirtsMetadata } from './students.js';
 import { createCheckoutSession, verifyWebhook } from './stripe.js';
 import { recordDonation, campaignStats, boardStats, studentsReport, shirtsReport, classroomsReport, csv,
-  recordOfflineGift, deleteOfflineGift, offlineGifts } from './store.js';
+  recordOfflineGift, deleteOfflineGift, offlineGifts,
+  teacherEmails, setTeacherEmails, weekKey, claimDigest, finishDigest, releaseDigest, digestHistory } from './store.js';
+import { buildDigests } from './digest.js';
+import { sendEmail, mailConfigured } from './mail.js';
 import { renderPage } from './pages.js';
 import data from '../site/js/data.js';
 import ui from '../site/js/ui.js';
 
 const { moneyCents } = ui;
-const { ORG, MAX_NAME, MAX_AMOUNT, SHIRT, feeCoverCents, priorityById, partnerTierById } = data;
+const { ORG, MAX_NAME, MAX_AMOUNT, SHIRT, feeCoverCents, priorityById, partnerTierById, classroomById, CLASSROOMS } = data;
 
 /* The charge description prints on every Stripe receipt, making it the
    donor's IRS written acknowledgment (Pub 1771): org name, and either
@@ -362,6 +365,90 @@ async function handleOfflineGift(request, env, url) {
   return json({ id });
 }
 
+/* The Thursday digest's address book. The whole list is replaced at
+   once: Mission Control edits it as one block, so a classroom left out
+   of the paste is a classroom taken off the send. */
+async function handleTeacherEmails(request, env, url) {
+  if (!(await adminKeyOk(request, url, env))) return json({ error: 'unauthorized' }, 401);
+  const body = await request.json().catch(() => null);
+  if (!body || !Array.isArray(body.rows)) return json({ error: 'Please try that again.' }, 400);
+
+  const pairs = {};
+  const unknown = [];
+  for (const row of body.rows.slice(0, CLASSROOMS.length * 2)) {
+    const classroom = typeof row.c === 'string' ? row.c : '';
+    const email = typeof row.e === 'string' ? row.e.trim().slice(0, 200) : '';
+    if (!classroomById(classroom)) { unknown.push(classroom); continue; }
+    // Not a validator so much as a typo catch: one @, something either
+    // side of it, and no spaces.
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { unknown.push(classroom); continue; }
+    pairs[classroom] = email;
+  }
+  if (unknown.length) {
+    return json({ error: 'Some rows didn’t look right — check the classroom and the address.', rows: unknown }, 400);
+  }
+  await setTeacherEmails(env.DB, pairs, Math.floor(Date.now() / 1000));
+  return json({ saved: Object.keys(pairs).length });
+}
+
+/* Sends one classroom's digest to whoever asked for it, so the PTA can
+   read exactly what a teacher will get before Thursday. It never mails
+   a teacher: the address is the one on this request. */
+async function handleDigestTest(request, env, url) {
+  if (!(await adminKeyOk(request, url, env))) return json({ error: 'unauthorized' }, 401);
+  if (!mailConfigured(env)) {
+    return json({ error: 'Email isn’t switched on for this site yet.' }, 503);
+  }
+  const body = await request.json().catch(() => null);
+  const to = body && typeof body.to === 'string' ? body.to.trim() : '';
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
+    return json({ error: 'Please give an address to send the sample to.' }, 400);
+  }
+  const digests = await buildDigests(env.DB, Date.now());
+  const pick = digests.find((d) => d.classroom === (body.classroom || '')) || digests[0];
+  const sent = await sendEmail(env, {
+    to,
+    subject: `[sample] ${pick.subject}`,
+    text: `This is the sample copy of Thursday's email. The real one goes to ${pick.teacher}.\n\n${'-'.repeat(60)}\n\n${pick.body}`,
+  });
+  return sent.ok ? json({ sent: true, classroom: pick.classroom })
+    : json({ error: sent.error }, 502);
+}
+
+/* The Thursday send. Every classroom with an address gets its own
+   email; the week key means a retried cron mails no one twice, and a
+   failed send releases its slot so the next run can try again. */
+export async function sendWeeklyDigests(env, nowMs = Date.now()) {
+  if (!mailConfigured(env)) {
+    console.log(JSON.stringify({ event: 'digest_skipped', reason: 'email not configured' }));
+    return { sent: 0, skipped: 0, failed: 0 };
+  }
+  const [addresses, digests] = await Promise.all([
+    teacherEmails(env.DB),
+    buildDigests(env.DB, nowMs),
+  ]);
+  const week = weekKey(nowMs);
+  const nowSec = Math.floor(nowMs / 1000);
+  let sent = 0, skipped = 0, failed = 0;
+
+  for (const digest of digests) {
+    const to = addresses[digest.classroom];
+    if (!to) { skipped += 1; continue; }
+    if (!(await claimDigest(env.DB, digest.classroom, week, nowSec))) { skipped += 1; continue; }
+    const res = await sendEmail(env, { to, subject: digest.subject, text: digest.body });
+    if (res.ok) {
+      sent += 1;
+      await finishDigest(env.DB, digest.classroom, week, 'sent');
+    } else {
+      failed += 1;
+      // Let next week's run — or a hand-fired one — try this class again.
+      await releaseDigest(env.DB, digest.classroom, week);
+    }
+  }
+  console.log(JSON.stringify({ event: 'digest_run', week, sent, skipped, failed }));
+  return { sent, skipped, failed };
+}
+
 async function handleReport(request, url, env, name) {
   if (!(await adminKeyOk(request, url, env))) {
     return json({ error: 'unauthorized' }, 401);
@@ -370,7 +457,14 @@ async function handleReport(request, url, env, name) {
     const [stats, ...reports] = await Promise.all([
       campaignStats(env.DB), ...Object.values(REPORTS).map((report) => report(env.DB)),
     ]);
-    const body = { campaign: stats.campaign, offline: await offlineGifts(env.DB) };
+    const [offline, addresses, history] = await Promise.all([
+      offlineGifts(env.DB), teacherEmails(env.DB), digestHistory(env.DB),
+    ]);
+    const body = {
+      campaign: stats.campaign,
+      offline,
+      digest: { emails: addresses, history, ready: mailConfigured(env) },
+    };
     Object.keys(REPORTS).forEach((key, i) => { body[key] = reports[i]; });
     return json(body, 200, { 'cache-control': 'no-store' });
   }
@@ -383,6 +477,13 @@ async function handleReport(request, url, env, name) {
 }
 
 export default {
+  /* Thursday, 5pm Pacific (the cron in wrangler.jsonc is UTC). A
+     scheduled event can be retried, which is why the send claims each
+     classroom's week before mailing it. */
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(sendWeeklyDigests(env, event.scheduledTime || Date.now()));
+  },
+
   async fetch(request, env) {
     const url = new URL(request.url);
     // One canonical host, so shared links and search results agree.
@@ -455,6 +556,8 @@ export default {
         case 'POST /api/stripe/webhook': return await handleWebhook(request, env);
         case 'POST /api/offline-gift':
         case 'DELETE /api/offline-gift': return await handleOfflineGift(request, env, url);
+        case 'POST /api/teacher-emails': return await handleTeacherEmails(request, env, url);
+        case 'POST /api/digest-test': return await handleDigestTest(request, env, url);
         case 'GET /api/students.csv':
         case 'GET /api/shirts.csv':
         case 'GET /api/classrooms.csv':

@@ -38,8 +38,16 @@
 
   "observability": { "enabled": true, "head_sampling_rate": 1 },
 
+  // The Thursday classroom digest. Cron runs on UTC, so Friday 00:00
+  // UTC is Thursday 5pm Pacific while daylight time is in effect; once
+  // it ends in November this lands at 4pm, which is fine for a fall
+  // campaign but is the line to change if that ever matters.
+  "triggers": { "crons": ["0 0 * * 5"] },
+
   // Secrets (wrangler secret put): ADMIN_KEY, STRIPE_SECRET_KEY,
-  // STRIPE_WEBHOOK_SECRET
+  // STRIPE_WEBHOOK_SECRET, and for the digest RESEND_API_KEY,
+  // MAIL_FROM, MAIL_REPLY_TO. With the mail secrets unset the digest
+  // is simply off, which is how the preview worker stays silent.
 
   // PR previews: a second worker with its own database (seeded with
   // the demo donations) and logo bucket, reachable only on workers.dev.
@@ -51,6 +59,8 @@
     "preview": {
       "name": "red-hill-rally-preview",
       "routes": [],
+      // No cron on the preview worker: it must never mail a teacher.
+      "triggers": { "crons": [] },
       "workers_dev": true,
       "preview_urls": true,
       "r2_buckets": [

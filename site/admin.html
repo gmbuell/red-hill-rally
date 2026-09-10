@@ -111,6 +111,40 @@
 
       <div class="sheet-scroll"><table id="offline-table"></table></div>
     </section>
+
+    <section class="sheet" aria-labelledby="digest-head">
+      <div class="sheet-head">
+        <div>
+          <h2 id="digest-head">Thursday emails to teachers</h2>
+          <p>Every Thursday at 5pm each teacher gets their own class: participation, dollars, their Rockets, and how far to the next prize. Only classes with an address below are sent one.</p>
+        </div>
+      </div>
+
+      <p class="digest-state" id="digest-state" role="status"></p>
+
+      <form id="digest-form" class="offline-form" novalidate>
+        <div class="field">
+          <label for="digest-list">Teacher addresses</label>
+          <textarea id="digest-list" rows="8" spellcheck="false" autocomplete="off"></textarea>
+          <p class="error" id="digest-error">Every line needs a classroom from the list and one email address.</p>
+        </div>
+        <small class="fine-print">One class per line, teacher first: <code>Mrs. Harrison, sharrison@tustin.k12.ca.us</code>. Saving replaces the whole list, so a class you delete stops getting emails.</small>
+        <button type="submit" class="btn" id="digest-save">Save the list</button>
+        <p class="form-error" id="digest-fail" role="alert" hidden></p>
+        <p class="offline-done" id="digest-done" role="status" hidden></p>
+      </form>
+
+      <div class="digest-test">
+        <div class="field">
+          <label for="digest-to">Send a sample to</label>
+          <input type="email" id="digest-to" autocomplete="email" placeholder="your own address">
+        </div>
+        <button type="button" class="btn secondary small" id="digest-send-test">Email me a sample</button>
+        <small class="fine-print">Sends one class&rsquo;s email to you only. No teacher is contacted.</small>
+      </div>
+
+      <div class="sheet-scroll"><table id="digest-table"></table></div>
+    </section>
   </div>
   <p class="form-error" id="admin-error" role="alert" hidden></p>
 </main>

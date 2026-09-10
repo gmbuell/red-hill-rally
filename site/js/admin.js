@@ -137,6 +137,112 @@
     load();
   });
 
+  /* ---- the Thursday emails ---- */
+
+  /* The address list is edited as plain text — 20 lines a PTA volunteer
+     can paste from the office directory — and matched to the roster on
+     surname, so "Ms. Convery" and "Miss Convery" are the same teacher. */
+  const surnameOf = (name) => String(name).replace(/^(Mrs\.|Mr\.|Ms\.|Miss)\s+/i, '').trim().toLowerCase();
+  const roomBySurname = {};
+  CLASSROOMS.forEach((c) => { roomBySurname[surnameOf(c.teacher)] = c; });
+
+  const parseList = (text) => {
+    const rows = [];
+    const bad = [];
+    text.split(/\r?\n/).forEach((line) => {
+      if (!line.trim()) return;
+      const [who, ...rest] = line.split(',');
+      const room = roomBySurname[surnameOf(who || '')];
+      const email = rest.join(',').trim();
+      if (room && email) rows.push({ c: room.id, e: email });
+      else bad.push(line.trim());
+    });
+    return { rows, bad };
+  };
+
+  const renderDigest = (digest) => {
+    const emails = (digest && digest.emails) || {};
+    const history = (digest && digest.history) || [];
+    RH.qs('#digest-list').value = CLASSROOMS
+      .filter((c) => emails[c.id])
+      .map((c) => `${c.teacher}, ${emails[c.id]}`).join('\n');
+
+    const withAddress = CLASSROOMS.filter((c) => emails[c.id]).length;
+    RH.qs('#digest-state').textContent = !digest || !digest.ready
+      ? 'Email isn’t switched on for this site yet, so nothing will send.'
+      : `${withAddress} of ${CLASSROOMS.length} classes have an address. The next send is Thursday at 5pm.`;
+
+    const last = {};
+    history.forEach((row) => { if (!last[row.classroom]) last[row.classroom] = row; });
+    const table = RH.qs('#digest-table');
+    const any = Object.keys(last).length;
+    table.innerHTML = html`
+      <thead><tr>
+        <th scope="col">Class</th><th scope="col">Address</th><th scope="col">Last sent</th>
+      </tr></thead>
+      <tbody>${CLASSROOMS.map((c) => {
+        const row = last[c.id];
+        return html`<tr>
+          <td>${c.teacher}</td>
+          <td>${emails[c.id] || '—'}</td>
+          <td>${row
+            ? `${new Date(row.sent * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}${row.status === 'sent' ? '' : ` (${row.status})`}`
+            : (any ? 'not yet' : '—')}</td>
+        </tr>`;
+      })}
+      </tbody>`;
+  };
+
+  RH.qs('#digest-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const field = RH.qs('#digest-list').closest('.field');
+    const failEl = RH.qs('#digest-fail');
+    const doneEl = RH.qs('#digest-done');
+    field.classList.remove('invalid');
+    failEl.hidden = true;
+    doneEl.hidden = true;
+    const { rows, bad } = parseList(RH.qs('#digest-list').value);
+    if (bad.length) {
+      RH.qs('#digest-error').textContent = `We couldn’t read: ${bad.join(' · ')}`;
+      field.classList.add('invalid');
+      return;
+    }
+    const btn = RH.qs('#digest-save');
+    btn.disabled = true;
+    const { ok, data: res } = await RH.postJson('/api/teacher-emails', { rows }, {
+      authorization: `Bearer ${keyOf()}`,
+    }).catch(() => ({ ok: false, data: {} }));
+    btn.disabled = false;
+    if (!ok) {
+      failEl.textContent = res.error || 'That didn’t save — please try again.';
+      failEl.hidden = false;
+      return;
+    }
+    doneEl.textContent = `Saved. ${res.saved} class${res.saved === 1 ? '' : 'es'} will get an email Thursday.`;
+    doneEl.hidden = false;
+    load();
+  });
+
+  RH.qs('#digest-send-test').addEventListener('click', async () => {
+    const failEl = RH.qs('#digest-fail');
+    const doneEl = RH.qs('#digest-done');
+    failEl.hidden = true;
+    doneEl.hidden = true;
+    const btn = RH.qs('#digest-send-test');
+    btn.disabled = true;
+    const { ok, data: res } = await RH.postJson('/api/digest-test', {
+      to: RH.qs('#digest-to').value.trim(),
+    }, { authorization: `Bearer ${keyOf()}` }).catch(() => ({ ok: false, data: {} }));
+    btn.disabled = false;
+    if (!ok) {
+      failEl.textContent = res.error || 'The sample didn’t send — please try again.';
+      failEl.hidden = false;
+      return;
+    }
+    doneEl.textContent = 'Sample sent. Check your inbox.';
+    doneEl.hidden = false;
+  });
+
   const fail = (msg) => { errorEl.textContent = msg; errorEl.hidden = false; };
 
   const load = async () => {
@@ -164,6 +270,7 @@
     renderTable(RH.qs('#students-table'), data.students);
     renderTable(RH.qs('#shirts-table'), data.shirts);
     renderOffline(data.offline || []);
+    renderDigest(data.digest);
   };
 
   form.addEventListener('submit', (e) => {

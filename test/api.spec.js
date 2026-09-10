@@ -3,6 +3,7 @@ import { afterEach, describe, it, expect, vi } from 'vitest';
 import worker from '../worker/index.js';
 import data from '../site/js/data.js';
 import { recordDonation, campaignStats, boardStats } from '../worker/store.js';
+import { sendWeeklyDigests } from '../worker/index.js';
 import { paidSession, paidPartnership, PII } from './fixtures.js';
 
 /* Fixture config derives from data.js, so the edits contributors make
@@ -1146,5 +1147,165 @@ describe('static asset headers', () => {
       expect(res.headers.get('x-frame-options'), path).toBe('DENY');
       expect(res.headers.get('link'), path).toBeNull();
     }
+  });
+});
+
+/* ---- the Thursday classroom digest ---- */
+
+describe('the Thursday teacher digest', () => {
+  const KEY = { authorization: 'Bearer test-admin-key' };
+  const MAIL = { RESEND_API_KEY: 're_test', MAIL_FROM: 'Rally <rally@rally.test>' };
+  const roomA = data.classroomById(ROOM_A);
+  const roomB = data.classroomById(ROOM_B);
+
+  /* Stub the provider, not the digest: every test here proves what
+     actually would have been mailed. */
+  const stubMail = (reply = { ok: true, status: 200 }) => {
+    const sent = [];
+    vi.stubGlobal('fetch', async (input, init) => {
+      const target = typeof input === 'string' ? input : input.url;
+      if (!target.startsWith('https://api.resend.com/')) throw new Error('unexpected fetch: ' + target);
+      sent.push(JSON.parse(String(init.body)));
+      return new Response('{}', { status: reply.status });
+    });
+    return sent;
+  };
+
+  const setList = (rows) => SELF.fetch('https://rally.test/api/teacher-emails', {
+    method: 'POST',
+    headers: { ...KEY, 'content-type': 'application/json' },
+    body: JSON.stringify({ rows }),
+  });
+
+  const giftFor = (id, room, name, cents = 10000) => deliverWebhook(sessionEvent({
+    id, amount_total: cents, metadata: { students: JSON.stringify([{ c: room, n: name }]) },
+  }));
+
+  it('keeps the address list behind the admin key', async () => {
+    const res = await SELF.fetch('https://rally.test/api/teacher-emails', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ rows: [{ c: ROOM_A, e: 'a@b.co' }] }),
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it('saves the list and refuses a row it cannot use', async () => {
+    expect((await setList([{ c: ROOM_A, e: 'teacher@school.test' }])).status).toBe(200);
+    const body = await (await SELF.fetch('https://rally.test/api/admin.json', { headers: KEY })).json();
+    expect(body.digest.emails[ROOM_A]).toBe('teacher@school.test');
+
+    expect((await setList([{ c: 'not-a-room', e: 'teacher@school.test' }])).status).toBe(400);
+    expect((await setList([{ c: ROOM_A, e: 'not an address' }])).status).toBe(400);
+    // Saving replaces the list, so dropping a class stops its email.
+    await setList([{ c: ROOM_B, e: 'other@school.test' }]);
+    const after = await (await SELF.fetch('https://rally.test/api/admin.json', { headers: KEY })).json();
+    expect(after.digest.emails).toEqual({ [ROOM_B]: 'other@school.test' });
+  });
+
+  it('mails nobody when email is not configured', async () => {
+    await setList([{ c: ROOM_A, e: 'teacher@school.test' }]);
+    const sent = stubMail();
+    expect(await sendWeeklyDigests(env)).toEqual({ sent: 0, skipped: 0, failed: 0 });
+    expect(sent).toHaveLength(0);
+  });
+
+  it('sends one email per class that has an address, and skips the rest', async () => {
+    await giftFor('cs_d1', ROOM_A, 'Mia Rodriguez');
+    await setList([{ c: ROOM_A, e: 'a@school.test' }, { c: ROOM_B, e: 'b@school.test' }]);
+    const sent = stubMail();
+    const run = await sendWeeklyDigests({ ...env, ...MAIL });
+    expect(run).toMatchObject({ sent: 2, failed: 0 });
+    expect(run.skipped).toBe(data.CLASSROOMS.length - 2);
+    expect(sent.map((m) => m.to[0]).sort()).toEqual(['a@school.test', 'b@school.test']);
+
+    const mine = sent.find((m) => m.to[0] === 'a@school.test');
+    expect(mine.subject).toContain(roomA.teacher);
+    expect(mine.text).toContain('Mia Rodriguez');
+    expect(mine.text).toContain(`1 of ${roomA.students} Rockets have a gift`);
+    // A class with nothing yet still gets asked, not told it failed.
+    const theirs = sent.find((m) => m.to[0] === 'b@school.test');
+    expect(theirs.text).toContain('No gifts in your class yet');
+    expect(theirs.text).toContain(`${roomB.teacher}`);
+  });
+
+  it('will not mail the same week twice', async () => {
+    await setList([{ c: ROOM_A, e: 'a@school.test' }]);
+    const first = stubMail();
+    await sendWeeklyDigests({ ...env, ...MAIL }, Date.UTC(2026, 8, 11, 0, 0));
+    expect(first).toHaveLength(1);
+
+    // A retried cron, an hour later, in the same week.
+    const again = stubMail();
+    const run = await sendWeeklyDigests({ ...env, ...MAIL }, Date.UTC(2026, 8, 11, 1, 0));
+    expect(again).toHaveLength(0);
+    expect(run.sent).toBe(0);
+
+    // Next week it goes again.
+    const next = stubMail();
+    await sendWeeklyDigests({ ...env, ...MAIL }, Date.UTC(2026, 8, 18, 0, 0));
+    expect(next).toHaveLength(1);
+  });
+
+  it('lets a class that failed try again rather than losing its week', async () => {
+    await setList([{ c: ROOM_A, e: 'a@school.test' }]);
+    stubMail({ status: 422 });
+    const bad = await sendWeeklyDigests({ ...env, ...MAIL }, Date.UTC(2026, 8, 11, 0, 0));
+    expect(bad).toMatchObject({ sent: 0, failed: 1 });
+
+    const retry = stubMail();
+    const good = await sendWeeklyDigests({ ...env, ...MAIL }, Date.UTC(2026, 8, 11, 2, 0));
+    expect(good.sent).toBe(1);
+    expect(retry).toHaveLength(1);
+  });
+
+  it('sends a sample only to the address on the request, never the teacher', async () => {
+    await setList([{ c: ROOM_A, e: 'teacher@school.test' }]);
+    const sent = stubMail();
+    // Called in this isolate so the stubbed fetch and the mail secrets
+    // both apply.
+    const res = await worker.fetch(
+      jsonRequest('/api/digest-test', { to: 'pta@school.test', classroom: ROOM_A }),
+      { ...env, ...MAIL, ADMIN_KEY: 'test-admin-key' },
+      createExecutionContext(),
+    );
+    expect(res.status).toBe(401); // the key travels as a header, not a body field
+    expect(sent).toHaveLength(0);
+
+    const okRes = await worker.fetch(
+      new Request('https://rally.test/api/digest-test', {
+        method: 'POST',
+        headers: { ...KEY, 'content-type': 'application/json' },
+        body: JSON.stringify({ to: 'pta@school.test', classroom: ROOM_A }),
+      }),
+      { ...env, ...MAIL, ADMIN_KEY: 'test-admin-key' },
+      createExecutionContext(),
+    );
+    expect(okRes.status).toBe(200);
+    expect(sent).toHaveLength(1);
+    expect(sent[0].to).toEqual(['pta@school.test']);
+    expect(sent[0].subject).toContain('[sample]');
+    expect(sent[0].text).toContain(roomA.teacher);
+    // And it left no mark on the week, so Thursday still goes out.
+    const body = await (await SELF.fetch('https://rally.test/api/admin.json', { headers: KEY })).json();
+    expect(body.digest.history).toHaveLength(0);
+  });
+
+  it('answers plainly when email is not switched on yet', async () => {
+    const res = await SELF.fetch('https://rally.test/api/digest-test', {
+      method: 'POST',
+      headers: { ...KEY, 'content-type': 'application/json' },
+      body: JSON.stringify({ to: 'pta@school.test' }),
+    });
+    expect(res.status).toBe(503);
+    expect((await res.json()).error).toContain('switched on');
+  });
+
+  it('marks no week as done when nothing was mailed', async () => {
+    await setList([{ c: ROOM_A, e: 'a@school.test' }]);
+    stubMail();
+    await sendWeeklyDigests(env, Date.UTC(2026, 8, 11, 0, 0)); // unconfigured
+    const body = await (await SELF.fetch('https://rally.test/api/admin.json', { headers: KEY })).json();
+    expect(body.digest.history).toHaveLength(0);
   });
 });

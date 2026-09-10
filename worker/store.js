@@ -379,3 +379,67 @@ export async function shirtsReport(db) {
   }
   return { columns: ['grade', 'teacher', 'student', 'size', 'quantity'], rows };
 }
+
+/* ---- the Thursday classroom digest ---------------------------------
+   Teacher addresses live here rather than in data.js: this repository
+   is public and these are staff email addresses. The PTA types them
+   into Mission Control. */
+
+export async function teacherEmails(db) {
+  const { results } = await db.prepare(
+    'SELECT classroom, email FROM teacher_emails').all();
+  const map = {};
+  for (const row of results) map[row.classroom] = row.email;
+  return map;
+}
+
+/* Replaces the whole list: the admin page edits it as one block of
+   text, so a classroom left out of the paste is one taken off the
+   send. */
+export async function setTeacherEmails(db, pairs, nowSec) {
+  const stmts = [db.prepare('DELETE FROM teacher_emails')];
+  for (const [classroom, email] of Object.entries(pairs)) {
+    stmts.push(db.prepare(
+      'INSERT INTO teacher_emails (classroom, email, updated) VALUES (?1, ?2, ?3)')
+      .bind(classroom, email, nowSec));
+  }
+  await db.batch(stmts);
+}
+
+/* The Monday of a send's week, as a plain UTC date — the key that
+   makes a second run of the same week a no-op. */
+export const weekKey = (nowMs) => {
+  const d = new Date(nowMs);
+  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+  return d.toISOString().slice(0, 10);
+};
+
+/* Claims this week's send for a classroom. Returns false if it was
+   already claimed, so a retried cron mails no one twice. */
+export async function claimDigest(db, classroom, week, nowSec) {
+  const res = await db.prepare(
+    `INSERT OR IGNORE INTO digest_log (classroom, week, sent, status)
+     VALUES (?1, ?2, ?3, 'sending')`).bind(classroom, week, nowSec).run();
+  return res.meta.changes === 1;
+}
+
+export async function finishDigest(db, classroom, week, status) {
+  await db.prepare('UPDATE digest_log SET status = ?3 WHERE classroom = ?1 AND week = ?2')
+    .bind(classroom, week, status).run();
+}
+
+/* A failed send shouldn't hold its week's slot: releasing it lets the
+   next run try that classroom again. */
+export async function releaseDigest(db, classroom, week) {
+  await db.prepare('DELETE FROM digest_log WHERE classroom = ?1 AND week = ?2')
+    .bind(classroom, week).run();
+}
+
+/* What Mission Control shows under the address list: when each class
+   last had a digest, and how it went. */
+export async function digestHistory(db) {
+  const { results } = await db.prepare(
+    `SELECT classroom, week, sent, status FROM digest_log
+     ORDER BY week DESC, classroom`).all();
+  return results;
+}
