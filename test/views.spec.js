@@ -120,11 +120,13 @@ describe('page views', () => {
   it('points an empty board at the prizes instead of naming a leader', () => {
     const { shoe, prizes } = board([]);
     expect(shoe).toContain('Still anyone&rsquo;s');
-    expect(prizes).toContain('No class at 80% yet');
+    expect(prizes).toContain('Every class can earn funds');
+    expect(prizes).toContain('80% participation to earn $150');
+    expect(prizes).toContain('100% participation to earn $250');
     expect(prizes).not.toContain('<strong>');
   });
 
-  it('ranks classes level on participation by dollars raised', () => {
+  it('ranks classes tied on participation by dollars raised', () => {
     // Everyone at 100%: participation has stopped separating them.
     const { order } = board([[1, 100], [1, 700], [1, 400]]);
     const [a, b, c] = data.CLASSROOMS.map((r) => r.teacher);

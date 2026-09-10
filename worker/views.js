@@ -381,7 +381,7 @@ export const boardSlots = (live) => {
   const at100 = ranked.filter((c) => c.shown >= 100).length;
   const classes = (n) => `${n} class${n === 1 ? '' : 'es'}`;
   const partLine = !at80
-    ? html`No class at 80% yet. Every class that gets there wins $150.`
+    ? html`Every class can earn funds for classroom supplies and needs. Reach 80% participation to earn $150 and 100% participation to earn $250.`
     : html`<strong>${classes(at80)}</strong> at 80% or more &middot; ${at100
       ? html`<strong>${at100}</strong> at 100%`
       : html`<strong>none</strong> at 100% yet`}`;
