@@ -41,9 +41,14 @@ page's prefill chip.
 
 ## Classroom race
 
-The race ranks by participation (gifts ÷ class size): "a gift of any
-size moves your classroom's rocket exactly the same." Dollar totals
-appear in campaign and priority aggregates.
+The race ranks by participation (Rockets ÷ class size): "a gift of any
+size moves your classroom's rocket exactly the same." A Rocket counts
+once however many gifts they draw, so a class isn't carried by one kid
+with generous relatives; a gift that named no Rocket counts once, as
+the family behind it, so the optional name box never costs a class
+credit. Names are folded and counted in SQL, so the board's query still
+never returns a student name. Dollar totals appear in campaign and
+priority aggregates.
 
 ## Business partners
 

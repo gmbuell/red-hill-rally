@@ -203,9 +203,18 @@ export async function campaignStats(db) {
 export async function boardStats(db) {
   const [totals, byClassroom, roll, partnerRows] = await db.batch([
     totalsStmt(db),
-    // Joined so a gift deleted by hand (refund, the go-live wipe)
-    // takes its classroom credits with it.
-    db.prepare(`SELECT s.classroom, COUNT(*) AS gifts FROM donation_students s
+    // Participation counts Rockets, not gifts: three gifts for one kid
+    // is one kid participating. A gift that named no Rocket still
+    // counts once, as the family behind it — a class shouldn't lose
+    // credit because a donor skipped the name box. Names are folded and
+    // counted in SQL so they never leave the database. Joined so a gift
+    // deleted by hand (refund, the go-live wipe) takes its classroom
+    // credits with it.
+    db.prepare(`SELECT s.classroom,
+                  COUNT(DISTINCT CASE WHEN TRIM(s.student_name) <> ''
+                                      THEN LOWER(TRIM(s.student_name)) END)
+                  + SUM(CASE WHEN TRIM(s.student_name) = '' THEN 1 ELSE 0 END) AS rockets
+                FROM donation_students s
                 JOIN donations d ON d.id = s.donation_id GROUP BY s.classroom`),
     db.prepare(`SELECT donor_name, priority, partner_tier, amount_cents, visibility
                 FROM donations ORDER BY created DESC, id DESC`),
@@ -213,7 +222,7 @@ export async function boardStats(db) {
   ]);
 
   const classrooms = {};
-  for (const row of byClassroom.results) classrooms[row.classroom] = row.gifts;
+  for (const row of byClassroom.results) classrooms[row.classroom] = row.rockets;
 
   const donors = roll.results.map((row) => {
     const isPublic = row.visibility === 'public' && row.donor_name;
@@ -319,12 +328,15 @@ export async function studentsReport(db) {
 export async function classroomsReport(db) {
   const rooms = tally((await creditsStmt(db).all()).results);
   const rows = roomOrder(rooms).map((room) => {
-    const students = Object.values(rooms[room.id] || {});
-    const sum = (key) => students.reduce((n, s) => n + s[key], 0);
-    const pct = room.students > 0 ? Math.round(Math.min(sum('gifts') / room.students, 1) * 100) : 0;
-    return [room.grade, room.teacher, room.students, sum('gifts'), pct, dollars(sum('cents')), sum('shirts')];
+    const entries = Object.entries(rooms[room.id] || {});
+    const sum = (key) => entries.reduce((n, [, s]) => n + s[key], 0);
+    // Rockets participating, the board's numerator: each named kid
+    // once however many gifts they drew, and each unnamed gift once.
+    const rockets = entries.reduce((n, [key, s]) => n + (key === '' ? s.gifts : 1), 0);
+    const pct = room.students > 0 ? Math.round(Math.min(rockets / room.students, 1) * 100) : 0;
+    return [room.grade, room.teacher, room.students, sum('gifts'), rockets, pct, dollars(sum('cents')), sum('shirts')];
   });
-  return { columns: ['grade', 'teacher', 'students', 'gifts', 'participation_pct', 'raised', 'shirts'], rows };
+  return { columns: ['grade', 'teacher', 'students', 'gifts', 'rockets', 'participation_pct', 'raised', 'shirts'], rows };
 }
 
 /* The printer's sheet: each Rocket's shirts by size, merged across

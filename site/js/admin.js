@@ -13,10 +13,10 @@
   /* Column ids -> what the PTA reads, and how a cell prints. */
   const LABELS = {
     grade: 'Grade', teacher: 'Teacher', students: 'Class size', gifts: 'Gifts',
-    participation_pct: 'Participation', raised: 'Raised', shirts: 'Shirts',
+    rockets: 'Rockets', participation_pct: 'Participation', raised: 'Raised', shirts: 'Shirts',
     student: 'Rocket', size: 'Size', quantity: 'Qty',
   };
-  const NUMERIC = new Set(['students', 'gifts', 'participation_pct', 'raised', 'shirts', 'quantity']);
+  const NUMERIC = new Set(['students', 'gifts', 'rockets', 'participation_pct', 'raised', 'shirts', 'quantity']);
   const show = (col, v) => (col === 'raised' ? RH.moneyCents(Math.round(Number(v) * 100))
     : col === 'participation_pct' ? `${v}%` : v);
 

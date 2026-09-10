@@ -328,12 +328,12 @@ export const boardSlots = (live) => {
 
   const ranked = [...CLASSROOMS]
     .map((c) => {
-      const classGifts = perClass[c.id] || 0;
-      return { ...c, gifts: classGifts, pct: c.students > 0 ? Math.min(classGifts / c.students, 1) : 0 };
+      const rockets = perClass[c.id] || 0;
+      return { ...c, rockets, pct: c.students > 0 ? Math.min(rockets / c.students, 1) : 0 };
     })
     .sort((a, b) => b.pct - a.pct);
   const race = ranked.map((c, i) => html`
-      <li class="${i < 3 && c.gifts > 0 ? 'leader' : ''}">
+      <li class="${i < 3 && c.rockets > 0 ? 'leader' : ''}">
         <span class="rank">${i + 1}</span>
         <span class="room">${c.teacher}<small class="grade">${gradeName(c.grade)}</small></span>
         <span class="trail">${trailSVG(c.pct)}</span>

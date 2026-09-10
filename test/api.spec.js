@@ -559,6 +559,41 @@ describe('webhook and campaign stats', () => {
     expect((await getJson('/api/board')).classrooms[ROOM_A]).toBe(1);
   });
 
+  it('counts a Rocket once in the race however many gifts they draw', async () => {
+    // Grandma, an aunt and a neighbor all give for the same kid: one
+    // Rocket participating, not three.
+    const forMia = (id, over = {}) => sessionEvent({
+      id, created: 1756100000, ...over,
+      metadata: { students: JSON.stringify([{ c: ROOM_A, n: 'Mia Rodriguez' }]), ...(over.metadata || {}) },
+    });
+    await deliverWebhook(forMia('cs_g1'));
+    await deliverWebhook(forMia('cs_g2'));
+    // A different spelling is the same kid, the way the student sheet
+    // merges them.
+    await deliverWebhook(sessionEvent({
+      id: 'cs_g3', metadata: { students: JSON.stringify([{ c: ROOM_A, n: 'mia rodriguez' }]) },
+    }));
+    expect((await getJson('/api/board')).classrooms[ROOM_A]).toBe(1);
+
+    // A second kid in the same class moves it to two.
+    await deliverWebhook(sessionEvent({
+      id: 'cs_g4', metadata: { students: JSON.stringify([{ c: ROOM_A, n: 'Leo Park' }]) },
+    }));
+    expect((await getJson('/api/board')).classrooms[ROOM_A]).toBe(2);
+  });
+
+  it('counts a gift that named no Rocket, once per gift', async () => {
+    // The name box is optional. A class must not lose credit because a
+    // donor skipped it, and two such gifts are two families.
+    const noName = (id) => sessionEvent({
+      id, metadata: { students: JSON.stringify([{ c: ROOM_B, n: '' }]) },
+    });
+    await deliverWebhook(noName('cs_n1'));
+    expect((await getJson('/api/board')).classrooms[ROOM_B]).toBe(1);
+    await deliverWebhook(noName('cs_n2'));
+    expect((await getJson('/api/board')).classrooms[ROOM_B]).toBe(2);
+  });
+
   it('judges circle tiers on the base gift, not gift plus fee', async () => {
     // Charged exactly the circle minimum, but part of it is fee
     // cover — the base gift lands just below the tier.
@@ -1022,9 +1057,20 @@ describe('admin reports', () => {
     expect(body.campaign).toEqual({ raised: 100 + data.SHIRT.credit, goal: data.CAMPAIGN.goal, gifts: 1 });
     expect(body.students.columns).toEqual(['grade', 'teacher', 'student', 'gifts', 'raised']);
     expect(body.students.rows).toContainEqual([roomA.grade, roomA.teacher, 'Mia Rodriguez', 1, dollars(10000 + CREDIT_CENTS)]);
-    expect(body.classrooms.rows).toContainEqual([roomA.grade, roomA.teacher, roomA.students, 1, Math.round(100 / roomA.students), dollars(10000 + CREDIT_CENTS), 1]);
+    expect(body.classrooms.rows).toContainEqual([roomA.grade, roomA.teacher, roomA.students, 1, 1, Math.round(100 / roomA.students), dollars(10000 + CREDIT_CENTS), 1]);
     expect(body.shirts.rows).toEqual([[roomA.grade, roomA.teacher, 'Mia Rodriguez', data.SHIRT.sizes[0].label, 1]]);
     expect(JSON.stringify(body)).not.toContain('example.com');
+  });
+
+  it('separates gifts from Rockets on the classroom sheet', async () => {
+    // Two gifts for one kid, one for another: three gifts, two Rockets.
+    const forRoomA = (id, n) => sessionEvent({ id, metadata: { students: JSON.stringify([{ c: ROOM_A, n }]) } });
+    await deliverWebhook(forRoomA('cs_c1', 'Mia Rodriguez'));
+    await deliverWebhook(forRoomA('cs_c2', 'Mia Rodriguez'));
+    await deliverWebhook(forRoomA('cs_c3', 'Leo Park'));
+    const rows = await report('classrooms');
+    expect(rows).toContain(row(roomA, roomA.students, 3, 2,
+      Math.round(200 / roomA.students), dollars(3 * 10000), 0));
   });
 
   it('lists shirts by Rocket and size for the printer, quantities merged across orders', async () => {
@@ -1053,10 +1099,10 @@ describe('admin reports', () => {
       },
     }));
     const rows = await report('classrooms');
-    expect(rows[0]).toBe('grade,teacher,students,gifts,participation_pct,raised,shirts');
-    const a = rows.indexOf(row(roomA, roomA.students, 0, 0, '0.00', 0));
-    const b = rows.indexOf(row(roomB, roomB.students, 2, Math.round(200 / roomB.students), dollars(5000 + CREDIT_CENTS), 1));
-    const c = rows.indexOf(row(roomC, roomC.students, 0, 0, '0.00', 0));
+    expect(rows[0]).toBe('grade,teacher,students,gifts,rockets,participation_pct,raised,shirts');
+    const a = rows.indexOf(row(roomA, roomA.students, 0, 0, 0, '0.00', 0));
+    const b = rows.indexOf(row(roomB, roomB.students, 2, 2, Math.round(200 / roomB.students), dollars(5000 + CREDIT_CENTS), 1));
+    const c = rows.indexOf(row(roomC, roomC.students, 0, 0, 0, '0.00', 0));
     expect(a).toBeGreaterThan(0);
     expect(b).toBeGreaterThan(a);
     expect(c).toBeGreaterThan(b);
