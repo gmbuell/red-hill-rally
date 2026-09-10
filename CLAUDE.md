@@ -314,6 +314,15 @@ flip to live, in this order:
     address and the last send time, one per 15 minutes, so the box can't
     be used to mail somebody repeatedly. With the mail secrets missing
     it takes the address and sends nothing, same as the Thursday digest.
+  - *Finding it* is the whole problem, so `/my-rocket` is reachable from
+    the footer of every page ("Student Progress"), a callout under the
+    Rally Board's classroom race, and a line at the foot of
+    `/student-link`. Not the top nav, which is for people deciding
+    whether to give. It is called **progress**, never "your link": two
+    footer entries reading Student Link and Find My Rocket had families
+    opening the donate-link page when they wanted a total. For the same
+    reason no donor-facing copy says a Rocket "has raised" — it is the
+    total raised *for* a student.
 - **Fixing a Rocket's name** — "Fix a Rocket's name" on /admin moves
   every gift under one spelling to another inside a single classroom,
   and merges them when the new name is already there. Donors type names

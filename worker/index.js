@@ -426,8 +426,9 @@ async function handleMyLink(request, env, url) {
     lines.push(`${url.origin}/thanks?sid=${encodeURIComponent(gift.id)}`);
     lines.push('');
   }
-  lines.push('Each link shows what that Rocket has raised across every gift, and it');
-  lines.push('stays up to date, so bookmark it and check back as the Rally goes on.');
+  lines.push('Each link shows the total raised for that student, every gift counted,');
+  lines.push('and it stays up to date, so bookmark it and check back as the Rally');
+  lines.push('goes on.');
   lines.push('');
   lines.push('Thank you for rallying with us,');
   lines.push('Red Hill Elementary PTA');

@@ -248,7 +248,7 @@ export const footer = () => html`
     <a href="/">Home</a>
     <a href="/donate">Donate</a>
     <a href="/student-link">Student Link</a>
-    <a href="/my-rocket">Find My Rocket</a>
+    <a href="/my-rocket">Student Progress</a>
     <a href="/shirt">Rally Shirts</a>
     <a href="/rally-board">Rally Board</a>
     <a href="/prizes">Prizes</a>

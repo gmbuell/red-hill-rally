@@ -472,6 +472,17 @@ select:focus-visible,
    mirrors. */
 .shirt-callout { margin-top: 1.2rem; }
 
+/* Same callout on the Rally Board, minus the icon: the board is a
+   dense page of numbers and a third graphic would fight the trails. */
+.board-callout {
+  grid-template-columns: 1fr auto;
+  margin: 2.5rem 0 0;
+}
+@media (max-width: 52rem) {
+  .board-callout { grid-template-columns: 1fr; }
+  .board-callout .btn { justify-self: center; }
+}
+
 /* The shirt page is one screen, so its blocks need the air the donate
    wizard gets from its steps. */
 /* Front and back, side by side — they stay side by side on a phone
