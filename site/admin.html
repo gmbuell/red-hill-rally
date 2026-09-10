@@ -112,6 +112,37 @@
       <div class="sheet-scroll"><table id="offline-table"></table></div>
     </section>
 
+    <section class="sheet" aria-labelledby="rename-head">
+      <div class="sheet-head">
+        <div>
+          <h2 id="rename-head">Fix a Rocket&rsquo;s name</h2>
+          <p>Donors type names by hand, so one child can land as &ldquo;Audrey&rdquo; and &ldquo;Audrey Webber&rdquo;. Each spelling counts as its own Rocket, which splits their total and credits the class with two participants instead of one. Fixing the name moves the gifts and corrects the count.</p>
+        </div>
+      </div>
+
+      <form id="rename-form" class="offline-form" novalidate>
+        <div class="offline-grid">
+          <div class="field">
+            <label for="rn-class">Classroom</label>
+            <select id="rn-class"></select>
+          </div>
+          <div class="field">
+            <label for="rn-from">Name to fix</label>
+            <select id="rn-from"></select>
+          </div>
+          <div class="field">
+            <label for="rn-to">Should be</label>
+            <input type="text" id="rn-to" autocomplete="off" list="rn-names" placeholder="e.g. Audrey Webber">
+            <datalist id="rn-names"></datalist>
+          </div>
+        </div>
+        <small class="fine-print">Typing a name already in that class merges the two, and their gifts and totals combine.</small>
+        <button type="submit" class="btn" id="rn-save">Fix the name</button>
+        <p class="form-error" id="rn-error" role="alert" hidden></p>
+        <p class="offline-done" id="rn-done" role="status" hidden></p>
+      </form>
+    </section>
+
     <section class="sheet" aria-labelledby="digest-head">
       <div class="sheet-head">
         <div>

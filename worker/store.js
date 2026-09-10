@@ -262,6 +262,11 @@ const creditsStmt = (db) => db.prepare(`
   FROM donation_students s JOIN donations d ON d.id = s.donation_id
   ORDER BY d.created, d.id, s.position`);
 
+/* What the reports call a credit whose donor left the name box empty.
+   Mission Control shows this in the picker, and sends '' back when the
+   PTA puts a name to one. */
+export const NO_NAME = '(no name given)';
+
 /* Credits -> classroom id -> lowercase name -> { name, gifts, cents,
    shirts }. A gift naming several Rockets counts once for each (as the
    race does) and splits its dollars evenly, so class totals stay real
@@ -286,7 +291,7 @@ const tally = (credits) => {
     // spelling seen and merge the rest.
     const name = c.student_name.trim();
     const room = (rooms[c.classroom] ||= {});
-    const student = (room[name.toLowerCase()] ||= { name: name || '(no name given)', gifts: 0, cents: 0, shirts: 0 });
+    const student = (room[name.toLowerCase()] ||= { name: name || NO_NAME, gifts: 0, cents: 0, shirts: 0 });
     student.gifts += 1;
     student.cents += share;
     student.shirts += own;
@@ -442,4 +447,25 @@ export async function digestHistory(db) {
     `SELECT classroom, week, sent, status FROM digest_log
      ORDER BY week DESC, classroom`).all();
   return results;
+}
+
+/* Fix a mistyped Rocket, or merge two spellings of one kid.
+
+   Donors type names by hand, so one child arrives as "Audrey", "Audrey
+   Webber" and "audrey w". Left alone each spelling is its own Rocket:
+   the child's total splits across them and the class is credited with
+   three participants instead of one, which decides prizes. This moves
+   every credit from one spelling to another inside a single classroom.
+   Renaming to a name already there merges them, because the reports
+   group by the folded name.
+
+   Scoped to one classroom so two children who share a first name in
+   different rooms can't be merged by accident. Returns how many
+   credits moved. */
+export async function renameRocket(db, classroom, from, to) {
+  const res = await db.prepare(
+    `UPDATE donation_students SET student_name = ?3
+     WHERE classroom = ?1 AND LOWER(TRIM(student_name)) = LOWER(TRIM(?2))`)
+    .bind(classroom, from, to).run();
+  return res.meta.changes || 0;
 }

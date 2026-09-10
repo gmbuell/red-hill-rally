@@ -137,6 +137,71 @@
     load();
   });
 
+  /* ---- fixing a mistyped Rocket ---- */
+
+  /* The picker is built from the Rockets sheet the page already has,
+     so it can only ever offer names that really are in that class. */
+  let rockets = { rows: [], columns: [] };
+  let noNameLabel = '';
+  const teacherOf = (id) => (CLASSROOMS.find((c) => c.id === id) || {}).teacher || '';
+
+  const namesIn = (classroomId) => {
+    const teacher = teacherOf(classroomId);
+    return rockets.rows.filter((r) => r[1] === teacher).map((r) => r[2]);
+  };
+
+  const renderRenameNames = () => {
+    const names = namesIn(RH.qs('#rn-class').value);
+    RH.qs('#rn-from').innerHTML = names.length
+      ? html`${names.map((n) => html`<option value="${n}">${n}</option>`)}`
+      : html`<option value="">No Rockets in this class yet</option>`;
+    // Merge targets: the other names already in the room.
+    RH.qs('#rn-names').innerHTML = html`${names
+      .filter((n) => n !== noNameLabel)
+      .map((n) => html`<option value="${n}"></option>`)}`;
+  };
+
+  RH.qs('#rn-class').innerHTML = html`${RH.classroomOptions()}`;
+  RH.qs('#rn-class').addEventListener('change', renderRenameNames);
+
+  RH.qs('#rename-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const failEl = RH.qs('#rn-error');
+    const doneEl = RH.qs('#rn-done');
+    failEl.hidden = true;
+    doneEl.hidden = true;
+    const picked = RH.qs('#rn-from').value;
+    const to = RH.qs('#rn-to').value.trim();
+    if (!picked && picked !== noNameLabel) {
+      failEl.textContent = 'Pick the name to fix first.';
+      failEl.hidden = false;
+      return;
+    }
+    if (!to) {
+      failEl.textContent = 'Type the name it should be.';
+      failEl.hidden = false;
+      return;
+    }
+    const btn = RH.qs('#rn-save');
+    btn.disabled = true;
+    const { ok, data: res } = await RH.postJson('/api/rename-rocket', {
+      classroom: RH.qs('#rn-class').value,
+      // An unnamed credit is stored as an empty name, not as the label.
+      from: picked === noNameLabel ? '' : picked,
+      to,
+    }, { authorization: `Bearer ${keyOf()}` }).catch(() => ({ ok: false, data: {} }));
+    btn.disabled = false;
+    if (!ok) {
+      failEl.textContent = res.error || 'That didn’t save — please try again.';
+      failEl.hidden = false;
+      return;
+    }
+    doneEl.textContent = `Moved ${res.moved} gift${res.moved === 1 ? '' : 's'} to ${res.to}.`;
+    doneEl.hidden = false;
+    RH.qs('#rn-to').value = '';
+    load();
+  });
+
   /* ---- the Thursday emails ---- */
 
   /* The address list is edited as plain text — 20 lines a PTA volunteer
@@ -271,6 +336,9 @@
     renderTable(RH.qs('#shirts-table'), data.shirts);
     renderOffline(data.offline || []);
     renderDigest(data.digest);
+    rockets = data.students;
+    noNameLabel = data.noName || '';
+    renderRenameNames();
   };
 
   form.addEventListener('submit', (e) => {

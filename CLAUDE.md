@@ -23,7 +23,7 @@ two-sentence pointer; this file is the operating manual.
 | `npm install` | wrangler, vitest + workers pool, lighthouse |
 | `npx wrangler d1 migrations apply red-hill-rally --local` | once per clone: local D1 schema |
 | `npm run dev` | `wrangler dev` on http://localhost:8787 |
-| `npm test` | vitest (129 tests, ~4 s) |
+| `npm test` | vitest (137 tests, ~4 s) |
 | `npm run audit` | Lighthouse on every page but `/admin` (noindex), mobile + desktop (needs Chrome); defaults to the live site (`npm run audit -- --url http://localhost:8787` for local). `--runs 3 --min 98` reproduces the CI gate, `--form mobile` limits it to one form factor |
 | `npm run wcag` | WCAG 2.2 checks on every page, mobile + desktop (needs Chrome): text contrast, non-text contrast, focus rings, target size, body leading ≥ 1.5, body text ≥ 16px and labels ≥ 13px. Defaults to the live site (`npm run wcag -- --url http://localhost:8787` for local, `--page donate --form mobile` to narrow). Each cell shows how many elements the check examined |
 | `npm run deploy` | **Ships to production**: the worker and every file under `site/`. The `predeploy` step runs the tests, then applies pending D1 migrations to the remote database, so schema and code ship together. Every push to `main` runs this through Cloudflare Workers Builds (dashboard → the worker → Settings → Build), so merging a PR deploys it |
@@ -263,6 +263,17 @@ flip to live, in this order:
     size, so three gifts for one kid read as one participant.
   - *shirts.csv* (for the printer): grade, teacher, student, size,
     quantity; one row per Rocket and size, merged across orders.
+- **Fixing a Rocket's name** — "Fix a Rocket's name" on /admin moves
+  every gift under one spelling to another inside a single classroom,
+  and merges them when the new name is already there. Donors type names
+  by hand, so a child arrives as "Audrey", "Audrey Webber" and "audrey
+  w"; each spelling is its own Rocket, which splits their total and
+  credits the class with three participants instead of one, and
+  participation decides the classroom prizes. The picker offers only
+  names really in that class, and the classroom is part of the request
+  so two children sharing a first name in different rooms can't be
+  merged. A credit whose donor left the name blank can be given a name
+  the same way.
 - **Thursday emails to teachers** — a cron on the worker mails each
   classroom teacher their own class every Thursday at 5pm Pacific:
   participation, dollars, their Rockets by name, and how many more

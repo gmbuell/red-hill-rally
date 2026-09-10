@@ -9,7 +9,8 @@ import { normalizeStudents, shirtsMetadata } from './students.js';
 import { createCheckoutSession, verifyWebhook } from './stripe.js';
 import { recordDonation, campaignStats, boardStats, studentsReport, shirtsReport, classroomsReport, csv,
   recordOfflineGift, deleteOfflineGift, offlineGifts,
-  teacherEmails, setTeacherEmails, weekKey, claimDigest, finishDigest, releaseDigest, digestHistory } from './store.js';
+  teacherEmails, setTeacherEmails, weekKey, claimDigest, finishDigest, releaseDigest, digestHistory,
+  renameRocket, NO_NAME } from './store.js';
 import { buildDigests } from './digest.js';
 import { sendEmail, mailConfigured } from './mail.js';
 import { renderPage } from './pages.js';
@@ -365,6 +366,34 @@ async function handleOfflineGift(request, env, url) {
   return json({ id });
 }
 
+/* Fixing a Rocket's name. Donors type names by hand, so one child can
+   arrive three ways; each spelling counts as its own Rocket, which
+   splits their total and inflates the class's participation. This
+   moves every credit from one spelling to another inside one
+   classroom, and merges them when the target name is already there.
+
+   The classroom is part of the request precisely so it can't reach a
+   same-named child in another room. */
+async function handleRenameRocket(request, env, url) {
+  if (!(await adminKeyOk(request, url, env))) return json({ error: 'unauthorized' }, 401);
+  const body = await request.json().catch(() => null);
+  if (!body) return json({ error: 'Please try that again.' }, 400);
+
+  const room = classroomById(typeof body.classroom === 'string' ? body.classroom : '');
+  if (!room) return json({ error: 'Please choose a classroom.' }, 400);
+
+  // '' is a real value here: it's the credit whose donor left the name
+  // box empty, which the PTA can now put a name to.
+  const from = typeof body.from === 'string' ? body.from.trim() : null;
+  const to = typeof body.to === 'string' ? body.to.trim().slice(0, MAX_NAME) : '';
+  if (from === null) return json({ error: 'Please pick the name to fix.' }, 400);
+  if (!to) return json({ error: 'Please give the name it should be.' }, 400);
+
+  const moved = await renameRocket(env.DB, room.id, from, to);
+  if (!moved) return json({ error: 'No gifts in that class carry that name.' }, 404);
+  return json({ moved, to });
+}
+
 /* The Thursday digest's address book. The whole list is replaced at
    once: Mission Control edits it as one block, so a classroom left out
    of the paste is a classroom taken off the send. */
@@ -464,6 +493,9 @@ async function handleReport(request, url, env, name) {
       campaign: stats.campaign,
       offline,
       digest: { emails: addresses, history, ready: mailConfigured(env) },
+      // So the page can tell an unnamed credit from a real name
+      // without repeating the label.
+      noName: NO_NAME,
     };
     Object.keys(REPORTS).forEach((key, i) => { body[key] = reports[i]; });
     return json(body, 200, { 'cache-control': 'no-store' });
@@ -557,6 +589,7 @@ export default {
         case 'POST /api/offline-gift':
         case 'DELETE /api/offline-gift': return await handleOfflineGift(request, env, url);
         case 'POST /api/teacher-emails': return await handleTeacherEmails(request, env, url);
+        case 'POST /api/rename-rocket': return await handleRenameRocket(request, env, url);
         case 'POST /api/digest-test': return await handleDigestTest(request, env, url);
         case 'GET /api/students.csv':
         case 'GET /api/shirts.csv':

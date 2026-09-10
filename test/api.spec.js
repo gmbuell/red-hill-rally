@@ -1309,3 +1309,111 @@ describe('the Thursday teacher digest', () => {
     expect(body.digest.history).toHaveLength(0);
   });
 });
+
+/* ---- fixing a mistyped Rocket ---- */
+
+describe('renaming a Rocket', () => {
+  const KEY = { authorization: 'Bearer test-admin-key' };
+  const roomA = data.classroomById(ROOM_A);
+  const roomB = data.classroomById(ROOM_B);
+
+  const giftFor = (id, room, name, cents = 10000) => deliverWebhook(sessionEvent({
+    id, amount_total: cents, metadata: { students: JSON.stringify([{ c: room, n: name }]) },
+  }));
+
+  const rename = (body) => SELF.fetch('https://rally.test/api/rename-rocket', {
+    method: 'POST',
+    headers: { ...KEY, 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+
+  const sheet = async () => (await (await SELF.fetch('https://rally.test/api/admin.json', { headers: KEY })).json());
+
+  it('needs the admin key', async () => {
+    const res = await SELF.fetch('https://rally.test/api/rename-rocket', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ classroom: ROOM_A, from: 'Audrey', to: 'Audrey Webber' }),
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it('moves every gift under the old spelling to the new one', async () => {
+    await giftFor('cs_r1', ROOM_A, 'Audrey', 5000);
+    await giftFor('cs_r2', ROOM_A, 'audrey', 2500);
+    const res = await rename({ classroom: ROOM_A, from: 'Audrey', to: 'Audrey Webber' });
+    expect(res.status).toBe(200);
+    // Both spellings folded, so both gifts moved.
+    expect((await res.json()).moved).toBe(2);
+
+    const body = await sheet();
+    const rows = body.students.rows.filter((r) => r[1] === roomA.teacher);
+    expect(rows).toHaveLength(1);
+    expect(rows[0][2]).toBe('Audrey Webber');
+    expect(rows[0][3]).toBe(2);              // gifts
+    expect(rows[0][4]).toBe(dollars(7500));  // and their dollars together
+  });
+
+  it('merges two Rockets into one and corrects the class count', async () => {
+    await giftFor('cs_m1', ROOM_A, 'Audrey', 5000);
+    await giftFor('cs_m2', ROOM_A, 'Audrey Webber', 2500);
+    // Two spellings read as two kids participating.
+    let board = await getJson('/api/board');
+    expect(board.classrooms[ROOM_A].rockets).toBe(2);
+
+    expect((await rename({ classroom: ROOM_A, from: 'Audrey', to: 'Audrey Webber' })).status).toBe(200);
+
+    board = await getJson('/api/board');
+    expect(board.classrooms[ROOM_A].rockets).toBe(1);
+    expect(board.classrooms[ROOM_A].raised).toBe(75);
+    const rows = (await sheet()).students.rows.filter((r) => r[1] === roomA.teacher);
+    expect(rows).toHaveLength(1);
+    expect(rows[0][3]).toBe(2);
+  });
+
+  it('never reaches the same name in another classroom', async () => {
+    await giftFor('cs_x1', ROOM_A, 'Audrey', 5000);
+    await giftFor('cs_x2', ROOM_B, 'Audrey', 5000);
+    expect((await rename({ classroom: ROOM_A, from: 'Audrey', to: 'Audrey Webber' })).status).toBe(200);
+
+    const rows = (await sheet()).students.rows;
+    expect(rows.find((r) => r[1] === roomA.teacher)[2]).toBe('Audrey Webber');
+    expect(rows.find((r) => r[1] === roomB.teacher)[2]).toBe('Audrey');
+  });
+
+  it('puts a name to a gift that named no Rocket', async () => {
+    await giftFor('cs_b1', ROOM_A, '', 5000);
+    const body = await sheet();
+    expect(body.noName).toBeTruthy();
+    expect(body.students.rows.find((r) => r[1] === roomA.teacher)[2]).toBe(body.noName);
+
+    expect((await rename({ classroom: ROOM_A, from: '', to: 'Audrey Webber' })).status).toBe(200);
+    const after = (await sheet()).students.rows.filter((r) => r[1] === roomA.teacher);
+    expect(after).toHaveLength(1);
+    expect(after[0][2]).toBe('Audrey Webber');
+  });
+
+  it('fixes capitalization on its own', async () => {
+    await giftFor('cs_c1', ROOM_A, 'audrey webber', 5000);
+    expect((await rename({ classroom: ROOM_A, from: 'audrey webber', to: 'Audrey Webber' })).status).toBe(200);
+    expect((await sheet()).students.rows.find((r) => r[1] === roomA.teacher)[2]).toBe('Audrey Webber');
+  });
+
+  it('refuses what it cannot do', async () => {
+    await giftFor('cs_z1', ROOM_A, 'Audrey', 5000);
+    const bad = async (body) => (await rename(body)).status;
+    expect(await bad({ classroom: 'not-a-room', from: 'Audrey', to: 'A' })).toBe(400);
+    expect(await bad({ classroom: ROOM_A, from: 'Audrey', to: '   ' })).toBe(400);
+    expect(await bad({ classroom: ROOM_A, to: 'Audrey Webber' })).toBe(400);
+    // A name nobody in that class carries changes nothing, and says so.
+    expect(await bad({ classroom: ROOM_A, from: 'Nobody', to: 'Audrey Webber' })).toBe(404);
+    expect((await sheet()).students.rows.find((r) => r[1] === roomA.teacher)[2]).toBe('Audrey');
+  });
+
+  it('holds the name to the same length limit checkout does', async () => {
+    await giftFor('cs_l1', ROOM_A, 'Audrey', 5000);
+    await rename({ classroom: ROOM_A, from: 'Audrey', to: 'x'.repeat(data.MAX_NAME + 20) });
+    const name = (await sheet()).students.rows.find((r) => r[1] === roomA.teacher)[2];
+    expect(name).toHaveLength(data.MAX_NAME);
+  });
+});
