@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Get a Rally Shirt · Red Hill Elementary PTA</title>
+<meta name="description" content="Order a Rocket Rally shirt for your student — half of every shirt counts toward their classroom in the Rally.">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preload" href="/fonts/montserrat-var.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/bebasneue-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<header class="site-header"></header>
+
+<main>
+  <div class="flow-header wrap-narrow">
+    <h1>Get a Rally Shirt</h1>
+    <span class="script">One school. One shirt.</span>
+    <small class="assurance">Shirts come to your Rocket at school before Rally day</small>
+  </div>
+
+  <form id="shirt-form" class="wrap-narrow" novalidate>
+    <div class="shirt-shots">
+      <img src="/img/rally-shirt.webp" width="560" height="691" fetchpriority="high" decoding="async"
+        alt="The front of the Rally shirt: a black tee reading Rocket Rally, One school. One community. One rally.">
+      <img src="/img/rally-shirt-back.webp" width="560" height="691" decoding="async"
+        alt="The back of the Rally shirt: Let’s Rally for Red Hill, a thank-you to the Rally’s sponsors, and rocketrally.org.">
+    </div>
+
+    <p class="hint" id="shirt-lede"></p>
+
+    <div id="shirt-rows"></div>
+    <button type="button" class="btn secondary small" id="add-rocket">+ Add another Rocket</button>
+
+    <div class="field" id="donor-name-field">
+      <label for="donor-name">Name for the honor roll</label>
+      <input type="text" id="donor-name" placeholder="e.g. The Rodriguez Family" autocomplete="name">
+      <p class="error">Please tell us the name to list &mdash; or choose anonymous.</p>
+    </div>
+
+    <label class="check-row">
+      <input type="checkbox" id="anon">
+      <span>Keep us off the honor roll &mdash; list this as anonymous.</span>
+    </label>
+
+    <label class="check-row">
+      <input type="checkbox" id="cover-fees" checked>
+      <span id="fee-label">Add a little extra to cover processing fees &mdash; the full shirt credit reaches the school.</span>
+    </label>
+
+    <div class="summary-box" id="summary">
+      <span class="label">Your order</span>
+      <p id="summary-text"></p>
+    </div>
+
+    <button type="submit" class="btn" id="buy-btn">Continue to payment <span class="arrow" aria-hidden="true">&rarr;</span></button>
+    <p class="form-error" id="checkout-error" role="alert" hidden></p>
+    <small class="fine-print pay-note">Secure payment by Stripe. A shirt is merchandise, not a donation, so this part isn&rsquo;t tax-deductible &mdash; your receipt says so.</small>
+  </form>
+
+  <p class="check-note wrap-narrow">Want to give as well? <a href="/donate">Make a donation</a> &mdash; you can add shirts there too, in the same order.</p>
+</main>
+
+<footer class="site-footer on-navy"></footer>
+
+<script src="js/data.js" defer></script>
+<script src="js/ui.js" defer></script>
+<script src="js/shirt.js" defer></script>
+</body>
+</html>

@@ -468,6 +468,25 @@ select:focus-visible,
 .support-all { margin-top: 1.2rem; }
 .support-all .fine-print { margin: 0.4rem 0 0; }
 
+/* The shirt-only entry point, under the student-link callout it
+   mirrors. */
+.shirt-callout { margin-top: 1.2rem; }
+
+/* The shirt page is one screen, so its blocks need the air the donate
+   wizard gets from its steps. */
+/* Front and back, side by side — they stay side by side on a phone
+   rather than stacking, since seeing both at once is the point. */
+.shirt-shots {
+  display: flex;
+  justify-content: center;
+  gap: 0.6rem;
+  margin-bottom: 1.4rem;
+}
+.shirt-shots img { width: 50%; max-width: 260px; height: auto; }
+#shirt-form .hint { margin-bottom: 1.6rem; }
+#shirt-form #add-rocket { margin-bottom: 2rem; }
+#shirt-form .summary-box { margin: 1.6rem 0; }
+
 /* Home page partner thanks, under the parents block. */
 .home-partner-thanks { text-align: center; }
 .home-partner-thanks .script { display: block; margin-bottom: 0.6rem; }

@@ -157,6 +157,15 @@ describe('rendered pages', () => {
     for (const c of data.CLASSROOMS) expect(link).toContain(`<option value="${c.id}">`);
   });
 
+  it('renders the shirt page complete, with the price from data.js', async () => {
+    const { text } = await page('/shirt');
+    expect(text).toContain('id="shirt-name-0"');
+    expect(text).toContain(`<option value="${data.SHIRT.sizes[0].id}">`);
+    // The price and the credit are stated once, in data.js.
+    expect(text).toContain(`<strong>$${data.SHIRT.price}</strong>`);
+    expect(text).toContain(`<strong>$${data.SHIRT.credit}</strong>`);
+  });
+
   it('answers unknown paths with the branded 404 and the chrome', async () => {
     const { res, text } = await page('/nope');
     expect(res.status).toBe(404);

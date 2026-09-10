@@ -125,6 +125,16 @@ const RH = (() => {
     classError: 'Please choose your student’s classroom.',
   };
 
+  /* The shirt page's rows: name first and required, shirts under each
+     — a shirt is handed out by name, so a row without one can't ship. */
+  const SHIRT_ROWS = {
+    prefix: 'shirt',
+    nameFirst: true,
+    shirts: true,
+    nameError: 'Please enter the Rocket’s name — shirts are handed out by name.',
+    classError: 'Please choose the Rocket’s classroom.',
+  };
+
   /* ---- browser-only plumbing ------------------------------------------ */
 
   const qs = (sel) => document.querySelector(sel);
@@ -249,7 +259,7 @@ const RH = (() => {
 
   return {
     html, raw, money, moneyCents, nameList, roomLabels,
-    classroomOptions, studentRowsMarkup, shirtPickerMarkup, shirtsIn, setShirts, LINK_ROWS, dartUp,
+    classroomOptions, studentRowsMarkup, shirtPickerMarkup, shirtsIn, setShirts, LINK_ROWS, SHIRT_ROWS, dartUp,
     qs, param, postJson, studentRows, checkout,
   };
 })();
@@ -257,6 +267,6 @@ const RH = (() => {
 /* Worker import — the browser loads this file as a plain script and
    never defines `module`. Only the render core is exported. */
 if (typeof module !== 'undefined' && module.exports) {
-  const { html, raw, money, moneyCents, nameList, roomLabels, classroomOptions, studentRowsMarkup, LINK_ROWS, dartUp } = RH;
-  module.exports = { html, raw, money, moneyCents, nameList, roomLabels, classroomOptions, studentRowsMarkup, LINK_ROWS, dartUp };
+  const { html, raw, money, moneyCents, nameList, roomLabels, classroomOptions, studentRowsMarkup, LINK_ROWS, SHIRT_ROWS, dartUp } = RH;
+  module.exports = { html, raw, money, moneyCents, nameList, roomLabels, classroomOptions, studentRowsMarkup, LINK_ROWS, SHIRT_ROWS, dartUp };
 }

@@ -257,7 +257,12 @@ flip to live, in this order:
   is how a wrong amount gets fixed. A donor who wants their check
   listed as Anonymous gets the same treatment a card gift does.
 - **Shirts** — price, fundraising credit, receipt value, and sizes
-  are `SHIRT` in `site/js/data.js`; `MAX_SHIRTS` caps an order.
+  are `SHIRT` in `site/js/data.js`; `MAX_SHIRTS` caps an order. Shirts
+  are sold two ways: as an add-on under each Rocket in the donate
+  wizard, and on their own at `/shirt`, one screen that posts the same
+  checkout with no gift on top. A shirt bought there credits
+  `SUPPORT_ALL`, since the buyer never picked a priority. The home
+  page and the footer link it; the top nav deliberately doesn't.
 - **Goals, copy, tiers, roster, partners** — edit `site/js/data.js`
   (page copy lives in the HTML files); redeploy. The campaign goal is
   the ticker figure; a priority's goal is its annual program cost and

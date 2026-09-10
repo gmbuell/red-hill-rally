@@ -7,8 +7,8 @@
 import data from '../site/js/data.js';
 import ui from '../site/js/ui.js';
 
-const { ORG, PRIORITIES, CAMPAIGN, CLASSROOMS, PARTNER_TIERS, PARTNERS, ANNUAL_LEVELS, SUPPORT_ALL, priorityById, partnerTierById, annualLevelById, gradeName, priorityTarget, presentingPartner } = data;
-const { html, raw, money, studentRowsMarkup, LINK_ROWS, dartUp } = ui;
+const { ORG, PRIORITIES, CAMPAIGN, SHIRT, CLASSROOMS, PARTNER_TIERS, PARTNERS, ANNUAL_LEVELS, SUPPORT_ALL, priorityById, partnerTierById, annualLevelById, gradeName, priorityTarget, presentingPartner } = data;
+const { html, raw, money, studentRowsMarkup, LINK_ROWS, SHIRT_ROWS, dartUp } = ui;
 
 /* ---- motifs (from the brand guide's Spirit Kit) -------------------- */
 
@@ -248,6 +248,7 @@ export const footer = () => html`
     <a href="/">Home</a>
     <a href="/donate">Donate</a>
     <a href="/student-link">Student Link</a>
+    <a href="/shirt">Rally Shirts</a>
     <a href="/rally-board">Rally Board</a>
     <a href="/prizes">Prizes</a>
     <a href="/partners">Business Partners</a>
@@ -397,4 +398,11 @@ export const partnersSlots = (live) => ({
 /* Student Link: the first (empty) row, so the form paints complete. */
 export const linkSlots = () => ({
   'sibling-rows': studentRowsMarkup([{ c: '', n: '' }], LINK_ROWS),
+});
+
+/* Shirt page: the first (empty) Rocket row with its size picker, and
+   the price line — both figures come from data.js, never the HTML. */
+export const shirtSlots = () => ({
+  'shirt-lede': html`Rally shirts are <strong>${money(SHIRT.price)}</strong>, and <strong>${money(SHIRT.credit)}</strong> of every one counts toward your Rocket and their classroom, the same as a gift. The rest buys the shirt.`,
+  'shirt-rows': studentRowsMarkup([{ c: '', n: '', s: [] }], SHIRT_ROWS),
 });

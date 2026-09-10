@@ -5,7 +5,7 @@
    failure renders the zero state, never an error page. */
 
 import { campaignStats, boardStats } from './store.js';
-import { header, footer, homeSlots, donateSlots, boardSlots, partnersSlots, linkSlots } from './views.js';
+import { header, footer, homeSlots, donateSlots, boardSlots, partnersSlots, linkSlots, shirtSlots } from './views.js';
 
 /* The pages with something to render beyond the chrome: a D1 read
    (`live`) and a slot builder. A page in site/ with neither needs no
@@ -16,6 +16,7 @@ export const PAGES = {
   '/rally-board': { live: boardStats, slots: boardSlots },
   '/partners': { live: campaignStats, slots: partnersSlots },
   '/student-link': { slots: linkSlots },
+  '/shirt': { slots: shirtSlots },
 };
 
 const fill = (fragment) => ({

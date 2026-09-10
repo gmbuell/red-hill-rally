@@ -154,8 +154,11 @@ async function handleCheckout(request, env, url) {
     coverFees: body.coverFees,
     productName: `Rocket Rally — ${priority.name}`,
     successUrl: `${url.origin}/thanks?p=${priority.id}&amt=${amount}&shirts=${shirts}&sid={CHECKOUT_SESSION_ID}`,
-    // Backing out of Stripe returns to the wizard with the link intact.
-    cancelUrl: `${url.origin}/donate?p=${priority.id}${viaLink ? `&link=${encodeURIComponent(body.link)}` : ''}`,
+    // Backing out of Stripe returns where the order started: the shirt
+    // page, or the wizard with its link intact.
+    cancelUrl: body.back === 'shirt'
+      ? `${url.origin}/shirt`
+      : `${url.origin}/donate?p=${priority.id}${viaLink ? `&link=${encodeURIComponent(body.link)}` : ''}`,
     metadata: {
       priority: priority.id,
       students: studentsJson,

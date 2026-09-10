@@ -373,6 +373,21 @@ describe('checkout', () => {
     expect(sent.get('metadata[shirts]')).toBe(`0:${SIZE_A}`);
   });
 
+  it('sends a shirt-page order back to the shirt page, not the wizard', async () => {
+    const calls = stubStripe();
+    const order = {
+      ...validCheckout, amount: 0, back: 'shirt', priority: data.SUPPORT_ALL.id,
+      students: [{ c: ROOM_A, n: 'Mia Rodriguez', s: [SIZE_A] }],
+    };
+    expect((await checkoutDirect(order)).status).toBe(200);
+    expect(new URLSearchParams(String(calls[0].body)).get('cancel_url')).toBe('https://rally.test/shirt');
+    // Anything else keeps the wizard's cancel URL.
+    const wizard = stubStripe();
+    expect((await checkoutDirect({ ...order, back: '/evil.example' })).status).toBe(200);
+    expect(new URLSearchParams(String(wizard[0].body)).get('cancel_url'))
+      .toBe(`https://rally.test/donate?p=${data.SUPPORT_ALL.id}`);
+  });
+
   it('rejects a shirt order missing what the printer needs', async () => {
     const bad = async (patch) => (await post('/api/checkout', { ...validCheckout, ...patch })).status;
     expect(await bad({ amount: 0 })).toBe(400);                                        // nothing to pay for
