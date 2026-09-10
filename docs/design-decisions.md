@@ -48,7 +48,10 @@ with generous relatives; a gift that named no Rocket counts once, as
 the family behind it, so the optional name box never costs a class
 credit. Names are folded and counted in SQL, so the board's query still
 never returns a student name. Dollar totals appear in campaign and
-priority aggregates.
+priority aggregates, and beside each class in the race: the Top Class
+prize goes to the room that raises the most, so families need to see
+that race too. The list stays ranked on participation and a line above
+it names the dollar leader (or the rooms tied for it).
 
 ## Business partners
 

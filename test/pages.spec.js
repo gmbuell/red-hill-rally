@@ -118,8 +118,9 @@ describe('rendered pages', () => {
     const { text } = await page('/rally-board');
     const room = data.classroomById(ROOM_A);
     expect(text).toContain(`${room.teacher}<small class="grade">`);
-    // The board shows dollars and participation percentages, nothing else.
-    expect(text).toContain(`<span class="pct">${Math.round(100 / room.students)}%</span>`);
+    // Both prize races, each number saying which one it is.
+    expect(text).toContain(`<span class="pct">${Math.round(100 / room.students)}%<small>participation</small></span>`);
+    expect(text).toContain('<span class="raised">$100<small>total raised</small></span>');
     expect(text).not.toContain('family gifts so far');
     expect(text).not.toContain(`class of ${room.students}`);
     expect(text).toContain('<span class="who">The Rodriguez Family</span>');

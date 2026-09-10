@@ -874,7 +874,7 @@ select:focus-visible,
 .race { list-style: none; margin: 0; padding: 0; }
 .race li {
   display: grid;
-  grid-template-columns: 2.2rem 15rem 1fr auto;
+  grid-template-columns: 2.2rem 15rem 1fr auto auto;
   gap: 0.2rem 1.2rem;
   align-items: center;
   padding: 0.55rem 0;
@@ -894,10 +894,48 @@ select:focus-visible,
   font-weight: 800;
   color: var(--navy);
   white-space: nowrap;
+  text-align: right;
 }
+/* Each number says what it is, the way the grade names itself under
+   the teacher — two figures side by side otherwise guess at you. */
+.race .pct small, .race .raised small {
+  display: block;
+  font-weight: 700;
+  font-size: 0.8125rem;
+  color: var(--grey);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+/* Dollars ride beside the percentage, quieter than it: the list is
+   ranked on participation, and the money is the other prize. */
+.race .raised {
+  color: var(--grey);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-align: right;
+  min-width: 5.5rem;
+}
+.shoe-note {
+  margin: 0 0 1.5rem;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--grey);
+}
+.shoe-note .label {
+  display: block;
+  color: var(--navy);
+  letter-spacing: 0.14em;
+}
+.shoe-note strong { color: var(--navy); }
+/* On a phone the two labelled figures won't fit beside the teacher's
+   name, so the name takes its own line and the numbers sit under it
+   with the trail beneath them. */
 @media (max-width: 48rem) {
-  .race li { grid-template-columns: 1.6rem 1fr auto; }
-  .race .trail { grid-column: 2 / 4; grid-row: 2; }
+  .race li { grid-template-columns: 1.6rem auto 1fr; row-gap: 0.5rem; }
+  .race .room { grid-column: 2 / 4; grid-row: 1; }
+  .race .pct { grid-column: 2; grid-row: 2; text-align: left; }
+  .race .raised { grid-column: 3; grid-row: 2; text-align: left; min-width: 0; }
+  .race .trail { grid-column: 2 / 4; grid-row: 3; }
 }
 
 .board-section-head {

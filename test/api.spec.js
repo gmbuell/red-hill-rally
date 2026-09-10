@@ -442,7 +442,7 @@ describe('webhook and campaign stats', () => {
     const boardText = await boardRes.text();
     const board = JSON.parse(boardText);
     expect(board.campaign).toEqual({ raised: 100, goal: data.CAMPAIGN.goal, gifts: 1 });
-    expect(board.classrooms[ROOM_A]).toBe(1);
+    expect(board.classrooms[ROOM_A].rockets).toBe(1);
     expect(board.donors).toEqual([{
       name: 'The Rodriguez Family', priority: P_MAIN.id, anon: false, circle: false, partner: '',
     }]);
@@ -473,7 +473,11 @@ describe('webhook and campaign stats', () => {
     await deliverWebhook(family);
     await deliverWebhook(family); // Stripe retry: no double credit
     const board = await getJson('/api/board');
-    expect(board.classrooms).toEqual({ [ROOM_A]: 1, [ROOM_B]: 2 });
+    expect(board.classrooms).toEqual({
+      // $100 split three ways, the odd cent to the first Rocket named:
+      // $33.34 to Mia's room, $66.66 to the Parks', each shown rounded.
+      [ROOM_A]: { rockets: 1, raised: 33 }, [ROOM_B]: { rockets: 2, raised: 67 },
+    });
     expect(board.campaign.gifts).toBe(1); // one gift, three Rockets
     expect(JSON.stringify(board)).not.toContain('Okafor'); // student names stay backend-only
   });
@@ -528,7 +532,7 @@ describe('webhook and campaign stats', () => {
     }));
     const stats = await getJson('/api/campaign');
     expect(stats.campaign).toEqual({ raised: 100, goal: data.CAMPAIGN.goal, gifts: 1 });
-    expect((await getJson('/api/board')).classrooms[ROOM_A]).toBe(1);
+    expect((await getJson('/api/board')).classrooms[ROOM_A].rockets).toBe(1);
   });
 
   it('credits the base gift, not the fee cover, to campaign totals', async () => {
@@ -547,7 +551,7 @@ describe('webhook and campaign stats', () => {
     const stats = await getJson('/api/campaign');
     expect(stats.campaign.raised).toBe(50 + data.SHIRT.credit);
     expect(stats.priorities[P_MAIN.id]).toBe(50 + data.SHIRT.credit);
-    expect((await getJson('/api/board')).classrooms[ROOM_A]).toBe(1);
+    expect((await getJson('/api/board')).classrooms[ROOM_A].rockets).toBe(1);
   });
 
   it('a shirt alone is a gift in the race', async () => {
@@ -556,7 +560,7 @@ describe('webhook and campaign stats', () => {
     }));
     const stats = await getJson('/api/campaign');
     expect(stats.campaign).toEqual({ raised: data.SHIRT.credit, goal: data.CAMPAIGN.goal, gifts: 1 });
-    expect((await getJson('/api/board')).classrooms[ROOM_A]).toBe(1);
+    expect((await getJson('/api/board')).classrooms[ROOM_A].rockets).toBe(1);
   });
 
   it('counts a Rocket once in the race however many gifts they draw', async () => {
@@ -573,13 +577,13 @@ describe('webhook and campaign stats', () => {
     await deliverWebhook(sessionEvent({
       id: 'cs_g3', metadata: { students: JSON.stringify([{ c: ROOM_A, n: 'mia rodriguez' }]) },
     }));
-    expect((await getJson('/api/board')).classrooms[ROOM_A]).toBe(1);
+    expect((await getJson('/api/board')).classrooms[ROOM_A].rockets).toBe(1);
 
     // A second kid in the same class moves it to two.
     await deliverWebhook(sessionEvent({
       id: 'cs_g4', metadata: { students: JSON.stringify([{ c: ROOM_A, n: 'Leo Park' }]) },
     }));
-    expect((await getJson('/api/board')).classrooms[ROOM_A]).toBe(2);
+    expect((await getJson('/api/board')).classrooms[ROOM_A].rockets).toBe(2);
   });
 
   it('counts a gift that named no Rocket, once per gift', async () => {
@@ -589,9 +593,9 @@ describe('webhook and campaign stats', () => {
       id, metadata: { students: JSON.stringify([{ c: ROOM_B, n: '' }]) },
     });
     await deliverWebhook(noName('cs_n1'));
-    expect((await getJson('/api/board')).classrooms[ROOM_B]).toBe(1);
+    expect((await getJson('/api/board')).classrooms[ROOM_B].rockets).toBe(1);
     await deliverWebhook(noName('cs_n2'));
-    expect((await getJson('/api/board')).classrooms[ROOM_B]).toBe(2);
+    expect((await getJson('/api/board')).classrooms[ROOM_B].rockets).toBe(2);
   });
 
   it('judges circle tiers on the base gift, not gift plus fee', async () => {
@@ -689,7 +693,7 @@ describe('business partner checkout', () => {
     const board = await getJson('/api/board');
     expect(board.campaign.raised).toBe(100 + LOGO_TIER.amount); // the $100 family gift + the partnership
     expect(board.campaign.gifts).toBe(1);       // family gifts only
-    expect(board.classrooms).toEqual({ [ROOM_A]: 1 }); // no classroom credit for partners
+    expect(board.classrooms).toEqual({ [ROOM_A]: { rockets: 1, raised: 100 } }); // no classroom credit for partners
     const partner = board.donors.find((d) => d.name === 'Galaxy Automotive & Tire');
     expect(partner.partner).toBe(LOGO_TIER.id);
     expect(partner.circle).toBe(false);
@@ -875,7 +879,7 @@ describe('gifts recorded by hand', () => {
     expect(stats.campaign.raised).toBe(250);
     expect(stats.priorities[P_MAIN.id]).toBe(250);
     const board = await boardStats(env.DB);
-    expect(board.classrooms[ROOM_A]).toBe(1);
+    expect(board.classrooms[ROOM_A].rockets).toBe(1);
     expect(board.donors[0].name).toBe('The Nguyen Family');
   });
 
@@ -1060,6 +1064,24 @@ describe('admin reports', () => {
     expect(body.classrooms.rows).toContainEqual([roomA.grade, roomA.teacher, roomA.students, 1, 1, Math.round(100 / roomA.students), dollars(10000 + CREDIT_CENTS), 1]);
     expect(body.shirts.rows).toEqual([[roomA.grade, roomA.teacher, 'Mia Rodriguez', data.SHIRT.sizes[0].label, 1]]);
     expect(JSON.stringify(body)).not.toContain('example.com');
+  });
+
+  it('shows the board the same class dollars the PTA pays the prize on', async () => {
+    // The Top Class prize is decided on dollars. If the board and this
+    // sheet ever disagree, the argument is with a family, so pin them
+    // together on a gift split across two classrooms.
+    await deliverWebhook(sessionEvent({
+      id: 'cs_split',
+      metadata: { students: JSON.stringify([{ c: ROOM_A, n: 'Mia' }, { c: ROOM_B, n: 'Leo' }]) },
+    }));
+    await deliverWebhook(sessionEvent({ id: 'cs_solo', amount_total: 2500 }));
+    const board = (await getJson('/api/board')).classrooms;
+    const sheet = Object.fromEntries((await (await SELF.fetch('https://rally.test/api/admin.json',
+      { headers: { authorization: 'Bearer test-admin-key' } })).json())
+      .classrooms.rows.map((r) => [r[1], Number(r[6])]));
+    for (const id of Object.keys(board)) {
+      expect(board[id].raised, id).toBe(Math.round(sheet[data.classroomById(id).teacher]));
+    }
   });
 
   it('separates gifts from Rockets on the classroom sheet', async () => {

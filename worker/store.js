@@ -199,30 +199,23 @@ export async function campaignStats(db) {
 }
 
 /* Rally Board payload: campaign progress plus the classroom race and
-   the full honor roll (one row per gift, newest first). */
+   the full honor roll (one row per gift, newest first). Each classroom
+   carries both prize races — Rockets participating and dollars
+   raised — from the same tally the PTA's classroom sheet reads, and no
+   student name. */
 export async function boardStats(db) {
-  const [totals, byClassroom, roll, partnerRows] = await db.batch([
+  const [totals, credits, roll, partnerRows] = await db.batch([
     totalsStmt(db),
-    // Participation counts Rockets, not gifts: three gifts for one kid
-    // is one kid participating. A gift that named no Rocket still
-    // counts once, as the family behind it — a class shouldn't lose
-    // credit because a donor skipped the name box. Names are folded and
-    // counted in SQL so they never leave the database. Joined so a gift
-    // deleted by hand (refund, the go-live wipe) takes its classroom
-    // credits with it.
-    db.prepare(`SELECT s.classroom,
-                  COUNT(DISTINCT CASE WHEN TRIM(s.student_name) <> ''
-                                      THEN LOWER(TRIM(s.student_name)) END)
-                  + SUM(CASE WHEN TRIM(s.student_name) = '' THEN 1 ELSE 0 END) AS rockets
-                FROM donation_students s
-                JOIN donations d ON d.id = s.donation_id GROUP BY s.classroom`),
+    creditsStmt(db),
     db.prepare(`SELECT donor_name, priority, partner_tier, amount_cents, visibility
                 FROM donations ORDER BY created DESC, id DESC`),
     partnersStmt(db),
   ]);
 
   const classrooms = {};
-  for (const row of byClassroom.results) classrooms[row.classroom] = row.rockets;
+  for (const [id, line] of Object.entries(perClassroom(tally(credits.results)))) {
+    classrooms[id] = { rockets: line.rockets, raised: Math.round(line.cents / 100) };
+  }
 
   const donors = roll.results.map((row) => {
     const isPublic = row.visibility === 'public' && row.donor_name;
@@ -301,6 +294,35 @@ const tally = (credits) => {
   return rooms;
 };
 
+/* One classroom's line in both races: how many Rockets are
+   participating, how many gifts stand behind them, and what the class
+   has raised. Each named Rocket counts once however many gifts they
+   draw; a gift that named no Rocket counts once, as the family behind
+   it, so the optional name box never costs a class credit.
+
+   The board and the PTA's classroom sheet both read this, so the
+   dollars deciding the Top Class prize can't drift between the number
+   families watch and the number the PTA pays out on. It reads names to
+   group by Rocket and returns none: the board's payload and page stay
+   name-free, which `test/api.spec.js` and `test/pages.spec.js` pin. */
+const perClassroom = (rooms) => {
+  const totals = {};
+  for (const [id, students] of Object.entries(rooms)) {
+    const line = totals[id] = { rockets: 0, gifts: 0, cents: 0, shirts: 0 };
+    for (const [key, s] of Object.entries(students)) {
+      line.rockets += key === '' ? s.gifts : 1;
+      line.gifts += s.gifts;
+      line.cents += s.cents;
+      line.shirts += s.shirts;
+    }
+  }
+  return totals;
+};
+
+export async function classroomTotals(db) {
+  return perClassroom(tally((await creditsStmt(db).all()).results));
+}
+
 /* The student sheet: what each Rocket has raised, under their class,
    biggest first. Family gifts that named no Rocket close the sheet so
    it still adds up to the board. */
@@ -326,15 +348,11 @@ export async function studentsReport(db) {
 /* The classroom sheet for the marquee: every roster classroom with its
    participation and dollars, so a class with nothing yet shows a zero. */
 export async function classroomsReport(db) {
-  const rooms = tally((await creditsStmt(db).all()).results);
+  const rooms = await classroomTotals(db);
   const rows = roomOrder(rooms).map((room) => {
-    const entries = Object.entries(rooms[room.id] || {});
-    const sum = (key) => entries.reduce((n, [, s]) => n + s[key], 0);
-    // Rockets participating, the board's numerator: each named kid
-    // once however many gifts they drew, and each unnamed gift once.
-    const rockets = entries.reduce((n, [key, s]) => n + (key === '' ? s.gifts : 1), 0);
-    const pct = room.students > 0 ? Math.round(Math.min(rockets / room.students, 1) * 100) : 0;
-    return [room.grade, room.teacher, room.students, sum('gifts'), rockets, pct, dollars(sum('cents')), sum('shirts')];
+    const line = rooms[room.id] || { rockets: 0, gifts: 0, cents: 0, shirts: 0 };
+    const pct = room.students > 0 ? Math.round(Math.min(line.rockets / room.students, 1) * 100) : 0;
+    return [room.grade, room.teacher, room.students, line.gifts, line.rockets, pct, dollars(line.cents), line.shirts];
   });
   return { columns: ['grade', 'teacher', 'students', 'gifts', 'rockets', 'participation_pct', 'raised', 'shirts'], rows };
 }

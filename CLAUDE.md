@@ -23,7 +23,7 @@ two-sentence pointer; this file is the operating manual.
 | `npm install` | wrangler, vitest + workers pool, lighthouse |
 | `npx wrangler d1 migrations apply red-hill-rally --local` | once per clone: local D1 schema |
 | `npm run dev` | `wrangler dev` on http://localhost:8787 |
-| `npm test` | vitest (119 tests, ~4 s) |
+| `npm test` | vitest (120 tests, ~4 s) |
 | `npm run audit` | Lighthouse on every page but `/admin` (noindex), mobile + desktop (needs Chrome); defaults to the live site (`npm run audit -- --url http://localhost:8787` for local). `--runs 3 --min 98` reproduces the CI gate, `--form mobile` limits it to one form factor |
 | `npm run wcag` | WCAG 2.2 checks on every page, mobile + desktop (needs Chrome): text contrast, non-text contrast, focus rings, target size, body leading ≥ 1.5, body text ≥ 16px and labels ≥ 13px. Defaults to the live site (`npm run wcag -- --url http://localhost:8787` for local, `--page donate --form mobile` to narrow). Each cell shows how many elements the check examined |
 | `npm run deploy` | **Ships to production**: the worker and every file under `site/`. The `predeploy` step runs the tests, then applies pending D1 migrations to the remote database, so schema and code ship together. Every push to `main` runs this through Cloudflare Workers Builds (dashboard → the worker → Settings → Build), so merging a PR deploys it |
@@ -93,7 +93,10 @@ secrets; the maintainer reviews and ships PRs.
   roster on any page. `test/pages.spec.js` probes the rendered pages
   for a seeded student name, email, and address.
 - The classroom race ranks by participation (Rockets ÷ class size),
-  never dollars.
+  never dollars. Each row also shows what the class has raised, for the
+  Top Class prize, and a line above the list names whoever is leading
+  that one; `classroomTotals` is the single source for both, so the
+  board and the PTA's classroom sheet can't disagree about prize money.
 - Money is decided server-side: the worker computes the fee cover from
   the `coverFees` boolean and prices shirts from `SHIRT` in `data.js`,
   and every stat counts `amount_cents` (the gift plus each shirt's

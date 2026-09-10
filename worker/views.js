@@ -8,7 +8,7 @@ import data from '../site/js/data.js';
 import ui from '../site/js/ui.js';
 
 const { ORG, PRIORITIES, CAMPAIGN, SHIRT, CLASSROOMS, PARTNER_TIERS, PARTNERS, ANNUAL_LEVELS, SUPPORT_ALL, priorityById, partnerTierById, annualLevelById, gradeName, priorityTarget, presentingPartner } = data;
-const { html, raw, money, studentRowsMarkup, LINK_ROWS, SHIRT_ROWS, dartUp } = ui;
+const { html, raw, money, nameList, studentRowsMarkup, LINK_ROWS, SHIRT_ROWS, dartUp } = ui;
 
 /* ---- motifs (from the brand guide's Spirit Kit) -------------------- */
 
@@ -328,8 +328,8 @@ export const boardSlots = (live) => {
 
   const ranked = [...CLASSROOMS]
     .map((c) => {
-      const rockets = perClass[c.id] || 0;
-      return { ...c, rockets, pct: c.students > 0 ? Math.min(rockets / c.students, 1) : 0 };
+      const { rockets = 0, raised = 0 } = perClass[c.id] || {};
+      return { ...c, rockets, raised, pct: c.students > 0 ? Math.min(rockets / c.students, 1) : 0 };
     })
     .sort((a, b) => b.pct - a.pct);
   const race = ranked.map((c, i) => html`
@@ -337,8 +337,25 @@ export const boardSlots = (live) => {
         <span class="rank">${i + 1}</span>
         <span class="room">${c.teacher}<small class="grade">${gradeName(c.grade)}</small></span>
         <span class="trail">${trailSVG(c.pct)}</span>
-        <span class="pct">${Math.round(c.pct * 100)}%</span>
+        <span class="pct">${Math.round(c.pct * 100)}%<small>participation</small></span>
+        <span class="raised">${money(c.raised)}<small>total raised</small></span>
       </li>`);
+
+  /* The Top Class prize is decided on dollars, not participation, so
+     the class leading it needs saying out loud — the list beneath is
+     ranked the other way, and nobody should have to scan it. Early on,
+     several rooms sit level, and naming one of them as the leader is
+     the kind of thing a family writes in about. */
+  const most = Math.max(0, ...ranked.map((c) => c.raised));
+  const leaders = most > 0 ? ranked.filter((c) => c.raised === most) : [];
+  const shoeLine = !leaders.length
+    ? html`Still anyone&rsquo;s. The Top Class prize goes to the room that raises the most.`
+    : leaders.length === 1
+      ? html`<strong>${leaders[0].teacher}&rsquo;s class</strong> &middot; ${money(most)} raised`
+      : leaders.length <= 3
+        ? html`<strong>${nameList(leaders.map((c) => `${c.teacher}’s`))} classes</strong>, tied at ${money(most)}`
+        : html`<strong>${leaders.length} classes</strong> tied at ${money(most)}`;
+  const goldenShoe = html`<small class="label">Leading for the Golden Shoe</small> ${shoeLine}`;
 
   /* Named gifts newest first; anonymous gifts are tallied in one
      closing line so a busy campaign stays readable. */
@@ -374,6 +391,7 @@ export const boardSlots = (live) => {
   return {
     'board-totals': html`${totals}`,
     race: html`${race}`,
+    'shoe-note': goldenShoe,
     'honor-roll': roll,
     'board-partners': partnerWall(partners, html`
       <p class="board-lede">Your business could be up here &mdash; the Rally runs September&ndash;October.</p>`),
