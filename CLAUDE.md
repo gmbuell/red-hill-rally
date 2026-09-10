@@ -23,7 +23,7 @@ two-sentence pointer; this file is the operating manual.
 | `npm install` | wrangler, vitest + workers pool, lighthouse |
 | `npx wrangler d1 migrations apply red-hill-rally --local` | once per clone: local D1 schema |
 | `npm run dev` | `wrangler dev` on http://localhost:8787 |
-| `npm test` | vitest (137 tests, ~4 s) |
+| `npm test` | vitest (152 tests, ~4 s) |
 | `npm run audit` | Lighthouse on every page but `/admin` (noindex), mobile + desktop (needs Chrome); defaults to the live site (`npm run audit -- --url http://localhost:8787` for local). `--runs 3 --min 98` reproduces the CI gate, `--form mobile` limits it to one form factor |
 | `npm run wcag` | WCAG 2.2 checks on every page, mobile + desktop (needs Chrome): text contrast, non-text contrast, focus rings, target size, body leading ≥ 1.5, body text ≥ 16px and labels ≥ 13px. Defaults to the live site (`npm run wcag -- --url http://localhost:8787` for local, `--page donate --form mobile` to narrow). Each cell shows how many elements the check examined |
 | `npm run deploy` | **Ships to production**: the worker and every file under `site/`. The `predeploy` step runs the tests, then applies pending D1 migrations to the remote database, so schema and code ship together. Every push to `main` runs this through Cloudflare Workers Builds (dashboard → the worker → Settings → Build), so merging a PR deploys it |
@@ -98,6 +98,14 @@ secrets; the maintainer reviews and ships PRs.
   or address. No student picker or
   roster on any page. `test/pages.spec.js` probes the rendered pages
   for a seeded student name, email, and address.
+  - The one narrow exception is `GET /api/my-rockets?sid=…`, which the
+    thank-you page calls: it returns the Rockets a single gift credited
+    and what each has raised in total. The gate is the donor's own
+    Stripe session id, which only they hold, and the names it returns
+    are the ones that donor typed. It never returns a donor name, an
+    email, or a per-donor amount, which is what `test/api.spec.js`
+    pins — an anonymous gift counts toward the child's total and is
+    never itemised.
 - The classroom race ranks by participation (Rockets ÷ class size),
   never dollars. Each row also shows what the class has raised, for the
   Top Class prize, and a line above the list names whoever is leading
@@ -263,6 +271,26 @@ flip to live, in this order:
     size, so three gifts for one kid read as one participant.
   - *shirts.csv* (for the printer): grade, teacher, student, size,
     quantity; one row per Rocket and size, merged across orders.
+- **A family checking their Rocket** — the thank-you page shows what
+  the Rockets that gift credited have raised across every gift, not
+  just this one, so the URL Stripe hands the donor works as a private
+  link they can bookmark and revisit as more gifts land. The page tells
+  them to. Totals only, no donor names: donors chose public or
+  anonymous for the honor roll, and neither was consent to be itemised
+  to a family. A gift the PTA recorded by hand has an `off_` id that
+  works the same way, so the PTA can hand a check-writing family their
+  link.
+  - *Losing the link* is the obvious failure, so `/my-rocket` takes an
+    email address and mails back every gift that address made, each as
+    its own thank-you link. It verifies nobody: only the inbox owner
+    reads what arrives, and the address came from Stripe, so no list is
+    kept and nothing new is exported. `POST /api/my-link` answers
+    `{sent: true}` for any well-formed address whether or not it ever
+    gave — otherwise the box would answer "did this family donate?" for
+    anyone who typed a guess. `link_requests` holds a SHA-256 of the
+    address and the last send time, one per 15 minutes, so the box can't
+    be used to mail somebody repeatedly. With the mail secrets missing
+    it takes the address and sends nothing, same as the Thursday digest.
 - **Fixing a Rocket's name** — "Fix a Rocket's name" on /admin moves
   every gift under one spelling to another inside a single classroom,
   and merges them when the new name is already there. Donors type names

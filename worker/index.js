@@ -10,7 +10,7 @@ import { createCheckoutSession, verifyWebhook } from './stripe.js';
 import { recordDonation, campaignStats, boardStats, studentsReport, shirtsReport, classroomsReport, csv,
   recordOfflineGift, deleteOfflineGift, offlineGifts,
   teacherEmails, setTeacherEmails, weekKey, claimDigest, finishDigest, releaseDigest, digestHistory,
-  renameRocket, NO_NAME } from './store.js';
+  renameRocket, NO_NAME, giftRockets, giftsForEmail, claimLinkRequest } from './store.js';
 import { buildDigests } from './digest.js';
 import { sendEmail, mailConfigured } from './mail.js';
 import { renderPage } from './pages.js';
@@ -18,7 +18,7 @@ import data from '../site/js/data.js';
 import ui from '../site/js/ui.js';
 
 const { moneyCents } = ui;
-const { ORG, MAX_NAME, MAX_AMOUNT, SHIRT, feeCoverCents, priorityById, partnerTierById, classroomById, CLASSROOMS } = data;
+const { ORG, MAX_NAME, MAX_AMOUNT, SHIRT, STUDENT_GOAL, feeCoverCents, priorityById, partnerTierById, classroomById, CLASSROOMS } = data;
 
 /* The charge description prints on every Stripe receipt, making it the
    donor's IRS written acknowledgment (Pub 1771): org name, and either
@@ -366,6 +366,80 @@ async function handleOfflineGift(request, env, url) {
   return json({ id });
 }
 
+/* What a donor's own Rockets have raised, for the thank-you page.
+
+   The gate is the donor's Stripe session id, which only they hold:
+   Stripe fills it into the success URL, so the thank-you page doubles
+   as a private link the family can bookmark and come back to as more
+   gifts land. An id nobody holds, or one crediting no Rocket, gets
+   nothing back.
+
+   Deliberately no donor names and no per-donor amounts. Donors chose
+   public or anonymous for the honor roll, and neither of those was
+   consent to be itemised to a family. */
+async function handleGiftRockets(request, env, url) {
+  const sid = url.searchParams.get('sid') || '';
+  // Input hygiene, not the lock: the two id shapes that exist, at a
+  // sane length. What actually protects a family is that a real Stripe
+  // session id is long and random, and an id nobody holds matches no
+  // row.
+  if (!/^(cs|off)_[A-Za-z0-9_]{1,100}$/.test(sid)) {
+    return json({ error: 'not found' }, 404);
+  }
+  const rockets = await giftRockets(env.DB, sid);
+  if (!rockets) return json({ error: 'not found' }, 404);
+  return json({ rockets, goal: STUDENT_GOAL }, 200, { 'cache-control': 'no-store' });
+}
+
+/* "Email me my Rocket link", for a family who lost the thank-you page.
+
+   The address is the whole check: the mail goes only to the address
+   typed, and only if Stripe recorded a gift from it. So the answer to
+   the browser is always the same, whether or not that address ever
+   gave. Saying "we found nothing" would turn this into a way to ask
+   the site who donated. */
+const LINK_COOLDOWN_SEC = 15 * 60;
+
+async function handleMyLink(request, env, url) {
+  const body = await request.json().catch(() => null);
+  const email = body && typeof body.email === 'string' ? body.email.trim().slice(0, 200) : '';
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return json({ error: 'Please check that address and try again.' }, 400);
+  }
+  // Everything past here answers the same way, on purpose.
+  const done = () => json({ sent: true });
+  if (!mailConfigured(env)) return done();
+
+  const gifts = await giftsForEmail(env.DB, email);
+  if (!gifts.length) return done();
+  if (!(await claimLinkRequest(env.DB, email, Math.floor(Date.now() / 1000), LINK_COOLDOWN_SEC))) {
+    return done();
+  }
+
+  const lines = ['Here are your Rocket Rally links.', ''];
+  for (const gift of gifts) {
+    const who = gift.rockets.length ? gift.rockets.join(' and ') : 'your gift';
+    const when = new Date(gift.created * 1000).toLocaleDateString('en-US', {
+      month: 'long', day: 'numeric', timeZone: 'America/Los_Angeles',
+    });
+    lines.push(`${who} (${when})`);
+    lines.push(`${url.origin}/thanks?sid=${encodeURIComponent(gift.id)}`);
+    lines.push('');
+  }
+  lines.push('Each link shows what that Rocket has raised across every gift, and it');
+  lines.push('stays up to date, so bookmark it and check back as the Rally goes on.');
+  lines.push('');
+  lines.push('Thank you for rallying with us,');
+  lines.push('Red Hill Elementary PTA');
+
+  await sendEmail(env, {
+    to: email,
+    subject: 'Your Rocket Rally link',
+    text: lines.join('\n'),
+  });
+  return done();
+}
+
 /* Fixing a Rocket's name. Donors type names by hand, so one child can
    arrive three ways; each spelling counts as its own Rocket, which
    splits their total and inflates the class's participation. This
@@ -590,6 +664,8 @@ export default {
         case 'DELETE /api/offline-gift': return await handleOfflineGift(request, env, url);
         case 'POST /api/teacher-emails': return await handleTeacherEmails(request, env, url);
         case 'POST /api/rename-rocket': return await handleRenameRocket(request, env, url);
+        case 'GET /api/my-rockets': return await handleGiftRockets(request, env, url);
+        case 'POST /api/my-link': return await handleMyLink(request, env, url);
         case 'POST /api/digest-test': return await handleDigestTest(request, env, url);
         case 'GET /api/students.csv':
         case 'GET /api/shirts.csv':

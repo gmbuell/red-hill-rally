@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Find Your Rocket&rsquo;s Link · Red Hill Elementary PTA</title>
+<meta name="description" content="Already gave to the Rocket Rally? Get your Rocket's link emailed to you and watch their total as more gifts come in.">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preload" href="/fonts/montserrat-var.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/bebasneue-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<header class="site-header"></header>
+
+<main>
+  <div class="flow-header wrap-narrow">
+    <h1>Find Your Rocket&rsquo;s Link</h1>
+    <span class="script">Watch their total climb.</span>
+    <small class="assurance">For families who have already given</small>
+  </div>
+
+  <div class="wrap-narrow">
+    <p class="hint">Every gift comes with a page showing what your Rocket has raised, all gifts counted, and it keeps up to date as grandparents and neighbors give. Lost yours? Put in the email address you used and we&rsquo;ll send it over.</p>
+
+    <form id="link-form" novalidate>
+      <div class="field" id="link-field">
+        <label for="link-email">Your email address</label>
+        <input type="email" id="link-email" autocomplete="email" required>
+        <p class="error">Please check that address and try again.</p>
+      </div>
+      <button type="submit" class="btn" id="link-send">Email me my link <span class="arrow" aria-hidden="true">&rarr;</span></button>
+      <p class="form-error" id="link-error" role="alert" hidden></p>
+      <p class="offline-done" id="link-done" role="status" hidden></p>
+    </form>
+
+    <p class="check-note">Gave by check or cash? Those don&rsquo;t have an email attached, so ask the PTA at <a href="mailto:rocketrally@redhillpta.org">rocketrally@redhillpta.org</a> and we&rsquo;ll look it up.</p>
+
+    <div class="cta-row">
+      <a class="btn secondary" href="/donate">Give to the Rally <span class="arrow" aria-hidden="true">&rarr;</span></a>
+      <a class="btn secondary" href="/rally-board">See the Rally Board <span class="arrow" aria-hidden="true">&rarr;</span></a>
+    </div>
+  </div>
+</main>
+
+<footer class="site-footer on-navy"></footer>
+
+<script src="js/data.js" defer></script>
+<script src="js/ui.js" defer></script>
+<script src="js/my-rocket.js" defer></script>
+</body>
+</html>

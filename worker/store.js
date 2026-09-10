@@ -469,3 +469,84 @@ export async function renameRocket(db, classroom, from, to) {
     .bind(classroom, from, to).run();
   return res.meta.changes || 0;
 }
+
+/* One gift's Rockets, with what each has raised across every gift.
+
+   The donor holds the key here: their own checkout session id, which
+   Stripe puts in the thank-you URL. It is long and random, so the page
+   works as a private link the family can bookmark and come back to
+   after grandparents and neighbours give. This is the one place a
+   student name leaves the backend without the admin key, and it only
+   ever returns the names on that donor's own gift, names they typed
+   themselves. Never donor names, and never a per-donor amount. */
+export async function giftRockets(db, donationId) {
+  const { results: mine } = await db.prepare(
+    `SELECT classroom, student_name FROM donation_students
+     WHERE donation_id = ?1 ORDER BY position`).bind(donationId).all();
+  if (!mine.length) return null;
+
+  const rooms = tally((await creditsStmt(db).all()).results);
+  const seen = new Set();
+  const rockets = [];
+  for (const row of mine) {
+    const folded = row.student_name.trim().toLowerCase();
+    const key = `${row.classroom} ${folded}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const tallied = (rooms[row.classroom] || {})[folded];
+    const room = classroomById(row.classroom);
+    rockets.push({
+      name: row.student_name.trim(),
+      teacher: room ? room.teacher : '',
+      grade: room ? room.grade : '',
+      raised: tallied ? Math.round(tallied.cents / 100) : 0,
+      gifts: tallied ? tallied.gifts : 0,
+    });
+  }
+  return rockets;
+}
+
+
+/* ---- "email me my Rocket link" -------------------------------------
+
+   A donor who lost the thank-you link asks for it by email address.
+   Everything here is keyed off the address Stripe already collected on
+   their gift, so the mail can only ever go to someone who really gave,
+   at the address they gave it from. */
+
+/* Their gifts, newest first, each with the Rockets it credited. Only
+   family gifts: a business partnership credits no Rocket. */
+export async function giftsForEmail(db, email) {
+  const { results } = await db.prepare(
+    `SELECT d.id, d.created,
+            COALESCE(GROUP_CONCAT(s.student_name, ', '), '') AS rockets
+     FROM donations d JOIN donation_students s ON s.donation_id = d.id
+     WHERE LOWER(TRIM(d.email)) = LOWER(TRIM(?1)) AND d.partner_tier = ''
+     GROUP BY d.id ORDER BY d.created DESC, d.id DESC LIMIT 20`)
+    .bind(email).all();
+  return results.map((row) => ({
+    id: row.id,
+    created: row.created,
+    rockets: row.rockets.split(', ').map((n) => n.trim()).filter(Boolean),
+  }));
+}
+
+const emailHash = async (email) => {
+  const bytes = new TextEncoder().encode(email.trim().toLowerCase());
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
+};
+
+/* One send per address per cooldown. The endpoint is public and it
+   sends mail, so without this someone could use it to pester a donor,
+   or burn the sending domain's reputation. */
+export async function claimLinkRequest(db, email, nowSec, cooldownSec) {
+  const hash = await emailHash(email);
+  const row = await db.prepare(
+    'SELECT sent FROM link_requests WHERE email_hash = ?1').bind(hash).first();
+  if (row && nowSec - row.sent < cooldownSec) return false;
+  await db.prepare(
+    `INSERT INTO link_requests (email_hash, sent) VALUES (?1, ?2)
+     ON CONFLICT(email_hash) DO UPDATE SET sent = ?2`).bind(hash, nowSec).run();
+  return true;
+}

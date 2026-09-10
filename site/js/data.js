@@ -11,6 +11,11 @@ const ORG = {
   ein: '33-0973857',
 };
 
+/* What one Rocket is asked to raise, framed on family materials as
+   "ask four people for $25". The thank-you page measures a Rocket's
+   running total against it. */
+const STUDENT_GOAL = 100;
+
 /* Gift limits, enforced by the API and mirrored by the donate form. */
 const MAX_NAME = 80;      // characters, donor and student names
 const MAX_AMOUNT = 50000; // dollars, per gift
@@ -274,7 +279,7 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     ORG, PRIORITIES, SUPPORT_ALL, CAMPAIGN, CLASSROOMS, PARTNER_TIERS, PARTNERS,
     ANNUAL_LEVELS,
-    MAX_NAME, MAX_AMOUNT, MAX_STUDENTS, MAX_SHIRTS, SHIRT, feeCoverCents,
+    MAX_NAME, MAX_AMOUNT, MAX_STUDENTS, MAX_SHIRTS, SHIRT, STUDENT_GOAL, feeCoverCents,
     priorityById, classroomById, partnerTierById, annualLevelById, gradeName, shirtSizeById,
     priorityTarget, presentingPartner,
   };

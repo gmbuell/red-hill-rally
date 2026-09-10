@@ -30,9 +30,38 @@
       'Your gift joins hundreds of families powering the Rally.';
   }
 
+  const sid = RH.param('sid') || '';
+
+  /* What this donor's Rockets have raised, all gifts counted, not just
+     this one. The session id in the URL is the family's own key, so the
+     page keeps working when they come back to it days later and the
+     number has moved. Totals only: no donor names, ever. */
+  const rocketPanel = RH.qs('#rocket-panel');
+  if (sid && rocketPanel) {
+    fetch(`/api/my-rockets?sid=${encodeURIComponent(sid)}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!data || !data.rockets || !data.rockets.length) return;
+        const goal = Number(data.goal) || 0;
+        RH.qs('#rocket-head').textContent =
+          data.rockets.length > 1 ? 'Your Rockets so far' : 'Your Rocket so far';
+        RH.qs('#rocket-totals').innerHTML = html`${data.rockets.map((r) => {
+          const left = goal - r.raised;
+          return html`
+          <li>
+            <span class="who">${r.name || 'Your Rocket'}</span>
+            <span class="amount">${RH.money(r.raised)}</span>
+            <small class="meta">${r.gifts} gift${r.gifts === 1 ? '' : 's'}${r.teacher ? ` · ${r.teacher}` : ''}${
+            goal > 0 ? (left > 0 ? ` · ${RH.money(left)} to go` : ' · goal reached') : ''}</small>
+          </li>`;
+        })}`;
+        rocketPanel.hidden = false;
+      })
+      .catch(() => { /* the panel simply stays hidden */ });
+  }
+
   /* Partner arrivals add their logo right here, tied to the paid
      Stripe session (the sid Stripe fills into the success URL). */
-  const sid = RH.param('sid') || '';
   const logoPanel = RH.qs('#logo-panel');
   // Only a tier that earns a logo is shown the uploader.
   if (partnerTier && partnerTier.logo && /^cs_[A-Za-z0-9_]+$/.test(sid) && logoPanel) {

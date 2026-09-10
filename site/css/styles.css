@@ -1437,6 +1437,30 @@ select:focus-visible,
 }
 #offline-table td { white-space: normal; }
 
+/* The donor's own Rockets on the thank-you page: a running total they
+   can come back to, not a receipt. */
+.rocket-panel { margin-bottom: 1.5rem; }
+.rocket-totals { list-style: none; margin: 0 0 0.8rem; padding: 0; }
+.rocket-totals li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0 1rem;
+  padding: 0.7rem 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.14);
+}
+.rocket-totals li:last-child { border-bottom: 0; }
+.rocket-totals .who { font-weight: 800; color: var(--navy); }
+.rocket-totals .amount {
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 1.9rem;
+  line-height: 1;
+  color: var(--red);
+  grid-row: span 2;
+  align-self: center;
+}
+.rocket-totals .meta { color: var(--grey); }
+
 /* The Thursday digest: an address list edited as plain text, and the
    sample-send beside it. */
 .digest-state { color: var(--grey); margin: 0 0 1.2rem; }
