@@ -1436,6 +1436,7 @@ describe('a donor checking their Rocket', () => {
     expect(body.goal).toBe(data.STUDENT_GOAL);
     expect(body.rockets).toEqual([{
       name: 'Audrey Webber', teacher: roomA.teacher, grade: roomA.grade, raised: 25, gifts: 1,
+      donors: ['The Rodriguez Family'], anonGifts: 0,
     }]);
   });
 
@@ -1470,7 +1471,11 @@ describe('a donor checking their Rocket', () => {
     }
   });
 
-  it('never returns who gave or how much any one of them gave', async () => {
+  /* The thank-you list. A donor who asked to be listed is already on
+     the public honor roll, so naming them to the family they gave for
+     tells nobody anything new. A donor who asked for anonymity is
+     never named here, and no donor's amount is, listed or not. */
+  it('names the donors who chose to be listed, and never the anonymous one', async () => {
     await deliverWebhook(sessionEvent({
       id: 'cs_t6', amount_total: 2500,
       metadata: { students: JSON.stringify([{ c: ROOM_A, n: 'Audrey Webber' }]), donor_name: 'The Rodriguez Family' },
@@ -1482,12 +1487,68 @@ describe('a donor checking their Rocket', () => {
         donor_name: 'Anonymous Grandma', visibility: 'anon',
       },
     }));
+    const rocket = (await mine('cs_t6')).rockets[0];
+    expect(rocket.donors).toEqual(['The Rodriguez Family']);
+    expect(rocket.anonGifts).toBe(1);
+    // The anonymous gift counts toward the child's total, unnamed.
+    expect(rocket.raised).toBe(525);
+
     const text = JSON.stringify(await mine('cs_t6'));
-    expect(text).not.toContain('Rodriguez');
     expect(text).not.toContain('Grandma');
+    // No per-donor amount anywhere, and no contact details ever.
+    expect(text).not.toContain('500');
     expect(text).not.toContain('example.com');
-    // The anonymous gift still counts toward the child's total.
-    expect((await mine('cs_t6')).rockets[0].raised).toBe(525);
+    expect(text).not.toContain('Rocket Way');
+    expect(text).not.toContain('Rosa');
+  });
+
+  it('thanks a repeat donor once, however many times they gave', async () => {
+    for (const id of ['cs_t6a', 'cs_t6b', 'cs_t6c']) {
+      await deliverWebhook(sessionEvent({
+        id, amount_total: 1000,
+        metadata: { students: JSON.stringify([{ c: ROOM_A, n: 'Audrey Webber' }]), donor_name: 'Grandma Webber' },
+      }));
+    }
+    const rocket = (await mine('cs_t6a')).rockets[0];
+    expect(rocket.donors).toEqual(['Grandma Webber']);
+    expect(rocket.gifts).toBe(3);
+  });
+
+  it('treats a listed gift with no name typed as anonymous', async () => {
+    await deliverWebhook(sessionEvent({
+      id: 'cs_t6d', amount_total: 1000,
+      metadata: {
+        students: JSON.stringify([{ c: ROOM_A, n: 'Audrey Webber' }]),
+        donor_name: '', visibility: 'public',
+      },
+    }));
+    const rocket = (await mine('cs_t6d')).rockets[0];
+    expect(rocket.donors).toEqual([]);
+    expect(rocket.anonGifts).toBe(1);
+  });
+
+  it('leaves a business partnership out of a child\'s thank-you list', async () => {
+    await deliverWebhook(sessionEvent({
+      id: 'cs_t6e', amount_total: 1000,
+      metadata: { students: JSON.stringify([{ c: ROOM_A, n: 'Audrey Webber' }]), donor_name: 'Nana Webber' },
+    }));
+    await deliverWebhook(partnerSession({ id: 'cs_t6f', metadata: { donor_name: 'Tustin Tire' } }));
+    const rocket = (await mine('cs_t6e')).rockets[0];
+    expect(rocket.donors).toEqual(['Nana Webber']);
+  });
+
+  it('thanks only the donors who named that child', async () => {
+    await deliverWebhook(sessionEvent({
+      id: 'cs_t6g', amount_total: 1000,
+      metadata: { students: JSON.stringify([{ c: ROOM_A, n: 'Audrey Webber' }]), donor_name: 'Webber Side' },
+    }));
+    await deliverWebhook(sessionEvent({
+      id: 'cs_t6h', amount_total: 1000,
+      metadata: { students: JSON.stringify([{ c: ROOM_B, n: 'Leo Park' }]), donor_name: 'Park Side' },
+    }));
+    const rocket = (await mine('cs_t6g')).rockets[0];
+    expect(rocket.donors).toEqual(['Webber Side']);
+    expect(JSON.stringify(await mine('cs_t6g'))).not.toContain('Park Side');
   });
 
   it('answers for a gift the PTA recorded by hand too', async () => {

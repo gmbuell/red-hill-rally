@@ -23,7 +23,7 @@ two-sentence pointer; this file is the operating manual.
 | `npm install` | wrangler, vitest + workers pool, lighthouse |
 | `npx wrangler d1 migrations apply red-hill-rally --local` | once per clone: local D1 schema |
 | `npm run dev` | `wrangler dev` on http://localhost:8787 |
-| `npm test` | vitest (159 tests, ~4 s) |
+| `npm test` | vitest (163 tests, ~4 s) |
 | `npm run audit` | Lighthouse on every page but `/admin` (noindex), mobile + desktop (needs Chrome); defaults to the live site (`npm run audit -- --url http://localhost:8787` for local). `--runs 3 --min 98` reproduces the CI gate, `--form mobile` limits it to one form factor |
 | `npm run wcag` | WCAG 2.2 checks on every page, mobile + desktop (needs Chrome): text contrast, non-text contrast, focus rings, target size, body leading ≥ 1.5, body text ≥ 16px and labels ≥ 13px. Defaults to the live site (`npm run wcag -- --url http://localhost:8787` for local, `--page donate --form mobile` to narrow). Each cell shows how many elements the check examined |
 | `npm run deploy` | **Ships to production**: the worker and every file under `site/`. The `predeploy` step runs the tests, then applies pending D1 migrations to the remote database, so schema and code ship together. Every push to `main` runs this through Cloudflare Workers Builds (dashboard → the worker → Settings → Build), so merging a PR deploys it |
@@ -99,13 +99,22 @@ secrets; the maintainer reviews and ships PRs.
   roster on any page. `test/pages.spec.js` probes the rendered pages
   for a seeded student name, email, and address.
   - The one narrow exception is `GET /api/my-rockets?sid=…`, which the
-    thank-you page calls: it returns the Rockets a single gift credited
-    and what each has raised in total. The gate is the donor's own
-    Stripe session id, which only they hold, and the names it returns
-    are the ones that donor typed. It never returns a donor name, an
-    email, or a per-donor amount, which is what `test/api.spec.js`
-    pins — an anonymous gift counts toward the child's total and is
-    never itemised.
+    thank-you page calls: it returns the Rockets a single gift credited,
+    what each has raised in total, and who to thank. The gate is the
+    donor's own Stripe session id, which only they hold, and the student
+    names it returns are the ones that donor typed.
+    - The thank-you list is **public donor names only, and never an
+      amount**. A donor who chose "List our name on the Rally Board" is
+      already on the public honor roll, so naming them to the family
+      they gave for discloses nothing new; the honor roll has never
+      shown an amount, and picking public recognition was not agreeing
+      to have your gift itemised to somebody's family. An anonymous
+      gift — or a public one with the name box left empty — counts in
+      the total and toward `anonGifts`, and is never named. Business
+      partnerships are left out: that is a gift to the school, not to a
+      child. A repeat donor is listed once. `test/api.spec.js` pins all
+      of it, including that no email, address, or per-donor figure ever
+      appears.
 - The classroom race ranks by participation (Rockets ÷ class size),
   never dollars. Each row also shows what the class has raised, for the
   Top Class prize, and a line above the list names whoever is leading

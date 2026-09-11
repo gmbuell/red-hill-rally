@@ -479,6 +479,36 @@ export async function renameRocket(db, classroom, from, to) {
    student name leaves the backend without the admin key, and it only
    ever returns the names on that donor's own gift, names they typed
    themselves. Never donor names, and never a per-donor amount. */
+/* Who a family has to thank. Public names only: those are already on
+   the honor roll, so a family learns nothing about a donor that the
+   Rally Board doesn't already say out loud. No amounts, ever — the
+   honor roll has never carried one, and choosing to be listed was not
+   agreeing to have your gift itemised to somebody's family. Anonymous
+   gifts are counted so the total still adds up, and never named.
+   Partnerships are a business's gift to the school, not a child's. */
+const donorsStmt = (db) => db.prepare(`
+  SELECT s.classroom, s.student_name, d.donor_name, d.visibility
+  FROM donation_students s JOIN donations d ON d.id = s.donation_id
+  WHERE d.partner_tier = ''
+  ORDER BY d.created DESC, d.id DESC, s.position`);
+
+const donorsByRocket = (rows) => {
+  const out = {};
+  for (const r of rows) {
+    const key = `${r.classroom} ${r.student_name.trim().toLowerCase()}`;
+    const entry = (out[key] ||= { names: [], anon: 0, seen: new Set() });
+    const name = (r.donor_name || '').trim();
+    // A blank name is anonymous whatever the radio said.
+    if (r.visibility !== 'public' || !name) { entry.anon += 1; continue; }
+    // One line per donor: two gifts from grandma is still one thank-you.
+    const folded = name.toLowerCase();
+    if (entry.seen.has(folded)) continue;
+    entry.seen.add(folded);
+    entry.names.push(name);
+  }
+  return out;
+};
+
 export async function giftRockets(db, donationId) {
   const { results: mine } = await db.prepare(
     `SELECT classroom, student_name FROM donation_students
@@ -486,6 +516,7 @@ export async function giftRockets(db, donationId) {
   if (!mine.length) return null;
 
   const rooms = tally((await creditsStmt(db).all()).results);
+  const donors = donorsByRocket((await donorsStmt(db).all()).results);
   const seen = new Set();
   const rockets = [];
   for (const row of mine) {
@@ -495,12 +526,15 @@ export async function giftRockets(db, donationId) {
     seen.add(key);
     const tallied = (rooms[row.classroom] || {})[folded];
     const room = classroomById(row.classroom);
+    const thanks = donors[key] || { names: [], anon: 0 };
     rockets.push({
       name: row.student_name.trim(),
       teacher: room ? room.teacher : '',
       grade: room ? room.grade : '',
       raised: tallied ? Math.round(tallied.cents / 100) : 0,
       gifts: tallied ? tallied.gifts : 0,
+      donors: thanks.names,
+      anonGifts: thanks.anon,
     });
   }
   return rockets;

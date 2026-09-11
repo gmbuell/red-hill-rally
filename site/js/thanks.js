@@ -47,12 +47,26 @@
           data.rockets.length > 1 ? 'Your Rockets so far' : 'Your Rocket so far';
         RH.qs('#rocket-totals').innerHTML = html`${data.rockets.map((r) => {
           const left = goal - r.raised;
+          /* Who to thank. Names only, and only the donors who asked to
+             be listed; an anonymous gift counts in the total and is
+             never named, and no line carries an amount. */
+          const names = r.donors || [];
+          const anon = Number(r.anonGifts) || 0;
+          const anonLine = anon > 0
+            ? `${names.length ? 'and ' : ''}${anon} anonymous gift${anon === 1 ? '' : 's'}`
+            : '';
           return html`
           <li>
             <span class="who">${r.name || 'Your Rocket'}</span>
             <span class="amount">${RH.money(r.raised)}</span>
             <small class="meta">${r.gifts} gift${r.gifts === 1 ? '' : 's'}${r.teacher ? ` · ${r.teacher}` : ''}${
             goal > 0 ? (left > 0 ? ` · ${RH.money(left)} to go` : ' · goal reached') : ''}</small>
+            ${names.length || anonLine ? html`
+            <small class="thanks-list">
+              <span class="thanks-lead">With thanks to</span>
+              ${names.map((n) => html`<span class="thanks-name">${n}</span>`)}
+              ${anonLine ? html`<span class="thanks-anon">${anonLine}</span>` : ''}
+            </small>` : ''}
           </li>`;
         })}`;
         rocketPanel.hidden = false;

@@ -1517,6 +1517,42 @@ select:focus-visible,
   align-self: center;
 }
 .rocket-totals .meta { color: var(--grey); }
+/* Who to thank, under the running total. Names only, and only the ones
+   already on the honor roll — this is a thank-you list, not a receipt,
+   so no line here carries an amount. */
+.rocket-totals .thanks-list {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.1rem 0.5rem;
+  margin-top: 0.5rem;
+  color: var(--navy);
+}
+.rocket-totals .thanks-lead {
+  width: 100%;
+  font-weight: 800;
+  font-size: 0.8125rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--grey);
+}
+.rocket-totals .thanks-anon { color: var(--grey); }
+/* Dots between names only. The anonymous line already begins with
+   "and", so a dot in front of it reads as a fourth name. */
+.rocket-totals .thanks-name + .thanks-name::before {
+  content: '·';
+  margin-right: 0.5rem;
+  color: var(--grey);
+}
+/* On a phone most names take a line of their own anyway, and a
+   separator that wraps to the front of one reads as a bullet nobody
+   asked for. Stack them properly instead. */
+@media (max-width: 30rem) {
+  .rocket-totals .thanks-list { display: block; }
+  .rocket-totals .thanks-list > span { display: block; }
+  .rocket-totals .thanks-name + .thanks-name::before { content: none; }
+}
 
 /* The Thursday digest: an address list edited as plain text, and the
    sample-send beside it. */
