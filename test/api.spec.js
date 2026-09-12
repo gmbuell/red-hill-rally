@@ -1131,6 +1131,18 @@ describe('admin reports', () => {
     expect(c).toBeGreaterThan(b);
     expect(rows).toHaveLength(data.CLASSROOMS.length + 2);
   });
+
+  /* A room kept off the public race is still the PTA's to run: the
+     classroom sheet is where prizes are awarded from, so leaving it out
+     here would quietly disqualify those children. */
+  it('lists a classroom kept off the Rally Board like any other', async () => {
+    const off = data.CLASSROOMS.filter((c) => c.offBoard);
+    expect(off.length).toBeGreaterThan(0);
+    const rows = await report('classrooms');
+    for (const c of off) {
+      expect(rows.some((r) => r.includes(c.teacher)), c.teacher).toBe(true);
+    }
+  });
 });
 
 /* The asset layer (site/_headers) is exercised through the ASSETS

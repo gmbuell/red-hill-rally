@@ -169,6 +169,64 @@ describe('page views', () => {
     expect(order.indexOf(a.teacher)).toBeLessThan(order.indexOf(b.teacher));
   });
 
+  /* Two rooms are kept off the public race. Everything else about them
+     carries on, which is the whole point of the flag. */
+  describe('a classroom kept off the board', () => {
+    const off = data.CLASSROOMS.filter((c) => c.offBoard);
+    const on = data.CLASSROOMS.filter((c) => !c.offBoard);
+
+    const boardWith = (rooms) => {
+      const classrooms = {};
+      let raised = 0;
+      for (const [room, rockets, dollars] of rooms) {
+        classrooms[room.id] = { rockets, raised: dollars };
+        raised += dollars;
+      }
+      const slots = boardSlots({ campaign: { raised, gifts: 0 }, classrooms, donors: [], partners: [] });
+      return {
+        totals: String(slots['board-totals']),
+        shoe: String(slots['shoe-note']),
+        prizes: String(slots['prize-note']),
+        race: String(slots.race),
+      };
+    };
+
+    it('is configured, or none of the rest of this means anything', () => {
+      expect(off.length).toBeGreaterThan(0);
+      expect(data.boardClassrooms()).toEqual(on);
+    });
+
+    it('never appears as a row in the race', () => {
+      const { race } = boardWith(off.map((c) => [c, c.students, 5000]));
+      for (const c of off) expect(race, c.teacher).not.toContain(c.teacher);
+      // The rooms that are on the board still all render.
+      expect(race.match(/<span class="room">/g)).toHaveLength(on.length);
+    });
+
+    it('is never named for the Golden Shoe, however much it raised', () => {
+      const { shoe } = boardWith([
+        [off[0], 1, 90000],
+        [on[0], on[0].students, 100],
+      ]);
+      expect(shoe).not.toContain(off[0].teacher);
+      expect(shoe).toContain(on[0].teacher);
+    });
+
+    it('is left out of the classes-at-80% count, so the count matches the rows', () => {
+      const { prizes } = boardWith(off.map((c) => [c, c.students, 100]));
+      // Every off-board room at 100%, no on-board room anywhere near it.
+      expect(prizes).toContain('Every class can earn funds');
+    });
+
+    it('still counts toward the school-wide participation figure', () => {
+      const seats = data.CLASSROOMS.reduce((n, c) => n + c.students, 0);
+      const kids = off.reduce((n, c) => n + c.students, 0);
+      const { totals } = boardWith(off.map((c) => [c, c.students, 100]));
+      expect(totals).toContain(`${kids} of ${seats} students`);
+      expect(totals).toContain(`${Math.round((kids / seats) * 100)}%`);
+    });
+  });
+
   it('has an element in the HTML for every slot a page renders into', async () => {
     // HTMLRewriter ignores a selector nothing matches, so a renamed id
     // would ship an empty element with no error anywhere but here.

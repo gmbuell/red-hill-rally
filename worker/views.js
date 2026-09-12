@@ -7,7 +7,7 @@
 import data from '../site/js/data.js';
 import ui from '../site/js/ui.js';
 
-const { ORG, PRIORITIES, CAMPAIGN, SHIRT, CLASSROOMS, PARTNER_TIERS, PARTNERS, ANNUAL_LEVELS, SUPPORT_ALL, priorityById, partnerTierById, annualLevelById, gradeName, priorityTarget, presentingPartner } = data;
+const { ORG, PRIORITIES, CAMPAIGN, SHIRT, CLASSROOMS, boardClassrooms, PARTNER_TIERS, PARTNERS, ANNUAL_LEVELS, SUPPORT_ALL, priorityById, partnerTierById, annualLevelById, gradeName, priorityTarget, presentingPartner } = data;
 const { html, raw, money, nameList, studentRowsMarkup, LINK_ROWS, SHIRT_ROWS, dartUp } = ui;
 
 /* ---- motifs (from the brand guide's Spirit Kit) -------------------- */
@@ -324,12 +324,17 @@ export const boardSlots = (live) => {
      hidden decimal reads as a broken board. Ties break on dollars,
      which is what happens once classes start piling up at 100% —
      everyone can reach it, so participation stops separating them. */
-  const ranked = [...CLASSROOMS]
-    .map((c) => {
-      const { rockets = 0, raised = 0 } = perClass[c.id] || {};
-      const pct = c.students > 0 ? Math.min(rockets / c.students, 1) : 0;
-      return { ...c, rockets, raised, pct, shown: Math.round(pct * 100) };
-    })
+  const measure = (c) => {
+    const { rockets = 0, raised = 0 } = perClass[c.id] || {};
+    const pct = c.students > 0 ? Math.min(rockets / c.students, 1) : 0;
+    return { ...c, rockets, raised, pct, shown: Math.round(pct * 100) };
+  };
+
+  /* The race, the Golden Shoe line and the prize counts all read the
+     same list, so a family can check every figure against the rows in
+     front of them. `offBoard` rooms are not in it — see data.js for
+     what that does and does not withhold. */
+  const ranked = boardClassrooms().map(measure)
     .sort((a, b) => b.shown - a.shown || b.raised - a.raised);
 
   /* Two headline numbers, because the Rally is run on two: dollars and
@@ -341,8 +346,12 @@ export const boardSlots = (live) => {
      capped per class the way the rows are, so the school can't read
      over 100%. Deliberately not a gift or partner count: those invited
      arithmetic nobody should be doing, and read as bad news early. */
-  const seats = ranked.reduce((n, c) => n + c.students, 0);
-  const flying = ranked.reduce((n, c) => n + Math.min(c.rockets, c.students), 0);
+  /* Every child in the school, including the rooms the race leaves out:
+     they are Rockets, and a figure that called itself school-wide while
+     quietly dropping 26 of them would be a lie. */
+  const schoolWide = CLASSROOMS.map(measure);
+  const seats = schoolWide.reduce((n, c) => n + c.students, 0);
+  const flying = schoolWide.reduce((n, c) => n + Math.min(c.rockets, c.students), 0);
   const totals = [
     [money(raised), 'raised of ' + money(CAMPAIGN.goal), ''],
     [`${seats > 0 ? Math.round((flying / seats) * 100) : 0}%`, 'of Rockets have participated',

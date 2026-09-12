@@ -198,9 +198,19 @@ const CLASSROOMS = [
   { id: 'herman', teacher: 'Mrs. Herman', grade: '4th', students: 33 },
   { id: 'crain', teacher: 'Mrs. Crain', grade: '5th', students: 29 },
   { id: 'knutson', teacher: 'Mr. Knutson', grade: '5th', students: 29 },
-  { id: 'bishop', teacher: 'Mr. Bishop', grade: 'SDC', students: 14 },
-  { id: 'smith', teacher: 'Mrs. Smith', grade: 'SDC', students: 12 },
+  /* `offBoard` keeps a room off the public classroom race and nothing
+     else. Its gifts count in the campaign total, its children count in
+     the school-wide participation figure, its teacher gets the Thursday
+     email, and it appears in every Mission Control sheet — which is
+     where the PTA awards classroom prizes from, so these rooms can
+     still earn them. Only the public per-class ranking is withheld. */
+  { id: 'bishop', teacher: 'Mr. Bishop', grade: 'SDC', students: 14, offBoard: true },
+  { id: 'smith', teacher: 'Mrs. Smith', grade: 'SDC', students: 12, offBoard: true },
 ];
+
+/* The rooms the Rally Board ranks. Everything else in the site reads
+   CLASSROOMS. */
+const boardClassrooms = () => CLASSROOMS.filter((c) => !c.offBoard);
 
 /* Business partnership ladder. Each tier includes every benefit of
    the tiers above it in this list. `logo` is whether the tier earns a logo on
@@ -280,7 +290,7 @@ if (typeof module !== 'undefined' && module.exports) {
     ORG, PRIORITIES, SUPPORT_ALL, CAMPAIGN, CLASSROOMS, PARTNER_TIERS, PARTNERS,
     ANNUAL_LEVELS,
     MAX_NAME, MAX_AMOUNT, MAX_STUDENTS, MAX_SHIRTS, SHIRT, STUDENT_GOAL, feeCoverCents,
-    priorityById, classroomById, partnerTierById, annualLevelById, gradeName, shirtSizeById,
+    priorityById, classroomById, boardClassrooms, partnerTierById, annualLevelById, gradeName, shirtSizeById,
     priorityTarget, presentingPartner,
   };
 }

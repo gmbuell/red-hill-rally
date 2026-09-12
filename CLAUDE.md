@@ -23,7 +23,7 @@ two-sentence pointer; this file is the operating manual.
 | `npm install` | wrangler, vitest + workers pool, lighthouse |
 | `npx wrangler d1 migrations apply red-hill-rally --local` | once per clone: local D1 schema |
 | `npm run dev` | `wrangler dev` on http://localhost:8787 |
-| `npm test` | vitest (163 tests, ~4 s) |
+| `npm test` | vitest (169 tests, ~4 s) |
 | `npm run audit` | Lighthouse on every page but `/admin` (noindex), mobile + desktop (needs Chrome); defaults to the live site (`npm run audit -- --url http://localhost:8787` for local). `--runs 3 --min 98` reproduces the CI gate, `--form mobile` limits it to one form factor |
 | `npm run wcag` | WCAG 2.2 checks on every page, mobile + desktop (needs Chrome): text contrast, non-text contrast, focus rings, target size, body leading ≥ 1.5, body text ≥ 16px and labels ≥ 13px. Defaults to the live site (`npm run wcag -- --url http://localhost:8787` for local, `--page donate --form mobile` to narrow). Each cell shows how many elements the check examined |
 | `npm run deploy` | **Ships to production**: the worker and every file under `site/`. The `predeploy` step runs the tests, then applies pending D1 migrations to the remote database, so schema and code ship together. Every push to `main` runs this through Cloudflare Workers Builds (dashboard → the worker → Settings → Build), so merging a PR deploys it |
@@ -115,6 +115,17 @@ secrets; the maintainer reviews and ships PRs.
       child. A repeat donor is listed once. `test/api.spec.js` pins all
       of it, including that no email, address, or per-donor figure ever
       appears.
+- A classroom carrying `offBoard` in `data.js` is left out of the
+  **public classroom race and nothing else**: the race rows, the Golden
+  Shoe line and the 80%/100% counts skip it, while its gifts count in
+  the campaign total, its children count in the school-wide
+  participation figure, its teacher gets the Thursday email, donors can
+  still pick it, and it appears in every Mission Control sheet. The PTA
+  awards classroom prizes from the classroom CSV, so those rooms can
+  still earn them — which is why the board's own counts read the visible
+  list: what the board says has to match the rows a family can point
+  at. Red Hill's two SDC rooms carry the flag; in classes that small a
+  published percentage moves a long way on one child.
 - The classroom race ranks by participation (Rockets ÷ class size),
   never dollars. Each row also shows what the class has raised, for the
   Top Class prize, and a line above the list names whoever is leading
