@@ -83,7 +83,8 @@ export async function recordDonation(db, session, createdSec) {
    brings in. */
 const totalsStmt = (db) =>
   db.prepare(`SELECT COALESCE(SUM(amount_cents), 0) AS cents,
-    COALESCE(SUM(CASE WHEN partner_tier = '' THEN 1 ELSE 0 END), 0) AS gifts FROM donations`);
+    COALESCE(SUM(CASE WHEN partner_tier = '' AND id NOT LIKE 'pc\\_%' ESCAPE '\\'
+      THEN 1 ELSE 0 END), 0) AS gifts FROM donations`);
 
 const campaignShape = (totals) => ({
   raised: Math.round(totals.results[0].cents / 100),
@@ -114,6 +115,65 @@ const partnerShape = (rows) => rows.results.map((row) => ({
    reach a row the PTA typed in itself. */
 const OFFLINE_PREFIX = 'off_';
 const offlineId = () => OFFLINE_PREFIX + crypto.randomUUID().replace(/-/g, '').slice(0, 20);
+
+/* A business partner's own child, counted as a participant without a
+   dollar attached.
+
+   The partnership's money is already in the campaign total and is
+   deliberately kept out of the classroom race, so crediting the child
+   with any share of it would double-count it and hand one class a
+   windfall. What the family is owed is the participation, so that is
+   all this records: one Rocket, no dollars, no gift.
+
+   The `pc_` id is the whole mechanism. Rows carrying it are credits and
+   not gifts, so they stay out of the campaign's gift count, out of the
+   honor roll, and out of every "gifts" figure — while the credit row in
+   donation_students does what any credit does and counts the child. */
+const CREDIT_PREFIX = 'pc_';
+const creditId = () => CREDIT_PREFIX + crypto.randomUUID().replace(/-/g, '').slice(0, 20);
+const isCreditOnly = (id) => String(id).startsWith(CREDIT_PREFIX);
+
+export async function recordPartnerCredit(db, { businessName, students, createdSec }) {
+  const id = creditId();
+  /* Anonymous and priority-less on purpose: the business is thanked on
+     the partner wall, not a second time in the family honor roll, and
+     no priority was chosen because no money moved here. */
+  const row = db.prepare(`
+    INSERT INTO donations
+      (id, amount_cents, fee_cents, priority, partner_tier, donor_name,
+       visibility, email, employer_match, via_link, created)
+    VALUES (?1, 0, 0, '', '', ?2, 'anon', '', 0, 0, ?3)`)
+    .bind(id, businessName, createdSec);
+  const credits = students.map((s, i) => db.prepare(`
+    INSERT INTO donation_students (donation_id, position, classroom, student_name, shirts)
+    VALUES (?1, ?2, ?3, ?4, '')`).bind(id, i, s.c, s.n));
+  await db.batch([row, ...credits]);
+  return id;
+}
+
+export async function deletePartnerCredit(db, id) {
+  if (!isCreditOnly(id)) return false;
+  const [, gone] = await db.batch([
+    db.prepare("DELETE FROM donation_students WHERE donation_id = ?1 AND ?1 LIKE 'pc\\_%' ESCAPE '\\'").bind(id),
+    db.prepare("DELETE FROM donations WHERE id = ?1 AND id LIKE 'pc\\_%' ESCAPE '\\'").bind(id),
+  ]);
+  return (gone.meta && gone.meta.changes) > 0;
+}
+
+/* The credits already recorded, for the list under the form. */
+export async function partnerCredits(db) {
+  const { results } = await db.prepare(`
+    SELECT d.id, d.donor_name, d.created,
+           COALESCE(GROUP_CONCAT(s.student_name, ', '), '') AS students,
+           COALESCE(MIN(s.classroom), '') AS classroom
+    FROM donations d LEFT JOIN donation_students s ON s.donation_id = d.id
+    WHERE d.id LIKE 'pc\\_%' ESCAPE '\\'
+    GROUP BY d.id ORDER BY d.created DESC, d.id DESC`).all();
+  return results.map((r) => ({
+    id: r.id, business: r.donor_name, created: r.created,
+    students: r.students, classroom: r.classroom,
+  }));
+}
 
 export async function recordOfflineGift(db, { amountCents, priority, donorName, visibility, students, createdSec }) {
   const id = offlineId();
@@ -208,7 +268,8 @@ export async function boardStats(db) {
     totalsStmt(db),
     creditsStmt(db),
     db.prepare(`SELECT donor_name, priority, partner_tier, amount_cents, visibility
-                FROM donations ORDER BY created DESC, id DESC`),
+                FROM donations WHERE id NOT LIKE 'pc\\_%' ESCAPE '\\'
+                ORDER BY created DESC, id DESC`),
     partnersStmt(db),
   ]);
 
@@ -292,7 +353,7 @@ const tally = (credits) => {
     const name = c.student_name.trim();
     const room = (rooms[c.classroom] ||= {});
     const student = (room[name.toLowerCase()] ||= { name: name || NO_NAME, gifts: 0, cents: 0, shirts: 0 });
-    student.gifts += 1;
+    student.gifts += isCreditOnly(c.donation_id) ? 0 : 1;
     student.cents += share;
     student.shirts += own;
   }

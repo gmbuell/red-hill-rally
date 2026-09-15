@@ -112,6 +112,37 @@
       <div class="sheet-scroll"><table id="offline-table"></table></div>
     </section>
 
+    <section class="sheet" aria-labelledby="credit-head">
+      <div class="sheet-head">
+        <div>
+          <h2 id="credit-head">Credit a partner&rsquo;s student</h2>
+          <p>A business partner&rsquo;s own child, counted as a participant for their class. No dollars: the partnership is already in the campaign total, and partner money stays out of the classroom race on purpose. This adds the participation and nothing else &mdash; no honor roll listing, no change to any total.</p>
+        </div>
+      </div>
+
+      <form id="credit-form" class="offline-form" novalidate>
+        <div class="offline-grid">
+          <div class="field">
+            <label for="cr-business">Partner business</label>
+            <input type="text" id="cr-business" autocomplete="off" placeholder="e.g. CH Design &amp; Renovation">
+          </div>
+          <div class="field">
+            <label for="cr-class">Student&rsquo;s classroom</label>
+            <select id="cr-class"></select>
+          </div>
+          <div class="field">
+            <label for="cr-student">Student&rsquo;s name</label>
+            <input type="text" id="cr-student" autocomplete="off" placeholder="e.g. Oliver Hanhart">
+          </div>
+        </div>
+        <button type="submit" class="btn" id="cr-save">Credit it</button>
+        <p class="form-error" id="cr-error" role="alert" hidden></p>
+        <p class="offline-done" id="cr-done" role="status" hidden></p>
+      </form>
+
+      <div class="sheet-scroll"><table id="credit-table"></table></div>
+    </section>
+
     <section class="sheet" aria-labelledby="rename-head">
       <div class="sheet-head">
         <div>

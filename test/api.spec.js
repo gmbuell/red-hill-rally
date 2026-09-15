@@ -1145,6 +1145,105 @@ describe('admin reports', () => {
   });
 });
 
+/* A partner's own child: participation, and deliberately nothing else. */
+describe('crediting a partner\'s student', () => {
+  const credit = (body) => SELF.fetch('https://rally.test/api/partner-credit', {
+    method: 'POST',
+    headers: { authorization: 'Bearer test-admin-key', 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const board = async () => (await getJson('/api/board'));
+  const sheet = async (name) => {
+    const res = await SELF.fetch(`https://rally.test/api/${name}.csv?key=test-admin-key`);
+    expect(res.status).toBe(200);
+    return (await res.text()).split('\n');
+  };
+  const roomA = data.CLASSROOMS[0];
+
+  it('counts the student for their class without adding a dollar', async () => {
+    const before = await board();
+    const res = await credit({ business: 'CH Design', students: [{ c: ROOM_A, n: 'Oliver Hanhart' }] });
+    expect(res.status).toBe(200);
+
+    const after = await board();
+    expect(after.classrooms[ROOM_A].rockets).toBe((before.classrooms[ROOM_A] || { rockets: 0 }).rockets + 1);
+    expect(after.classrooms[ROOM_A].raised).toBe((before.classrooms[ROOM_A] || { raised: 0 }).raised);
+    expect(after.campaign.raised).toBe(before.campaign.raised);
+    // Not a gift: the family-gift tally must not move either.
+    expect(after.campaign.gifts).toBe(before.campaign.gifts);
+  });
+
+  it('never reaches the honor roll, under the business name or Anonymous', async () => {
+    const before = (await board()).donors.length;
+    await credit({ business: 'The O’Dell Group', students: [{ c: ROOM_A, n: 'Scott Hendrickson' }] });
+    const after = await board();
+    expect(after.donors).toHaveLength(before);
+    expect(JSON.stringify(after.donors)).not.toContain('Dell');
+  });
+
+  it('shows the student on the sheets with no gift and no dollars', async () => {
+    await credit({ business: 'Tustin Dentistry', students: [{ c: ROOM_A, n: 'Sloane Lamp' }] });
+    const rows = await sheet('students');
+    const mine = rows.find((r) => r.includes('Sloane Lamp'));
+    expect(mine).toBeTruthy();
+    // grade,teacher,student,gifts,raised — a credit is neither a gift
+    // nor a dollar, so the last two columns stay at zero.
+    expect(mine).toContain(roomA.teacher);
+    expect(mine).toMatch(/"?0"?,"?0\.00"?\s*$/);
+  });
+
+  it('still counts one Rocket when the family also gives', async () => {
+    await credit({ business: 'CH Design', students: [{ c: ROOM_A, n: 'Oliver Hanhart' }] });
+    await deliverWebhook(sessionEvent({
+      id: 'cs_pc1', amount_total: 5000,
+      metadata: { students: JSON.stringify([{ c: ROOM_A, n: 'Oliver Hanhart' }]) },
+    }));
+    const after = await board();
+    expect(after.classrooms[ROOM_A].rockets).toBe(1);
+    expect(after.classrooms[ROOM_A].raised).toBe(50);
+  });
+
+  it('refuses a credit with no student named', async () => {
+    for (const body of [
+      { business: 'CH Design', students: [] },
+      { business: 'CH Design', students: [{ c: ROOM_A, n: '' }] },
+      { business: '', students: [{ c: ROOM_A, n: 'Oliver Hanhart' }] },
+    ]) {
+      expect((await credit(body)).status, JSON.stringify(body)).toBe(400);
+    }
+  });
+
+  it('needs the admin key', async () => {
+    const res = await SELF.fetch('https://rally.test/api/partner-credit', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ business: 'CH Design', students: [{ c: ROOM_A, n: 'Oliver Hanhart' }] }),
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it('comes off again, and takes the participation with it', async () => {
+    const res = await credit({ business: 'CH Design', students: [{ c: ROOM_A, n: 'Oliver Hanhart' }] });
+    const { id } = await res.json();
+    expect((await board()).classrooms[ROOM_A].rockets).toBe(1);
+
+    const gone = await SELF.fetch(`https://rally.test/api/partner-credit?id=${id}`, {
+      method: 'DELETE', headers: { authorization: 'Bearer test-admin-key' },
+    });
+    expect(gone.status).toBe(200);
+    expect((await board()).classrooms[ROOM_A]).toBeUndefined();
+  });
+
+  it('will not delete a real gift through the credit route', async () => {
+    await deliverWebhook(sessionEvent({ id: 'cs_pc2', amount_total: 5000 }));
+    const res = await SELF.fetch('https://rally.test/api/partner-credit?id=cs_pc2', {
+      method: 'DELETE', headers: { authorization: 'Bearer test-admin-key' },
+    });
+    expect(res.status).toBe(404);
+    expect((await board()).campaign.raised).toBe(50);
+  });
+});
+
 /* The asset layer (site/_headers) is exercised through the ASSETS
    binding: in production it answers these paths before the worker runs.
    The pages' own headers are covered in pages.spec.js. */

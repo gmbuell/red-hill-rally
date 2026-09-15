@@ -137,6 +137,78 @@
     load();
   });
 
+  /* ---- a partner's own student ---- */
+
+  /* Participation only. The form takes no amount because there is no
+     amount: the partnership already counts once in the campaign total,
+     and partner dollars are kept out of the classroom race, so the one
+     thing left to give the family is the participation. */
+  const crErr = RH.qs('#cr-error');
+  const crDone = RH.qs('#cr-done');
+  RH.qs('#cr-class').innerHTML = html`<option value="">Choose a classroom…</option>${RH.classroomOptions()}`;
+
+  const renderCredits = (rows) => {
+    RH.qs('#credit-table').innerHTML = html`
+      <thead><tr>
+        <th scope="col">Credited</th><th scope="col">Partner</th>
+        <th scope="col">Student</th><th scope="col"></th>
+      </tr></thead>
+      <tbody>${rows.length ? rows.map((r) => html`
+        <tr>
+          <td>${new Date(r.created * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</td>
+          <td>${r.business}</td>
+          <td>${r.students || '—'}</td>
+          <td><button type="button" class="linklike" data-uncredit="${r.id}">Remove</button></td>
+        </tr>`)
+        : html`<tr><td colspan="4" class="empty">No partner students credited yet.</td></tr>`}
+      </tbody>`;
+  };
+
+  RH.qs('#credit-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    crErr.hidden = true;
+    crDone.hidden = true;
+    const btn = RH.qs('#cr-save');
+    const classroom = RH.qs('#cr-class').value;
+    const student = RH.qs('#cr-student').value.trim();
+    if (!classroom || !student) {
+      crErr.textContent = 'Pick the classroom and name the student.';
+      crErr.hidden = false;
+      return;
+    }
+    btn.disabled = true;
+    const { ok, data: res } = await RH.postJson('/api/partner-credit', {
+      business: RH.qs('#cr-business').value.trim(),
+      students: [{ c: classroom, n: student }],
+    }, { authorization: `Bearer ${keyOf()}` }).catch(() => ({ ok: false, data: {} }));
+    btn.disabled = false;
+    if (!ok) {
+      crErr.textContent = res.error || 'That didn’t save — please try again.';
+      crErr.hidden = false;
+      return;
+    }
+    crDone.textContent = `${student} counts for their class now.`;
+    crDone.hidden = false;
+    RH.qs('#cr-business').value = '';
+    RH.qs('#cr-class').value = '';
+    RH.qs('#cr-student').value = '';
+    load();
+  });
+
+  RH.qs('#credit-table').addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-uncredit]');
+    if (!btn) return;
+    btn.disabled = true;
+    const res = await authed(`/api/partner-credit?id=${encodeURIComponent(btn.dataset.uncredit)}`, { method: 'DELETE' })
+      .catch(() => null);
+    if (!res || !res.ok) {
+      btn.disabled = false;
+      fail('That credit didn’t come off — please refresh and try again.');
+      return;
+    }
+    load();
+  });
+
   /* ---- fixing a mistyped Rocket ---- */
 
   /* The picker is built from the Rockets sheet the page already has,
@@ -335,6 +407,7 @@
     renderTable(RH.qs('#students-table'), data.students);
     renderTable(RH.qs('#shirts-table'), data.shirts);
     renderOffline(data.offline || []);
+    renderCredits(data.credits || []);
     renderDigest(data.digest);
     rockets = data.students;
     noNameLabel = data.noName || '';

@@ -10,7 +10,8 @@ import { createCheckoutSession, verifyWebhook } from './stripe.js';
 import { recordDonation, campaignStats, boardStats, studentsReport, shirtsReport, classroomsReport, csv,
   recordOfflineGift, deleteOfflineGift, offlineGifts,
   teacherEmails, setTeacherEmails, weekKey, claimDigest, finishDigest, releaseDigest, digestHistory,
-  renameRocket, NO_NAME, giftRockets, giftsForEmail, claimLinkRequest } from './store.js';
+  renameRocket, NO_NAME, giftRockets, giftsForEmail, claimLinkRequest,
+  recordPartnerCredit, deletePartnerCredit, partnerCredits } from './store.js';
 import { buildDigests } from './digest.js';
 import { sendEmail, mailConfigured } from './mail.js';
 import { renderPage } from './pages.js';
@@ -391,6 +392,41 @@ async function handleGiftRockets(request, env, url) {
   return json({ rockets, goal: STUDENT_GOAL }, 200, { 'cache-control': 'no-store' });
 }
 
+/* A partner's own child, credited as a participant with no dollars.
+
+   The partnership money already counts once in the campaign total and
+   is kept out of the classroom race on purpose, so this records the
+   participation alone. See recordPartnerCredit in store.js. */
+async function handlePartnerCredit(request, env, url) {
+  if (!(await adminKeyOk(request, url, env))) return json({ error: 'unauthorized' }, 401);
+
+  if (request.method === 'DELETE') {
+    const removed = await deletePartnerCredit(env.DB, url.searchParams.get('id') || '');
+    return removed ? json({ removed: true }) : json({ error: 'That credit is no longer here.' }, 404);
+  }
+
+  const body = await request.json().catch(() => null);
+  if (!body) return json({ error: 'Please try that again.' }, 400);
+
+  const business = typeof body.business === 'string' ? body.business.trim().slice(0, MAX_NAME) : '';
+  if (!business) return json({ error: 'Which partner is this for?' }, 400);
+
+  const norm = normalizeStudents(body.students);
+  if (norm.error) return json({ error: norm.error }, 400);
+  // A credit with no named Rocket would count nobody, so it is a
+  // mistake worth refusing rather than recording.
+  if (!norm.students.length || norm.students.some((s) => !s.n)) {
+    return json({ error: 'Name the student this credit is for.' }, 400);
+  }
+
+  const id = await recordPartnerCredit(env.DB, {
+    businessName: business,
+    students: norm.students.map((s) => ({ c: s.c, n: s.n })),
+    createdSec: Math.floor(Date.now() / 1000),
+  });
+  return json({ id });
+}
+
 /* "Email me my Rocket link", for a family who lost the thank-you page.
 
    The address is the whole check: the mail goes only to the address
@@ -561,12 +597,14 @@ async function handleReport(request, url, env, name) {
     const [stats, ...reports] = await Promise.all([
       campaignStats(env.DB), ...Object.values(REPORTS).map((report) => report(env.DB)),
     ]);
-    const [offline, addresses, history] = await Promise.all([
+    const [offline, addresses, history, credits] = await Promise.all([
       offlineGifts(env.DB), teacherEmails(env.DB), digestHistory(env.DB),
+      partnerCredits(env.DB),
     ]);
     const body = {
       campaign: stats.campaign,
       offline,
+      credits,
       digest: { emails: addresses, history, ready: mailConfigured(env) },
       // So the page can tell an unnamed credit from a real name
       // without repeating the label.
@@ -668,6 +706,8 @@ export default {
         case 'GET /api/my-rockets': return await handleGiftRockets(request, env, url);
         case 'POST /api/my-link': return await handleMyLink(request, env, url);
         case 'POST /api/digest-test': return await handleDigestTest(request, env, url);
+        case 'POST /api/partner-credit':
+        case 'DELETE /api/partner-credit': return await handlePartnerCredit(request, env, url);
         case 'GET /api/students.csv':
         case 'GET /api/shirts.csv':
         case 'GET /api/classrooms.csv':

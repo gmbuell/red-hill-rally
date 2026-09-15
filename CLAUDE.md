@@ -23,7 +23,7 @@ two-sentence pointer; this file is the operating manual.
 | `npm install` | wrangler, vitest + workers pool, lighthouse |
 | `npx wrangler d1 migrations apply red-hill-rally --local` | once per clone: local D1 schema |
 | `npm run dev` | `wrangler dev` on http://localhost:8787 |
-| `npm test` | vitest (169 tests, ~4 s) |
+| `npm test` | vitest (177 tests, ~4 s) |
 | `npm run audit` | Lighthouse on every page but `/admin` (noindex), mobile + desktop (needs Chrome); defaults to the live site (`npm run audit -- --url http://localhost:8787` for local). `--runs 3 --min 98` reproduces the CI gate, `--form mobile` limits it to one form factor |
 | `npm run wcag` | WCAG 2.2 checks on every page, mobile + desktop (needs Chrome): text contrast, non-text contrast, focus rings, target size, body leading ≥ 1.5, body text ≥ 16px and labels ≥ 13px. Defaults to the live site (`npm run wcag -- --url http://localhost:8787` for local, `--page donate --form mobile` to narrow). Each cell shows how many elements the check examined |
 | `npm run deploy` | **Ships to production**: the worker and every file under `site/`. The `predeploy` step runs the tests, then applies pending D1 migrations to the remote database, so schema and code ship together. Every push to `main` runs this through Cloudflare Workers Builds (dashboard → the worker → Settings → Build), so merging a PR deploys it |
@@ -383,6 +383,26 @@ flip to live, in this order:
     `MAIL_FROM` (the verified sender) and `MAIL_REPLY_TO` (a PTA inbox
     a teacher's reply should reach). Cron runs on UTC: `0 0 * * 5` is
     Thursday 5pm Pacific under daylight time and 4pm once it ends.
+- **A partner's own student** — "Credit a partner's student" on /admin
+  counts a business partner's child as a participant for their class
+  with no dollars attached. The partnership's money is already in the
+  campaign total and is deliberately kept out of the classroom race, so
+  crediting the child a share of it would double-count it and hand one
+  class a windfall; the participation is the part the family is owed, so
+  it is the only part this records.
+  - The `pc_` id prefix is the mechanism, the way `off_` is for a
+    recorded check. Those rows are credits and not gifts: they carry
+    $0, sit out of the campaign's gift count, out of the honor roll
+    (under any name), and out of every "gifts" column, while their
+    `donation_students` row counts the child like any other credit. The
+    row is stored anonymous with no priority, because the business is
+    thanked on the partner wall and no money moved. Remove one from the
+    list under the form; the route refuses any id that isn't `pc_`.
+  - A child with both a partner credit and a family gift is still **one**
+    Rocket — `tally` merges on the name — so nothing double-counts.
+  - Worth knowing: these students count toward participation without a
+    family gift behind them, which is the PTA's call to make and slightly
+    changes the honest answer to "how is participation counted?"
 - **Checks and cash** — "Record a check" on /admin takes a gift the PTA
   received by hand and counts it exactly like a card gift: the ticker,
   the classroom race, the honor roll, the Rocket's own total. It takes
