@@ -202,9 +202,10 @@ const CLASSROOMS = [
      else. Its gifts count in the campaign total, its children count in
      the school-wide participation figure, its teacher gets the Thursday
      email, and it appears in every Mission Control sheet — which is
-     where the PTA awards classroom prizes from, so these rooms can
-     still earn them. Only the public per-class ranking is withheld. */
-  { id: 'bishop', teacher: 'Mr. Bishop', grade: 'SDC', students: 14, offBoard: true },
+     where the PTA awards classroom prizes from, so a room carrying it
+     can still earn them. Only the public per-class ranking is held
+     back, and it is the PTA's call which rooms want that. */
+  { id: 'bishop', teacher: 'Mr. Bishop', grade: 'SDC', students: 14 },
   { id: 'smith', teacher: 'Mrs. Smith', grade: 'SDC', students: 12, offBoard: true },
 ];
 

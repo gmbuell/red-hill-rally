@@ -124,8 +124,11 @@ secrets; the maintainer reviews and ships PRs.
   awards classroom prizes from the classroom CSV, so those rooms can
   still earn them — which is why the board's own counts read the visible
   list: what the board says has to match the rows a family can point
-  at. Red Hill's two SDC rooms carry the flag; in classes that small a
-  published percentage moves a long way on one child.
+  at. Which rooms carry the flag is the PTA's call, not a rule about a
+  kind of class: in a small room a published percentage moves a long way
+  on one child, so the flag exists, but whether that trade is worth
+  making belongs to the people who know the families. Mrs. Smith's room
+  carries it today.
 - The classroom race ranks by participation (Rockets ÷ class size),
   never dollars. Each row also shows what the class has raised, for the
   Top Class prize, and a line above the list names whoever is leading
