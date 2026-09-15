@@ -1648,6 +1648,22 @@ describe('a donor checking their Rocket', () => {
     expect(rocket.donors).toEqual(['Nana Webber']);
   });
 
+  it('leaves a partner\'s participation credit off the thank-you list, and out of anonGifts', async () => {
+    await SELF.fetch('https://rally.test/api/partner-credit', {
+      method: 'POST',
+      headers: { authorization: 'Bearer test-admin-key', 'content-type': 'application/json' },
+      body: JSON.stringify({ business: 'CH Design', students: [{ c: ROOM_A, n: 'Oliver Hanhart' }] }),
+    });
+    await deliverWebhook(sessionEvent({
+      id: 'cs_t6cr', amount_total: 1000,
+      metadata: { students: JSON.stringify([{ c: ROOM_A, n: 'Oliver Hanhart' }]), donor_name: 'Grandpa Hanhart' },
+    }));
+    const rocket = (await mine('cs_t6cr')).rockets[0];
+    expect(rocket.donors).toEqual(['Grandpa Hanhart']);
+    expect(rocket.anonGifts).toBe(0);
+    expect(rocket.gifts).toBe(1);
+  });
+
   it('thanks only the donors who named that child', async () => {
     await deliverWebhook(sessionEvent({
       id: 'cs_t6g', amount_total: 1000,

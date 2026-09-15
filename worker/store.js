@@ -546,11 +546,13 @@ export async function renameRocket(db, classroom, from, to) {
    honor roll has never carried one, and choosing to be listed was not
    agreeing to have your gift itemised to somebody's family. Anonymous
    gifts are counted so the total still adds up, and never named.
-   Partnerships are a business's gift to the school, not a child's. */
+   Partnerships are a business's gift to the school, not a child's. A
+   partner's participation credit (`pc_`) is no gift at all, so it is
+   left out rather than counted toward anonGifts. */
 const donorsStmt = (db) => db.prepare(`
   SELECT s.classroom, s.student_name, d.donor_name, d.visibility
   FROM donation_students s JOIN donations d ON d.id = s.donation_id
-  WHERE d.partner_tier = ''
+  WHERE d.partner_tier = '' AND d.id NOT LIKE 'pc\\_%' ESCAPE '\\'
   ORDER BY d.created DESC, d.id DESC, s.position`);
 
 const donorsByRocket = (rows) => {
