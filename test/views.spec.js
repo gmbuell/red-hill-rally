@@ -227,6 +227,35 @@ describe('page views', () => {
     });
   });
 
+  /* A partner recognised without a rung on the ladder. The roster has
+     real entries carrying a label, so each assertion looks at the one
+     card under test rather than the whole wall. */
+  const cardFor2 = (name) => String(partnersSlots(null)['partner-wall'])
+    .split('<li').find((c) => c.includes(`>${name}<`));
+
+  it('badges a roster partner from its plain label', () => {
+    data.PARTNERS.push({ name: 'Label Co', logo: 'label-co.webp', label: 'Badge Only' });
+    try {
+      const card = cardFor2('Label Co');
+      expect(card).toBeTruthy();
+      expect(card).toContain('Badge Only');
+    } finally {
+      data.PARTNERS.pop();
+    }
+  });
+
+  it('lets a real tier outrank a plain label', () => {
+    const tier = data.PARTNER_TIERS.find((t) => t.logo);
+    data.PARTNERS.push({ name: 'Label Co', logo: 'label-co.webp', label: 'Badge Only', tier: tier.id });
+    try {
+      const card = cardFor2('Label Co');
+      expect(card).toContain(tier.name);
+      expect(card).not.toContain('Badge Only');
+    } finally {
+      data.PARTNERS.pop();
+    }
+  });
+
   it('has an element in the HTML for every slot a page renders into', async () => {
     // HTMLRewriter ignores a selector nothing matches, so a renamed id
     // would ship an empty element with no error anywhere but here.

@@ -256,15 +256,20 @@ const ANNUAL_LEVELS = [
    text only, per the partnership terms. Web logos live in
    site/img/partners/; print-quality originals stay out of the repo
    (assets/partner-logos/, gitignored). */
+/* `label` is a display badge for a partner being recognised without a
+   rung on the ladder: it names what they are and claims no dollar
+   figure, and any real tier outranks it. */
 const PARTNERS = [
   { name: 'Earthco Landscape Services', logo: 'earthco-landscape.webp', annual: 'apollo', presenting: true },
   { name: 'The O’Dell Group Real Estate', logo: 'odell-group.webp', annual: 'apollo' },
   { name: 'AOQ Sports', logo: 'aoq-sports.webp', annual: 'orbit' },
   { name: 'Galaxy Automotive & Tire', logo: 'galaxy-automotive.webp', annual: 'orbit' },
   { name: 'Felton Ninja Academy', logo: 'felton-ninja-academy.webp', annual: 'orbit' },
+  { name: 'Tustin Aesthetic Dentistry', logo: 'tustin-aesthetic-dentistry.webp', annual: 'orbit' },
   // Thanked by name, no level recorded: recognition the PTA is giving
   // now, not a ledger. A tier here would claim a dollar figure nobody
   // has settled, and one arriving through checkout still outranks it.
+  { name: 'The Lost Bean', logo: 'the-lost-bean.webp', label: 'Rally Partner' },
   { name: 'Black Gold Pump & Supply' },
   { name: 'CH Design & Renovation' },
   { name: 'Sakura Smiles Pediatric Dentistry' },

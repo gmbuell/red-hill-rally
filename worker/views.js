@@ -167,10 +167,13 @@ const mergedPartners = (online) => {
   const rank = (tier) => PARTNER_TIERS.findIndex((t) => t.id === tier);
   const byKey = new Map();
   for (const p of PARTNERS) {
-    byKey.set(key(p.name), { name: p.name, tier: p.tier || '', annual: p.annual || '', src: p.logo ? `/img/partners/${p.logo}` : '' });
+    byKey.set(key(p.name), {
+      name: p.name, tier: p.tier || '', annual: p.annual || '', label: p.label || '',
+      src: p.logo ? `/img/partners/${p.logo}` : '',
+    });
   }
   for (const p of (online || []).filter((o) => o && o.name)) {
-    const cur = byKey.get(key(p.name)) || { name: p.name, tier: '', annual: '', src: '' };
+    const cur = byKey.get(key(p.name)) || { name: p.name, tier: '', annual: '', label: '', src: '' };
     if (rank(p.tier) > rank(cur.tier)) cur.tier = p.tier;
     if (p.logo) cur.src = `/logo/${p.logo}`;
     byKey.set(key(p.name), cur);
@@ -180,9 +183,13 @@ const mergedPartners = (online) => {
     const level = annualLevelById(p.annual);
     return {
       ...p,
-      // An Annual Partner is already backing the whole year, so its
-      // level is the badge and it always keeps its logo.
-      tierName: level ? level.name : (tier ? tier.name : ''),
+      /* An Annual Partner is already backing the whole year, so its
+         level is the badge and it always keeps its logo. A plain
+         `label` is the fallback for a partner the PTA is recognising
+         without a rung: it names what they are and claims no dollar
+         figure, so a real tier — from the roster or from checkout —
+         always wins over it. */
+      tierName: level ? level.name : (tier ? tier.name : (p.label || '')),
       size: level ? level.size : 'sm',
       src: !level && tier && !tier.logo ? '' : p.src,
     };
