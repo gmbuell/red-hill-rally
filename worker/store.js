@@ -319,9 +319,33 @@ const roomOrder = (seen) => {
    (refund, the go-live wipe) takes its classroom credits with it.
    Partnerships carry no credits and stay out. */
 const creditsStmt = (db) => db.prepare(`
-  SELECT s.donation_id, s.classroom, s.student_name, s.shirts, d.amount_cents
+  SELECT s.donation_id, s.classroom, s.student_name, s.shirts, d.amount_cents, d.created
   FROM donation_students s JOIN donations d ON d.id = s.donation_id
   ORDER BY d.created, d.id, s.position`);
+
+/* The school's own clock, not UTC. Shirts go to the printer in
+   batches, and the cutoff is a moment: an order placed at 6pm Pacific
+   reads as tomorrow in UTC, which would drop that child's shirt into
+   the next box or out of both. "YYYY-MM-DD HH:MM" sorts as a string,
+   which is what the window comparison below relies on. */
+const ORDER_TZ = 'America/Los_Angeles';
+const ORDER_FMT = new Intl.DateTimeFormat('en-CA', {
+  timeZone: ORDER_TZ, year: 'numeric', month: '2-digit', day: '2-digit',
+  hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+});
+const orderedAt = (createdSec) =>
+  ORDER_FMT.format(new Date(createdSec * 1000)).replace(',', '');
+
+/* A window end as the PTA typed it → something comparable to the
+   above. A bare day means the whole day, so `to` runs to its last
+   minute; anything unreadable is dropped, because a stray character
+   should show too many shirts and never too few. */
+const windowEnd = (v, end) => {
+  const raw = String(v || '').trim().replace('T', ' ');
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return end ? `${raw} 23:59` : raw;
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(raw)) return raw;
+  return '';
+};
 
 /* What the reports call a credit whose donor left the name box empty.
    Mission Control shows this in the picker, and sends '' back when the
@@ -425,26 +449,57 @@ export async function classroomsReport(db) {
 
 /* The printer's sheet: each Rocket's shirts by size, merged across
    orders, in roster then name then size order. */
-export async function shirtsReport(db) {
+/* The printer's sheet, with the moment each order came in so the PTA
+   can cut a batch at a time as well as a day. One row per Rocket, size
+   and **order**: two of a size bought a week apart are two rows,
+   because one of them may belong to a box already at the printer, and
+   two bought in the same checkout are one row of quantity 2.
+
+   `from`/`to` are inclusive, either end open, and take a bare
+   YYYY-MM-DD (the whole day) or YYYY-MM-DD HH:MM. */
+export async function shirtsReport(db, { from = '', to = '' } = {}) {
+  const lo = windowEnd(from, false);
+  const hi = windowEnd(to, true);
   const credits = (await creditsStmt(db).all()).results.filter((c) => c.shirts);
   const rooms = {};
   for (const c of credits) {
+    const at = orderedAt(c.created);
+    if (lo && at < lo) continue;
+    if (hi && at > hi) continue;
     const name = c.student_name.trim();
-    const student = ((rooms[c.classroom] ||= {})[name.toLowerCase()] ||= { name, sizes: {} });
-    for (const z of c.shirts.split(',')) student.sizes[z] = (student.sizes[z] || 0) + 1;
+    const student = ((rooms[c.classroom] ||= {})[name.toLowerCase()] ||= { name, orders: {} });
+    // Keyed by the order, so the clock time on the row is one real
+    // moment rather than a mix of two.
+    const order = (student.orders[`${at} ${c.donation_id}`] ||= { at, sizes: {} });
+    for (const z of c.shirts.split(',')) order.sizes[z] = (order.sizes[z] || 0) + 1;
   }
   const sizeOrder = SHIRT.sizes.map((z) => z.id);
   const rows = [];
   for (const room of roomOrder(rooms)) {
     const students = Object.values(rooms[room.id] || {}).sort((a, b) => a.name.localeCompare(b.name));
     for (const s of students) {
-      for (const z of sizeOrder.filter((id) => s.sizes[id])) {
-        rows.push([room.grade, room.teacher, s.name, shirtSizeById(z).label, s.sizes[z]]);
+      for (const k of Object.keys(s.orders).sort()) {
+        const order = s.orders[k];
+        for (const z of sizeOrder.filter((id) => order.sizes[id])) {
+          rows.push([room.grade, room.teacher, s.name, shirtSizeById(z).label, order.sizes[z], order.at]);
+        }
       }
     }
   }
-  return { columns: ['grade', 'teacher', 'student', 'size', 'quantity'], rows };
+  return { columns: ['grade', 'teacher', 'student', 'size', 'quantity', 'ordered'], rows };
 }
+
+/* What the printer is actually handed: how many of each size. Folded
+   from the sheet's own rows, so the count and the pick list can never
+   disagree about a batch. */
+export const shirtSizeTotals = ({ rows }) => {
+  const byLabel = {};
+  for (const [, , , label, qty] of rows) byLabel[label] = (byLabel[label] || 0) + qty;
+  const ordered = SHIRT.sizes
+    .filter((z) => byLabel[z.label])
+    .map((z) => ({ size: z.label, quantity: byLabel[z.label] }));
+  return { sizes: ordered, total: ordered.reduce((n, z) => n + z.quantity, 0) };
+};
 
 /* ---- the Thursday classroom digest ---------------------------------
    Teacher addresses live here rather than in data.js: this repository

@@ -613,7 +613,13 @@ async function handleReport(request, url, env, name) {
     Object.keys(REPORTS).forEach((key, i) => { body[key] = reports[i]; });
     return json(body, 200, { 'cache-control': 'no-store' });
   }
-  return new Response(csv(await REPORTS[name](env.DB)), {
+  /* The shirts sheet takes a batch window. shirtsReport parses and
+     bounds it — a bare day, a day and a time, or nothing — so the
+     route just hands the raw strings over. */
+  const opts = name === 'shirts'
+    ? { from: url.searchParams.get('from') || '', to: url.searchParams.get('to') || '' }
+    : undefined;
+  return new Response(csv(await REPORTS[name](env.DB, opts)), {
     headers: {
       'content-type': 'text/csv; charset=utf-8',
       'content-disposition': `attachment; filename="rocket-rally-${name}.csv"`,

@@ -137,6 +137,72 @@
     load();
   });
 
+  /* ---- the shirt batch ---- */
+
+  /* The printer is handed one batch at a time, so the window is the
+     whole feature: the size counts, the pick list and the download all
+     read the same two dates. Filtering here rather than on the server
+     keeps it instant, and the download passes the dates along so the
+     file matches what is on screen. */
+  let shirtRows = { columns: [], rows: [] };
+  const shirtWindow = () => ({
+    from: RH.qs('#shirt-from').value || '',
+    to: RH.qs('#shirt-to').value || '',
+  });
+
+  /* Mirrors windowEnd in store.js: a datetime-local reads as
+     "YYYY-MM-DDTHH:MM", a bare day means the whole day, and the rows
+     carry "YYYY-MM-DD HH:MM" — all string-comparable once the T goes.
+     The download passes the raw values to the same parser server-side,
+     so the file and the screen cut at the same moment. */
+  const edge = (v, end) => {
+    const raw = String(v || '').trim().replace('T', ' ');
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return end ? `${raw} 23:59` : raw;
+    if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(raw)) return raw;
+    return '';
+  };
+
+  const renderShirts = () => {
+    const { from, to } = shirtWindow();
+    const lo = edge(from, false);
+    const hi = edge(to, true);
+    const rows = shirtRows.rows.filter((r) => {
+      const at = r[5];
+      return (!lo || at >= lo) && (!hi || at <= hi);
+    });
+    renderTable(RH.qs('#shirts-table'), { columns: shirtRows.columns, rows });
+
+    const byLabel = new Map();
+    for (const r of rows) byLabel.set(r[3], (byLabel.get(r[3]) || 0) + r[4]);
+    const sizes = SHIRT.sizes.filter((z) => byLabel.has(z.label));
+    const total = [...byLabel.values()].reduce((n, q) => n + q, 0);
+
+    const show = (v) => String(v).replace('T', ' ');
+    const span = !from && !to ? 'every order so far'
+      : (from && to ? `${show(from)} through ${show(to)}`
+        : (from ? `${show(from)} onward` : `through ${show(to)}`));
+    RH.qs('#shirt-count').textContent = total
+      ? `${total} shirt${total === 1 ? '' : 's'} to order — ${span}.`
+      : `No shirts ordered ${span}.`;
+
+    RH.qs('#shirt-sizes').innerHTML = html`
+      <thead><tr><th scope="col">Size</th><th scope="col" class="num">Quantity</th></tr></thead>
+      <tbody>${sizes.length ? html`${sizes.map((z) => html`
+        <tr><td>${z.label}</td><td class="num">${byLabel.get(z.label)}</td></tr>`)}
+        <tr class="sizes-total"><td>Total</td><td class="num">${total}</td></tr>`
+        : html`<tr><td colspan="2" class="empty">Nothing in this window.</td></tr>`}
+      </tbody>`;
+  };
+
+  for (const id of ['#shirt-from', '#shirt-to']) {
+    RH.qs(id).addEventListener('change', renderShirts);
+  }
+  RH.qs('#shirt-all').addEventListener('click', () => {
+    RH.qs('#shirt-from').value = '';
+    RH.qs('#shirt-to').value = '';
+    renderShirts();
+  });
+
   /* ---- a partner's own student ---- */
 
   /* Participation only. The form takes no amount because there is no
@@ -405,7 +471,8 @@
     RH.qs('#as-of').textContent = `As of ${new Date().toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}.`;
     renderTable(RH.qs('#classrooms-table'), data.classrooms, { col: 'participation_pct', desc: true });
     renderTable(RH.qs('#students-table'), data.students);
-    renderTable(RH.qs('#shirts-table'), data.shirts);
+    shirtRows = data.shirts;
+    renderShirts();
     renderOffline(data.offline || []);
     renderCredits(data.credits || []);
     renderDigest(data.digest);
@@ -439,7 +506,9 @@
     const name = btn.dataset.download;
     btn.disabled = true;
     try {
-      const res = await authed(`/api/${name}.csv`);
+      const { from, to } = name === 'shirts' ? shirtWindow() : {};
+      const q = new URLSearchParams(Object.entries({ from, to }).filter(([, v]) => v));
+      const res = await authed(`/api/${name}.csv${q.toString() ? `?${q}` : ''}`);
       if (!res.ok) throw new Error(String(res.status));
       const url = URL.createObjectURL(await res.blob());
       const a = Object.assign(document.createElement('a'), { href: url, download: `rocket-rally-${name}.csv` });

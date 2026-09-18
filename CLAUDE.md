@@ -23,7 +23,7 @@ two-sentence pointer; this file is the operating manual.
 | `npm install` | wrangler, vitest + workers pool, lighthouse |
 | `npx wrangler d1 migrations apply red-hill-rally --local` | once per clone: local D1 schema |
 | `npm run dev` | `wrangler dev` on http://localhost:8787 |
-| `npm test` | vitest (177 tests, ~4 s) |
+| `npm test` | vitest (187 tests, ~4 s) |
 | `npm run audit` | Lighthouse on every page but `/admin` (noindex), mobile + desktop (needs Chrome); defaults to the live site (`npm run audit -- --url http://localhost:8787` for local). `--runs 3 --min 98` reproduces the CI gate, `--form mobile` limits it to one form factor |
 | `npm run wcag` | WCAG 2.2 checks on every page, mobile + desktop (needs Chrome): text contrast, non-text contrast, focus rings, target size, body leading ≥ 1.5, body text ≥ 16px and labels ≥ 13px. Defaults to the live site (`npm run wcag -- --url http://localhost:8787` for local, `--page donate --form mobile` to narrow). Each cell shows how many elements the check examined |
 | `npm run deploy` | **Ships to production**: the worker and every file under `site/`. The `predeploy` step runs the tests, then applies pending D1 migrations to the remote database, so schema and code ship together. Every push to `main` runs this through Cloudflare Workers Builds (dashboard → the worker → Settings → Build), so merging a PR deploys it |
@@ -316,7 +316,21 @@ flip to live, in this order:
     each gift that named no Rocket. Participation is rockets ÷ class
     size, so three gifts for one kid read as one participant.
   - *shirts.csv* (for the printer): grade, teacher, student, size,
-    quantity; one row per Rocket and size, merged across orders.
+    quantity, ordered; one row per Rocket, size **and order**, because
+    shirts go to the printer in batches and two of a size an hour apart
+    may belong to different boxes. *ordered* is `YYYY-MM-DD HH:MM`.
+    `?from=` and `?to=` cut the sheet to a batch, inclusive, either end
+    open, and take either form: a bare `YYYY-MM-DD` means the whole of
+    that day (a `?to=` day expands to `23:59`), and `YYYY-MM-DD HH:MM`
+    cuts at the minute, so a batch can close mid-morning. An
+    unparseable value is ignored rather than refused, so a typo can't
+    quietly hide a child's shirt. The Mission Control panel has the same
+    two moments, the size totals for that window, and a download that
+    carries the window with it.
+    - The clock is **Pacific**, not UTC. An order at 6pm reads as the
+      next day in UTC, which would drop that shirt into the wrong batch
+      or out of both; `orderedAt` in `store.js` is the one place that
+      decides, and `test/api.spec.js` pins the 10:33pm case.
 - **A family checking their Rocket** — the thank-you page shows what
   the Rockets that gift credited have raised across every gift, not
   just this one, so the URL Stripe hands the donor works as a private

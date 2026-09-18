@@ -62,10 +62,25 @@
       <div class="sheet-head">
         <div>
           <h2 id="shirts-head">Shirt order</h2>
-          <p>For the printer. One row per Rocket and size, merged across orders.</p>
+          <p>For the printer. One row per Rocket, size and order, with the moment it came in, so a batch can be cut at a time as well as a day. Times are Pacific, the way the school counts them.</p>
         </div>
         <button type="button" class="btn secondary small" data-download="shirts">Download shirts.csv</button>
       </div>
+
+      <div class="batch-row">
+        <div class="field">
+          <label for="shirt-from">Ordered from</label>
+          <input type="datetime-local" id="shirt-from">
+        </div>
+        <div class="field">
+          <label for="shirt-to">Ordered through</label>
+          <input type="datetime-local" id="shirt-to">
+        </div>
+        <button type="button" class="btn secondary small" id="shirt-all">Show all</button>
+      </div>
+      <p class="batch-count" id="shirt-count"></p>
+      <div class="sheet-scroll"><table id="shirt-sizes"></table></div>
+
       <div class="sheet-scroll"><table id="shirts-table"></table></div>
     </section>
 

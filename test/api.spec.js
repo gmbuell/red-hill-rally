@@ -933,11 +933,14 @@ describe('admin reports', () => {
   const roomC = data.classroomById(ROOM_C);
   const row = (room, ...rest) =>
     [room.grade, room.teacher, ...rest].map((v) => `"${v}"`).join(',');
-  const report = async (name) => {
-    const res = await SELF.fetch(`https://rally.test/api/${name}.csv?key=test-admin-key`);
+  const report = async (name, query = '') => {
+    const res = await SELF.fetch(`https://rally.test/api/${name}.csv?key=test-admin-key${query}`);
     expect(res.status).toBe(200);
     return (await res.text()).split('\n');
   };
+  /* The fixture's default gift lands at 10:33pm Pacific, which is the
+     next day in UTC — so this differs from its UTC date on purpose. */
+  const DAY_A = '2025-08-24 22:33';
 
   it('requires the admin key on every report', async () => {
     for (const name of ['students', 'shirts', 'classrooms']) {
@@ -1047,7 +1050,96 @@ describe('admin reports', () => {
       metadata: { students: JSON.stringify([{ c: ROOM_A, n: '@SUM(A1)' }]), shirts: `0:${SIZE_A}` },
     }));
     expect(await report('students')).toContain(row(roomA, "'@SUM(A1)", 1, dollars(10000 + CREDIT_CENTS)));
-    expect(await report('shirts')).toContain(row(roomA, "'@SUM(A1)", data.SHIRT.sizes[0].label, 1));
+    expect(await report('shirts')).toContain(row(roomA, "'@SUM(A1)", data.SHIRT.sizes[0].label, 1, DAY_A));
+  });
+
+  /* Shirts go to the printer in batches, so the sheet has to say when
+     each order came in and cut at a day. */
+  describe('the shirt order in batches', () => {
+    const orderOn = (id, created, size) => deliverWebhook(sessionEvent({
+      id, created, amount_total: SHIRT_CENTS,
+      metadata: { students: JSON.stringify([{ c: ROOM_A, n: 'Mia Rodriguez' }]), shirts: `0:${size}` },
+    }));
+    const [SZ1, SZ2] = data.SHIRT.sizes;
+
+    it('dates each order by the school\'s own day, not UTC', async () => {
+      // 10:33pm Pacific on the 24th is the 25th in UTC. A batch that
+      // cut on UTC would put this shirt in the wrong box.
+      await orderOn('cs_tz', 1756100000, SZ1.id);
+      const rows = await report('shirts');
+      expect(rows.some((r) => r.includes(DAY_A))).toBe(true);
+      expect(rows.some((r) => r.includes('2025-08-25'))).toBe(false);
+    });
+
+    it('splits the same size into two rows when it was ordered on two days', async () => {
+      await orderOn('cs_d1', 1756100000, SZ1.id);   // Aug 24 Pacific
+      await orderOn('cs_d2', 1756200000, SZ1.id);   // Aug 26 Pacific
+      const rows = await report('shirts');
+      expect(rows).toContain(row(roomA, 'Mia Rodriguez', SZ1.label, 1, DAY_A));
+      expect(rows).toContain(row(roomA, 'Mia Rodriguez', SZ1.label, 1, '2025-08-26 02:20'));
+    });
+
+    it('cuts the batch at a day, both ends inclusive', async () => {
+      await orderOn('cs_w1', 1756100000, SZ1.id);   // Aug 24
+      await orderOn('cs_w2', 1756200000, SZ2.id);   // Aug 26
+      const first = await report('shirts', '&to=2025-08-24');
+      expect(first.some((r) => r.includes(SZ1.label))).toBe(true);
+      expect(first.some((r) => r.includes(SZ2.label))).toBe(false);
+
+      const second = await report('shirts', '&from=2025-08-25');
+      expect(second.some((r) => r.includes(SZ1.label))).toBe(false);
+      expect(second.some((r) => r.includes(SZ2.label))).toBe(true);
+
+      // The day itself belongs to both a `to` and a `from` on it.
+      const onTheDay = await report('shirts', '&from=2025-08-26&to=2025-08-26');
+      expect(onTheDay.some((r) => r.includes(SZ2.label))).toBe(true);
+    });
+
+    it('cuts a batch mid-day, at the minute the order was placed', async () => {
+      // Two orders forty minutes apart on the same afternoon: the PTA
+      // placed the printer's order between them.
+      const noon = 1758214800;              // 2025-09-18 10:00 Pacific
+      await orderOn('cs_m1', noon, SZ1.id);
+      await orderOn('cs_m2', noon + 40 * 60, SZ2.id);
+
+      const before = await report('shirts', '&to=2025-09-18 10:20');
+      expect(before.some((r) => r.includes(SZ1.label))).toBe(true);
+      expect(before.some((r) => r.includes(SZ2.label))).toBe(false);
+
+      const after = await report('shirts', '&from=2025-09-18T10:20');
+      expect(after.some((r) => r.includes(SZ1.label))).toBe(false);
+      expect(after.some((r) => r.includes(SZ2.label))).toBe(true);
+    });
+
+    it('takes a bare day as the whole of it, both ends', async () => {
+      await orderOn('cs_day', 1758214800, SZ1.id);   // 10:00 that morning
+      // A `to` of the day must not cut the morning off at midnight.
+      const whole = await report('shirts', '&from=2025-09-18&to=2025-09-18');
+      expect(whole.some((r) => r.includes(SZ1.label))).toBe(true);
+    });
+
+    it('ignores a window it cannot read rather than hiding a shirt', async () => {
+      await orderOn('cs_bad', 1756100000, SZ1.id);
+      for (const q of ['&to=nonsense', '&from=2025-8-4', '&to=', '&from=2025-08-24x']) {
+        const rows = await report('shirts', q);
+        expect(rows.some((r) => r.includes(SZ1.label)), q).toBe(true);
+      }
+    });
+
+    it('adds the batch up by size, matching the rows it came from', async () => {
+      await orderOn('cs_t1', 1756100000, SZ1.id);
+      await orderOn('cs_t2', 1756100000, SZ1.id);
+      await orderOn('cs_t3', 1756100000, SZ2.id);
+      const res = await SELF.fetch('https://rally.test/api/admin.json', {
+        headers: { authorization: 'Bearer test-admin-key' },
+      });
+      const { shirts } = await res.json();
+      const qtyFor = (label) => shirts.rows
+        .filter((r) => r[3] === label).reduce((n, r) => n + r[4], 0);
+      expect(shirts.rows.reduce((n, r) => n + r[4], 0)).toBe(3);
+      expect(qtyFor(SZ1.label)).toBe(2);
+      expect(qtyFor(SZ2.label)).toBe(1);
+    });
   });
 
   it('serves every report at once as JSON for the admin page', async () => {
@@ -1063,7 +1155,7 @@ describe('admin reports', () => {
     expect(body.students.columns).toEqual(['grade', 'teacher', 'student', 'gifts', 'raised']);
     expect(body.students.rows).toContainEqual([roomA.grade, roomA.teacher, 'Mia Rodriguez', 1, dollars(10000 + CREDIT_CENTS)]);
     expect(body.classrooms.rows).toContainEqual([roomA.grade, roomA.teacher, roomA.students, 1, 1, Math.round(100 / roomA.students), dollars(10000 + CREDIT_CENTS), 1]);
-    expect(body.shirts.rows).toEqual([[roomA.grade, roomA.teacher, 'Mia Rodriguez', data.SHIRT.sizes[0].label, 1]]);
+    expect(body.shirts.rows).toEqual([[roomA.grade, roomA.teacher, 'Mia Rodriguez', data.SHIRT.sizes[0].label, 1, DAY_A]]);
     expect(JSON.stringify(body)).not.toContain('example.com');
   });
 
@@ -1096,7 +1188,7 @@ describe('admin reports', () => {
       Math.round(200 / roomA.students), dollars(3 * 10000), 0));
   });
 
-  it('lists shirts by Rocket and size for the printer, quantities merged across orders', async () => {
+  it('lists shirts by Rocket, size and order for the printer', async () => {
     await deliverWebhook(sessionEvent({
       amount_total: 10000 + 2 * SHIRT_CENTS, metadata: { shirts: `0:${SIZE_A},0:${SIZE_B}` },
     }));
@@ -1105,12 +1197,16 @@ describe('admin reports', () => {
       metadata: { students: JSON.stringify([{ c: ROOM_A, n: 'mia rodriguez' }]), shirts: `0:${SIZE_A}` },
     }));
     const rows = await report('shirts');
-    expect(rows[0]).toBe('grade,teacher,student,size,quantity');
-    const a = rows.indexOf(row(roomA, 'Mia Rodriguez', data.SHIRT.sizes[0].label, 2));
-    const b = rows.indexOf(row(roomA, 'Mia Rodriguez', data.SHIRT.sizes[1].label, 1));
+    expect(rows[0]).toBe('grade,teacher,student,size,quantity,ordered');
+    // The first checkout bought both sizes at once; the second bought
+    // one more of the first size a minute later, which is its own row.
+    const a = rows.indexOf(row(roomA, 'Mia Rodriguez', data.SHIRT.sizes[0].label, 1, DAY_A));
+    const b = rows.indexOf(row(roomA, 'Mia Rodriguez', data.SHIRT.sizes[1].label, 1, DAY_A));
+    const c = rows.indexOf(row(roomA, 'Mia Rodriguez', data.SHIRT.sizes[0].label, 1, '2025-08-24 22:34'));
     expect(a).toBeGreaterThan(0);
     expect(b).toBe(a + 1);
-    expect(rows).toHaveLength(4); // header, two rows, trailing newline
+    expect(c).toBe(b + 1);
+    expect(rows).toHaveLength(5); // header, three rows, trailing newline
   });
 
   it('sums every classroom in roster order with participation, dollars, and shirts', async () => {

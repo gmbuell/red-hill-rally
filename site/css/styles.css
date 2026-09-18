@@ -1486,6 +1486,25 @@ select:focus-visible,
   gap: 0 1.6rem;
   margin-bottom: 0.6rem;
 }
+/* The shirt batch window: two dates and a reset, on one line where
+   there is room. The size table beside it is narrow on purpose — it is
+   a count to read off, not a sheet to scan. */
+.batch-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.6rem 1.6rem;
+  margin-bottom: 0.8rem;
+}
+.batch-row .field { margin: 0; }
+.batch-count {
+  margin: 0 0 1rem;
+  font-weight: 700;
+  color: var(--navy);
+}
+#shirt-sizes { max-width: 22rem; margin-bottom: 1.6rem; }
+#shirt-sizes .sizes-total td { font-weight: 800; color: var(--navy); }
+
 .offline-form .form-error, .offline-done { text-align: left; }
 .offline-done {
   font-weight: 700;
