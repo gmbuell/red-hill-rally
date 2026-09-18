@@ -41,8 +41,11 @@
   // The Thursday classroom digest. Cron runs on UTC, so Friday 00:00
   // UTC is Thursday 5pm Pacific while daylight time is in effect; once
   // it ends in November this lands at 4pm, which is fine for a fall
-  // campaign but is the line to change if that ever matters.
-  "triggers": { "crons": ["0 0 * * 5"] },
+  // campaign but is the line to change if that ever matters. Cloudflare's
+  // weekday field runs 1=Sunday..7=Saturday (not the usual 0=Sunday), so
+  // Friday is 6, not 5 — 5 is Thursday and fired the digest a day early
+  // for a week before anyone noticed.
+  "triggers": { "crons": ["0 0 * * 6"] },
 
   // Secrets (wrangler secret put): ADMIN_KEY, STRIPE_SECRET_KEY,
   // STRIPE_WEBHOOK_SECRET, and for the digest RESEND_API_KEY,

@@ -381,8 +381,10 @@ flip to live, in this order:
   - *Setup, once*: a Resend account, `rocketrally.org` verified as a
     sending domain, then `npx wrangler secret put RESEND_API_KEY`,
     `MAIL_FROM` (the verified sender) and `MAIL_REPLY_TO` (a PTA inbox
-    a teacher's reply should reach). Cron runs on UTC: `0 0 * * 5` is
+    a teacher's reply should reach). Cron runs on UTC: `0 0 * * 6` is
     Thursday 5pm Pacific under daylight time and 4pm once it ends.
+    Cloudflare's weekday field is 1=Sunday..7=Saturday, not the usual
+    0=Sunday, so Friday is `6`; `5` is Thursday and sends a day early.
 - **A partner's own student** — "Credit a partner's student" on /admin
   counts a business partner's child as a participant for their class
   with no dollars attached. The partnership's money is already in the
