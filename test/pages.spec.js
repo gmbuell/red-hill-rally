@@ -1,5 +1,5 @@
 import { env, SELF, createExecutionContext, reset } from 'cloudflare:test';
-import { afterEach, describe, it, expect } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 import worker from '../worker/index.js';
 import { recordDonation } from '../worker/store.js';
 import { header, footer } from '../worker/views.js';
@@ -46,9 +46,18 @@ describe('rendered pages', () => {
     }
   });
 
+  it('keeps the admin page out of search and empty until a key opens it', async () => {
+    await gift();
+    const { text } = await page('/admin');
+    expect(text).toContain('<meta name="robots" content="noindex">');
+    expect(text).toContain('id="admin-key"');
+    for (const needle of PII) expect(text).not.toContain(needle);
+  });
+
   it('marks the current page in the nav', async () => {
     expect((await page('/')).text).toContain('<a href="/" aria-current="page">Home</a>');
     expect((await page('/rally-board')).text).toContain('<a href="/rally-board" aria-current="page">Rally Board</a>');
+    expect((await page('/why-we-rally')).text).toContain('<a href="/why-we-rally" aria-current="page">Why We Rally</a>');
     expect((await page('/donate')).text).toContain('href="/donate" aria-current="page">Donate');
     expect((await page('/matching')).text).not.toContain('aria-current');
   });
@@ -64,6 +73,25 @@ describe('rendered pages', () => {
     expect(text).toContain('<strong>$100</strong> raised<');
     expect(text).not.toContain(`raised of $${P_MAIN.goal.toLocaleString('en-US')}`);
     expect(text).toContain('<clipPath id="traj-clip">');
+  });
+
+  it('spreads a Support It All gift evenly across the six cards', async () => {
+    await gift({ metadata: { priority: data.SUPPORT_ALL.id } });
+    const { text } = await page('/');
+    // $100 over six is $16.67 each, and the six must add back to $100:
+    // the cards read $17, $17, $17, $17, $16, $16.
+    const raised = [...text.matchAll(/<strong>\$(\d+)<\/strong> raised</g)].map((m) => Number(m[1]));
+    expect(raised).toHaveLength(data.PRIORITIES.length);
+    expect(raised.reduce((a, b) => a + b, 0)).toBe(100);
+    expect(Math.max(...raised) - Math.min(...raised)).toBeLessThanOrEqual(1);
+    // The ticker still counts it once, as one gift of the whole amount.
+    expect(text).toContain('id="stat-raised">$100</span>');
+  });
+
+  it('offers Support It All as a seventh choice on the donate form', async () => {
+    const { text } = await page('/donate');
+    expect(text).toContain(`<input type="radio" name="priority" value="${data.SUPPORT_ALL.id}">`);
+    expect(text).toContain(data.SUPPORT_ALL.name);
   });
 
   it('names the grand prize and how participation is counted on prizes', async () => {
@@ -89,17 +117,20 @@ describe('rendered pages', () => {
     await gift();
     const { text } = await page('/rally-board');
     const room = data.classroomById(ROOM_A);
-    expect(text).toContain('<span class="num money">1</span><span class="label">family gifts so far</span>');
     expect(text).toContain(`${room.teacher}<small class="grade">`);
-    expect(text).toContain(`1 gift &middot; class of ${room.students}`);
+    // Both prize races, each number saying which one it is.
+    expect(text).toContain(`<span class="pct">${Math.round(100 / room.students)}%<small>participation</small></span>`);
+    expect(text).toContain('<span class="raised">$100<small>total raised</small></span>');
+    expect(text).not.toContain('family gifts so far');
+    expect(text).not.toContain(`class of ${room.students}`);
     expect(text).toContain('<span class="who">The Rodriguez Family</span>');
     expect(text).toContain(`<small class="what">${P_MAIN.name}</small>`);
   });
 
   it('lists a paid partnership on the partner wall and the board', async () => {
     await partner('Galaxy Automotive');
-    expect((await page('/partners')).text).toContain('With thanks to Galaxy Automotive.');
-    expect((await page('/rally-board')).text).toContain('With thanks to Galaxy Automotive.');
+    expect((await page('/partners')).text).toContain(', and Galaxy Automotive.');
+    expect((await page('/rally-board')).text).toContain(', and Galaxy Automotive.');
   });
 
   it('escapes donor and partner names', async () => {
@@ -125,6 +156,31 @@ describe('rendered pages', () => {
     const link = (await page('/student-link')).text;
     expect(link).toContain('id="sibling-name-0"');
     for (const c of data.CLASSROOMS) expect(link).toContain(`<option value="${c.id}">`);
+  });
+
+  it('renders the shirt page complete, with the price from data.js', async () => {
+    const { text } = await page('/shirt');
+    expect(text).toContain('id="shirt-name-0"');
+    expect(text).toContain(`<option value="${data.SHIRT.sizes[0].id}">`);
+    // The price and the credit are stated once, in data.js.
+    expect(text).toContain(`<strong>$${data.SHIRT.price}</strong>`);
+    expect(text).toContain(`<strong>$${data.SHIRT.credit}</strong>`);
+  });
+
+  it('takes the shirt form off the page after the ordering deadline', async () => {
+    try {
+      vi.setSystemTime(new Date('2026-09-26T02:01:00Z')); // 7:01pm Pacific
+      const { text } = await page('/shirt');
+      // Gone from the served HTML, not hidden in it: no form to post,
+      // no size picker to fill, nothing for a script to re-enable.
+      expect(text).not.toContain('id="shirt-form"');
+      expect(text).not.toContain('id="shirt-name-0"');
+      expect(text).toContain(data.SHIRT.deadlineLabel);
+      // And the home page stops sending families to it.
+      expect((await page('/')).text).not.toContain('shirt-callout');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('answers unknown paths with the branded 404 and the chrome', async () => {
@@ -154,7 +210,7 @@ describe('rendered pages', () => {
     expect(home.res.headers.get('cache-control')).toBe('no-store');
     const board = await page('/rally-board');
     expect(board.res.status).toBe(200);
-    expect(board.text).toContain('<span class="num money">0</span><span class="label">family gifts so far</span>');
+    expect(board.text).toContain('<span class="num money">$0</span>');
     expect(board.text).toContain('class="empty-roll"');
   });
 
@@ -178,7 +234,7 @@ describe('rendered pages', () => {
     });
     const res = await worker.fetch(new Request('https://rally.test/rally-board'), { ...env, ASSETS, DB }, createExecutionContext());
     expect(res.status).toBe(200);
-    expect(await res.text()).toContain('family gifts so far');
+    expect(await res.text()).toContain('raised of');
     expect(order.indexOf('db')).toBeLessThan(order.indexOf('asset done'));
   });
 

@@ -41,9 +41,17 @@ page's prefill chip.
 
 ## Classroom race
 
-The race ranks by participation (gifts ÷ class size): "a gift of any
-size moves your classroom's rocket exactly the same." Dollar totals
-appear in campaign and priority aggregates.
+The race ranks by participation (Rockets ÷ class size): "a gift of any
+size moves your classroom's rocket exactly the same." A Rocket counts
+once however many gifts they draw, so a class isn't carried by one kid
+with generous relatives; a gift that named no Rocket counts once, as
+the family behind it, so the optional name box never costs a class
+credit. Names are folded and counted in SQL, so the board's query still
+never returns a student name. Dollar totals appear in campaign and
+priority aggregates, and beside each class in the race: the Top Class
+prize goes to the room that raises the most, so families need to see
+that race too. The list stays ranked on participation and a line above
+it names the dollar leader (or the rooms tied for it).
 
 ## Business partners
 
@@ -111,13 +119,14 @@ HTML and CSS.
 | Page | Role |
 |---|---|
 | `index.html` | Campaign hero + goal meter, six priority cards with progress, how-it-works, parent-link callout, trust strip |
-| `donate.html` | 4-step wizard: priority → amount → Rockets (up to four, optional; prefilled+banner via `?link=`) → public/anonymous + summary. `?p=<id>` preselects a priority |
+| `donate.html` | 4-step wizard: priority → Rockets (up to four, optional; prefilled+banner via `?link=`), each with an optional Rally shirt → amount (optional once a shirt is in the order) → public/anonymous + summary. `?p=<id>` preselects a priority |
 | `student-link.html` | Parent QR/link generator; copy/share/print handout card |
 | `rally-board.html` | Classroom race (participation) + donor honor roll + partner strip |
 | `prizes.html` | Grand prize, classroom and student prizes, how participation is counted |
 | `partners.html` | Partnership ladder + checkout + partner wall |
 | `matching.html` | Employer gift-matching how-to |
 | `thanks.html` | Celebration thank-you, personalized impact line, matching nudge; partner logo uploader |
+| `admin.html` | Mission Control, PTA only and `noindex`: the classroom, Rocket, and shirt sheets as sortable tables behind the admin key, with a download for each CSV |
 
 ## Checkout
 
@@ -133,9 +142,19 @@ HTML and CSS.
   acknowledgment" donors need for gifts of $250+ (Pub 1771): the
   charge description carries the org name, EIN, and
   no-goods-or-services statement; the receipt supplies amount and date.
+  When the order holds shirts, the description instead names them,
+  states their good-faith value, and gives the deductible remainder,
+  with the shirts itemized as their own line item.
+- A Rally shirt is an add-on under each Rocket, $20 each, and stands
+  on its own: a family can order a shirt with no gift. $10 of each
+  shirt is fundraising for that Rocket and their classroom and counts
+  wherever a gift counts; the other $10 is the shirt. The Rocket step
+  comes before the amount step so the amount can stay blank once a
+  shirt is in the order. A shirt needs the Rocket's name, so the
+  printer's sheet says whose it is.
 - Donors can add a voluntary fee cover: a default-checked opt-out
   checkbox on the amount step adds a gross-up,
-  `(gift + 30¢) / (1 − 2.9%)`, as a second Checkout line item
+  `(gift + 30¢) / (1 − 2.2%)`, as a second Checkout line item
   ("Covering card processing"), disclosed with the total on the
   summary step. Because it is voluntary it is a gift rather than a
   card surcharge, so it stays outside the card-network surcharge

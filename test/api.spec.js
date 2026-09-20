@@ -2,6 +2,8 @@ import { env, SELF, createExecutionContext, reset } from 'cloudflare:test';
 import { afterEach, describe, it, expect, vi } from 'vitest';
 import worker from '../worker/index.js';
 import data from '../site/js/data.js';
+import { recordDonation, campaignStats, boardStats } from '../worker/store.js';
+import { sendWeeklyDigests } from '../worker/index.js';
 import { paidSession, paidPartnership, PII } from './fixtures.js';
 
 /* Fixture config derives from data.js, so the edits contributors make
@@ -14,6 +16,10 @@ const [P_MAIN, P_ALT] = data.PRIORITIES;
 const [ROOM_A, ROOM_B, ROOM_C] = data.CLASSROOMS.map((c) => c.id);
 const LOGO_TIER = data.PARTNER_TIERS.find((t) => t.logo);
 const NAME_TIER = data.PARTNER_TIERS.find((t) => !t.logo);
+const [SIZE_A, SIZE_B] = data.SHIRT.sizes.map((z) => z.id);
+const SHIRT_CENTS = data.SHIRT.price * 100;
+const CREDIT_CENTS = data.SHIRT.credit * 100;
+const dollars = (cents) => (cents / 100).toFixed(2);
 
 /* Checkout tests run the worker in this isolate so the outbound Stripe
    call can be stubbed at the fetch global. */
@@ -179,6 +185,15 @@ describe('student links', () => {
 /* ---- checkout ---- */
 
 describe('checkout', () => {
+  it('accepts Support It All as a choice and names it on the charge', async () => {
+    const calls = stubStripe();
+    const res = await checkoutDirect({ ...validCheckout, priority: data.SUPPORT_ALL.id });
+    expect(res.status).toBe(200);
+    const sent = new URLSearchParams(String(calls[0].body));
+    expect(sent.get('metadata[priority]')).toBe(data.SUPPORT_ALL.id);
+    expect(sent.get('line_items[0][price_data][product_data][name]')).toContain(data.SUPPORT_ALL.name);
+  });
+
   it('creates a Stripe session with full metadata', async () => {
     const calls = stubStripe();
     const res = await checkoutDirect(validCheckout);
@@ -282,20 +297,20 @@ describe('checkout', () => {
     expect(res.status).toBe(200);
     const sent = new URLSearchParams(String(calls[0].body));
     // The gift line is unchanged; the gross-up rides as its own line
-    // item ($100 needs $3.30 extra to net $100 after 2.9% + 30¢).
+    // item ($100 needs $2.56 extra to net $100 after 2.2% + 30¢).
     expect(sent.get('line_items[0][price_data][unit_amount]')).toBe('10000');
     expect(sent.get('line_items[1][quantity]')).toBe('1');
-    expect(sent.get('line_items[1][price_data][unit_amount]')).toBe('330');
+    expect(sent.get('line_items[1][price_data][unit_amount]')).toBe('256');
     expect(sent.get('line_items[1][price_data][product_data][name]')).toBe('Covering processing fees');
-    expect(sent.get('metadata[fee_cents]')).toBe('330');
+    expect(sent.get('metadata[fee_cents]')).toBe('256');
   });
 
   it('rounds the fee-cover gross-up to the nearest cent', async () => {
     const calls = stubStripe();
     await checkoutDirect({ ...validCheckout, amount: 1, coverFees: true });
     const sent = new URLSearchParams(String(calls[0].body));
-    // ($1.00 + 30¢) / 0.971 = $1.34 charged → 34¢ fee cover.
-    expect(sent.get('line_items[1][price_data][unit_amount]')).toBe('34');
+    // ($1.00 + 30¢) / 0.978 = $1.33 charged → 33¢ fee cover.
+    expect(sent.get('line_items[1][price_data][unit_amount]')).toBe('33');
   });
 
   it('omits the fee line when the donor declines', async () => {
@@ -304,6 +319,116 @@ describe('checkout', () => {
     const sent = new URLSearchParams(String(calls[0].body));
     expect(sent.has('line_items[1][price_data][unit_amount]')).toBe(false);
     expect(sent.get('metadata[fee_cents]')).toBe('0');
+  });
+
+  it('adds a shirt line and stamps each Rocket’s sizes into metadata', async () => {
+    const calls = stubStripe();
+    const res = await checkoutDirect({ ...validCheckout, coverFees: false, students: [
+      { c: ROOM_A, n: 'Mia Rodriguez', s: [SIZE_A, SIZE_B] }, { c: ROOM_B, n: 'Leo Park', s: [SIZE_A] },
+    ] });
+    expect(res.status).toBe(200);
+    const sent = new URLSearchParams(String(calls[0].body));
+    expect(sent.get('line_items[0][price_data][unit_amount]')).toBe('10000');
+    expect(sent.get('line_items[1][quantity]')).toBe('3');
+    expect(sent.get('line_items[1][price_data][unit_amount]')).toBe(String(SHIRT_CENTS));
+    expect(sent.get('line_items[1][price_data][product_data][name]')).toContain('shirt');
+    // Sizes ride as their own compact key, so the students JSON keeps
+    // its 500-character headroom.
+    expect(sent.get('metadata[shirts]')).toBe(`0:${SIZE_A},0:${SIZE_B},1:${SIZE_A}`);
+    expect(JSON.parse(sent.get('metadata[students]')))
+      .toEqual([{ c: ROOM_A, n: 'Mia Rodriguez' }, { c: ROOM_B, n: 'Leo Park' }]);
+    expect(sent.get('success_url')).toContain('shirts=3');
+  });
+
+  it('covers the fee on the gift and the shirts together', async () => {
+    const calls = stubStripe();
+    await checkoutDirect({ ...validCheckout, coverFees: true, students: [{ c: ROOM_A, n: 'Mia Rodriguez', s: [SIZE_A] }] });
+    const sent = new URLSearchParams(String(calls[0].body));
+    // $120 charged needs $3.01 extra to net $120 after 2.2% + 30¢.
+    expect(sent.get('line_items[2][price_data][unit_amount]')).toBe(String(data.feeCoverCents(10000 + SHIRT_CENTS)));
+    expect(sent.get('metadata[fee_cents]')).toBe(String(data.feeCoverCents(10000 + SHIRT_CENTS)));
+  });
+
+  it('itemizes the shirts’ fair-market value on the receipt', async () => {
+    const calls = stubStripe();
+    await checkoutDirect({ ...validCheckout, amount: 50, coverFees: false, students: [{ c: ROOM_A, n: 'Mia Rodriguez', s: [SIZE_A] }] });
+    const sent = new URLSearchParams(String(calls[0].body));
+    const desc = sent.get('payment_intent_data[description]');
+    const value = data.SHIRT.value * 100;
+    expect(desc).toContain('Red Hill Elementary PTA (EIN 33-0973857)');
+    expect(desc).toContain(`$${dollars(5000 + SHIRT_CENTS)} payment`);
+    expect(desc).toContain(`$${dollars(value)} is the estimated fair market value of 1 Rocket Rally shirt`);
+    expect(desc).toContain(`remaining $${dollars(5000 + SHIRT_CENTS - value)}`);
+    expect(desc).toContain('no other goods or services were provided');
+  });
+
+  it('lets a family buy just a shirt, which still credits the Rocket', async () => {
+    const calls = stubStripe();
+    const res = await checkoutDirect({ ...validCheckout, amount: 0, coverFees: false, students: [{ c: ROOM_A, n: 'Mia Rodriguez', s: [SIZE_A] }] });
+    expect(res.status).toBe(200);
+    const sent = new URLSearchParams(String(calls[0].body));
+    // No $0 gift line: the shirt is the first line item.
+    expect(sent.get('line_items[0][price_data][product_data][name]')).toContain('shirt');
+    expect(sent.has('line_items[1][quantity]')).toBe(false);
+    expect(sent.get('metadata[priority]')).toBe(P_MAIN.id);
+    expect(sent.get('metadata[shirts]')).toBe(`0:${SIZE_A}`);
+  });
+
+  it('sends a shirt-page order back to the shirt page, not the wizard', async () => {
+    const calls = stubStripe();
+    const order = {
+      ...validCheckout, amount: 0, back: 'shirt', priority: data.SUPPORT_ALL.id,
+      students: [{ c: ROOM_A, n: 'Mia Rodriguez', s: [SIZE_A] }],
+    };
+    expect((await checkoutDirect(order)).status).toBe(200);
+    expect(new URLSearchParams(String(calls[0].body)).get('cancel_url')).toBe('https://rally.test/shirt');
+    // Anything else keeps the wizard's cancel URL.
+    const wizard = stubStripe();
+    expect((await checkoutDirect({ ...order, back: '/evil.example' })).status).toBe(200);
+    expect(new URLSearchParams(String(wizard[0].body)).get('cancel_url'))
+      .toBe(`https://rally.test/donate?p=${data.SUPPORT_ALL.id}`);
+  });
+
+  it('rejects a shirt order missing what the printer needs', async () => {
+    const bad = async (patch) => (await post('/api/checkout', { ...validCheckout, ...patch })).status;
+    expect(await bad({ amount: 0 })).toBe(400);                                        // nothing to pay for
+    expect(await bad({ students: [{ c: ROOM_A, n: '', s: [SIZE_A] }] })).toBe(400);    // whose shirt?
+    expect(await bad({ students: [{ c: ROOM_A, n: 'Mia', s: ['huge'] }] })).toBe(400);
+    expect(await bad({ students: [{ c: ROOM_A, n: 'Mia', s: Array(data.MAX_SHIRTS + 1).fill(SIZE_A) }] })).toBe(400);
+  });
+
+  it('refuses a shirt once ordering has closed, and takes the gift anyway', async () => {
+    // A tab left open through Friday evening still has size pickers in
+    // it. The charge is the last place to say no: money taken for a
+    // shirt that misses the printer is a shirt that never arrives.
+    const shirtOrder = { ...validCheckout, students: [{ c: ROOM_A, n: 'Mia Rodriguez', s: [SIZE_A] }] };
+    try {
+      vi.setSystemTime(new Date('2026-09-26T02:01:00Z')); // 7:01pm Pacific
+      const late = await post('/api/checkout', shirtOrder);
+      expect(late.status).toBe(400);
+      expect((await late.json()).error).toContain(data.SHIRT.deadlineLabel);
+      // The gift underneath it is still welcome.
+      stubStripe();
+      expect((await checkoutDirect({ ...validCheckout, students: [{ c: ROOM_A, n: 'Mia Rodriguez' }] })).status).toBe(200);
+      // And a minute earlier the same order goes through.
+      vi.setSystemTime(new Date('2026-09-26T02:00:00Z'));
+      stubStripe();
+      expect((await checkoutDirect(shirtOrder)).status).toBe(200);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('takes shirt sizes for a family link’s Rockets in link order', async () => {
+    const { code } = await (await post('/api/link', {
+      students: [{ n: 'Leo Park', c: ROOM_B }, { n: 'Ana Park', c: ROOM_C }],
+    })).json();
+    const calls = stubStripe();
+    expect((await checkoutDirect({ ...validCheckout, link: code, shirts: [[], [SIZE_B]] })).status).toBe(200);
+    const sent = new URLSearchParams(String(calls[0].body));
+    expect(sent.get('metadata[shirts]')).toBe(`1:${SIZE_B}`);
+    expect(JSON.parse(sent.get('metadata[students]')))
+      .toEqual([{ c: ROOM_B, n: 'Leo Park' }, { c: ROOM_C, n: 'Ana Park' }]);
   });
 
   it('allows anonymous gifts without a donor name', async () => {
@@ -340,7 +465,7 @@ describe('webhook and campaign stats', () => {
     const boardText = await boardRes.text();
     const board = JSON.parse(boardText);
     expect(board.campaign).toEqual({ raised: 100, goal: data.CAMPAIGN.goal, gifts: 1 });
-    expect(board.classrooms[ROOM_A]).toBe(1);
+    expect(board.classrooms[ROOM_A].rockets).toBe(1);
     expect(board.donors).toEqual([{
       name: 'The Rodriguez Family', priority: P_MAIN.id, anon: false, circle: false, partner: '',
     }]);
@@ -371,7 +496,11 @@ describe('webhook and campaign stats', () => {
     await deliverWebhook(family);
     await deliverWebhook(family); // Stripe retry: no double credit
     const board = await getJson('/api/board');
-    expect(board.classrooms).toEqual({ [ROOM_A]: 1, [ROOM_B]: 2 });
+    expect(board.classrooms).toEqual({
+      // $100 split three ways, the odd cent to the first Rocket named:
+      // $33.34 to Mia's room, $66.66 to the Parks', each shown rounded.
+      [ROOM_A]: { rockets: 1, raised: 33 }, [ROOM_B]: { rockets: 2, raised: 67 },
+    });
     expect(board.campaign.gifts).toBe(1); // one gift, three Rockets
     expect(JSON.stringify(board)).not.toContain('Okafor'); // student names stay backend-only
   });
@@ -426,7 +555,7 @@ describe('webhook and campaign stats', () => {
     }));
     const stats = await getJson('/api/campaign');
     expect(stats.campaign).toEqual({ raised: 100, goal: data.CAMPAIGN.goal, gifts: 1 });
-    expect((await getJson('/api/board')).classrooms[ROOM_A]).toBe(1);
+    expect((await getJson('/api/board')).classrooms[ROOM_A].rockets).toBe(1);
   });
 
   it('credits the base gift, not the fee cover, to campaign totals', async () => {
@@ -434,6 +563,62 @@ describe('webhook and campaign stats', () => {
     const stats = await getJson('/api/campaign');
     expect(stats.campaign.raised).toBe(100);
     expect(stats.priorities[P_MAIN.id]).toBe(100);
+  });
+
+  it('counts each shirt’s fundraising share, never its cost', async () => {
+    // A $50 gift plus one shirt: the gift and the shirt's share count;
+    // the rest of the shirt is the shirt.
+    await deliverWebhook(sessionEvent({
+      amount_total: 5000 + SHIRT_CENTS, metadata: { shirts: `0:${SIZE_A}` },
+    }));
+    const stats = await getJson('/api/campaign');
+    expect(stats.campaign.raised).toBe(50 + data.SHIRT.credit);
+    expect(stats.priorities[P_MAIN.id]).toBe(50 + data.SHIRT.credit);
+    expect((await getJson('/api/board')).classrooms[ROOM_A].rockets).toBe(1);
+  });
+
+  it('a shirt alone is a gift in the race', async () => {
+    await deliverWebhook(sessionEvent({
+      amount_total: SHIRT_CENTS, metadata: { shirts: `0:${SIZE_A}` },
+    }));
+    const stats = await getJson('/api/campaign');
+    expect(stats.campaign).toEqual({ raised: data.SHIRT.credit, goal: data.CAMPAIGN.goal, gifts: 1 });
+    expect((await getJson('/api/board')).classrooms[ROOM_A].rockets).toBe(1);
+  });
+
+  it('counts a Rocket once in the race however many gifts they draw', async () => {
+    // Grandma, an aunt and a neighbor all give for the same kid: one
+    // Rocket participating, not three.
+    const forMia = (id, over = {}) => sessionEvent({
+      id, created: 1756100000, ...over,
+      metadata: { students: JSON.stringify([{ c: ROOM_A, n: 'Mia Rodriguez' }]), ...(over.metadata || {}) },
+    });
+    await deliverWebhook(forMia('cs_g1'));
+    await deliverWebhook(forMia('cs_g2'));
+    // A different spelling is the same kid, the way the student sheet
+    // merges them.
+    await deliverWebhook(sessionEvent({
+      id: 'cs_g3', metadata: { students: JSON.stringify([{ c: ROOM_A, n: 'mia rodriguez' }]) },
+    }));
+    expect((await getJson('/api/board')).classrooms[ROOM_A].rockets).toBe(1);
+
+    // A second kid in the same class moves it to two.
+    await deliverWebhook(sessionEvent({
+      id: 'cs_g4', metadata: { students: JSON.stringify([{ c: ROOM_A, n: 'Leo Park' }]) },
+    }));
+    expect((await getJson('/api/board')).classrooms[ROOM_A].rockets).toBe(2);
+  });
+
+  it('counts a gift that named no Rocket, once per gift', async () => {
+    // The name box is optional. A class must not lose credit because a
+    // donor skipped it, and two such gifts are two families.
+    const noName = (id) => sessionEvent({
+      id, metadata: { students: JSON.stringify([{ c: ROOM_B, n: '' }]) },
+    });
+    await deliverWebhook(noName('cs_n1'));
+    expect((await getJson('/api/board')).classrooms[ROOM_B].rockets).toBe(1);
+    await deliverWebhook(noName('cs_n2'));
+    expect((await getJson('/api/board')).classrooms[ROOM_B].rockets).toBe(2);
   });
 
   it('judges circle tiers on the base gift, not gift plus fee', async () => {
@@ -531,7 +716,7 @@ describe('business partner checkout', () => {
     const board = await getJson('/api/board');
     expect(board.campaign.raised).toBe(100 + LOGO_TIER.amount); // the $100 family gift + the partnership
     expect(board.campaign.gifts).toBe(1);       // family gifts only
-    expect(board.classrooms).toEqual({ [ROOM_A]: 1 }); // no classroom credit for partners
+    expect(board.classrooms).toEqual({ [ROOM_A]: { rockets: 1, raised: 100 } }); // no classroom credit for partners
     const partner = board.donors.find((d) => d.name === 'Galaxy Automotive & Tire');
     expect(partner.partner).toBe(LOGO_TIER.id);
     expect(partner.circle).toBe(false);
@@ -690,41 +875,118 @@ describe('partner logo upload', () => {
   });
 });
 
-/* ---- admin export ---- */
+/* ---- admin reports ---- */
 
-describe('admin export', () => {
+describe('gifts recorded by hand', () => {
+  const KEY = { authorization: 'Bearer test-admin-key' };
+  const add = (body, headers = KEY) => SELF.fetch('https://rally.test/api/offline-gift', {
+    method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify(body),
+  });
+  const check = {
+    amount: 250,
+    priority: P_MAIN.id,
+    donorName: 'The Nguyen Family',
+    visibility: 'public',
+    students: [{ c: ROOM_A, n: 'Ana Nguyen' }],
+  };
+
+  it('needs the admin key', async () => {
+    expect((await add(check, {})).status).toBe(401);
+    const res = await SELF.fetch('https://rally.test/api/offline-gift?id=off_x', { method: 'DELETE' });
+    expect(res.status).toBe(401);
+  });
+
+  it('counts like a card gift: the ticker, the classroom, the honor roll', async () => {
+    expect((await add(check)).status).toBe(200);
+    const stats = await campaignStats(env.DB);
+    expect(stats.campaign.raised).toBe(250);
+    expect(stats.priorities[P_MAIN.id]).toBe(250);
+    const board = await boardStats(env.DB);
+    expect(board.classrooms[ROOM_A].rockets).toBe(1);
+    expect(board.donors[0].name).toBe('The Nguyen Family');
+  });
+
+  it('takes no fee and no shirt, whatever is sent', async () => {
+    await add({ ...check, students: [{ c: ROOM_A, n: 'Ana', s: [data.SHIRT.sizes[0].id] }] });
+    const row = await env.DB.prepare('SELECT fee_cents, amount_cents FROM donations').first();
+    expect(row.fee_cents).toBe(0);
+    expect(row.amount_cents).toBe(25000);
+    const shirts = await env.DB.prepare('SELECT shirts FROM donation_students').first();
+    expect(shirts.shirts).toBe('');
+  });
+
+  it('validates like checkout does', async () => {
+    expect((await add({ ...check, amount: 0 })).status).toBe(400);
+    expect((await add({ ...check, amount: 1.5 })).status).toBe(400);
+    expect((await add({ ...check, amount: data.MAX_AMOUNT + 1 })).status).toBe(400);
+    expect((await add({ ...check, priority: 'nope' })).status).toBe(400);
+    expect((await add({ ...check, students: [{ c: 'not-a-room', n: 'Ana' }] })).status).toBe(400);
+    expect((await add({ ...check, donorName: '' })).status).toBe(400);
+    // Anonymous needs no name.
+    expect((await add({ ...check, donorName: '', visibility: 'anon' })).status).toBe(200);
+  });
+
+  it('lists what was entered and lets it be removed again', async () => {
+    const { id } = await (await add(check)).json();
+    expect(id).toMatch(/^off_/);
+    const listed = await (await SELF.fetch('https://rally.test/api/admin.json', { headers: KEY })).json();
+    expect(listed.offline).toHaveLength(1);
+    expect(listed.offline[0]).toMatchObject({ id, amount: 250, donor: 'The Nguyen Family' });
+    expect(listed.offline[0].rockets).toContain(data.classroomById(ROOM_A).teacher);
+
+    const gone = await SELF.fetch(`https://rally.test/api/offline-gift?id=${id}`, { method: 'DELETE', headers: KEY });
+    expect(gone.status).toBe(200);
+    expect((await campaignStats(env.DB)).campaign.raised).toBe(0);
+    const board = await boardStats(env.DB);
+    expect(board.classrooms[ROOM_A]).toBeUndefined();
+  });
+
+  it('will not delete a gift that came through Stripe', async () => {
+    await recordDonation(env.DB, paidSession(), 1756100000);
+    const res = await SELF.fetch('https://rally.test/api/offline-gift?id=cs_test_abc', { method: 'DELETE', headers: KEY });
+    expect(res.status).toBe(404);
+    expect((await campaignStats(env.DB)).campaign.raised).toBe(100);
+  });
+});
+
+describe('admin reports', () => {
   const roomA = data.classroomById(ROOM_A);
   const roomB = data.classroomById(ROOM_B);
   const roomC = data.classroomById(ROOM_C);
-  const row = (room, student, gifts, raised) =>
-    `"${room.grade}","${room.teacher}","${student}","${gifts}","${raised}"`;
-  const exportRows = async () => {
-    const res = await SELF.fetch('https://rally.test/api/export.csv?key=test-admin-key');
+  const row = (room, ...rest) =>
+    [room.grade, room.teacher, ...rest].map((v) => `"${v}"`).join(',');
+  const report = async (name, query = '') => {
+    const res = await SELF.fetch(`https://rally.test/api/${name}.csv?key=test-admin-key${query}`);
     expect(res.status).toBe(200);
     return (await res.text()).split('\n');
   };
+  /* The fixture's default gift lands at 10:33pm Pacific, which is the
+     next day in UTC — so this differs from its UTC date on purpose. */
+  const DAY_A = '2025-08-24 22:33';
 
-  it('requires the admin key', async () => {
-    expect((await SELF.fetch('https://rally.test/api/export.csv')).status).toBe(401);
-    expect((await SELF.fetch('https://rally.test/api/export.csv?key=wrong')).status).toBe(401);
+  it('requires the admin key on every report', async () => {
+    for (const name of ['students', 'shirts', 'classrooms']) {
+      expect((await SELF.fetch(`https://rally.test/api/${name}.csv`)).status).toBe(401);
+      expect((await SELF.fetch(`https://rally.test/api/${name}.csv?key=wrong`)).status).toBe(401);
+    }
   });
 
   it('fails closed when ADMIN_KEY is unset', async () => {
     const res = await worker.fetch(
-      new Request('https://rally.test/api/export.csv?key=anything'),
+      new Request('https://rally.test/api/students.csv?key=anything'),
       { ...env, ADMIN_KEY: undefined },
       createExecutionContext(),
     );
     expect(res.status).toBe(401);
   });
 
-  it('lists each Rocket under their classroom with a class total, via bearer auth', async () => {
+  it('lists each Rocket under their classroom, biggest first, via bearer auth', async () => {
     await deliverWebhook(sessionEvent());
     await deliverWebhook(sessionEvent({
       id: 'cs_2', amount_total: 2500,
       metadata: { students: JSON.stringify([{ c: ROOM_A, n: 'Leo Park' }]) },
     }));
-    const res = await SELF.fetch('https://rally.test/api/export.csv', {
+    const res = await SELF.fetch('https://rally.test/api/students.csv', {
       headers: { authorization: 'Bearer test-admin-key' },
     });
     expect(res.status).toBe(200);
@@ -733,13 +995,11 @@ describe('admin export', () => {
     expect([...bytes.slice(0, 3)]).toEqual([0xef, 0xbb, 0xbf]); // Excel UTF-8 BOM
     const rows = new TextDecoder().decode(bytes).split('\n'); // decoding drops the BOM
     expect(rows[0]).toBe('grade,teacher,student,gifts,raised');
-    // Biggest fundraiser first, then the class total closes the group.
     const mia = rows.indexOf(row(roomA, 'Mia Rodriguez', 1, '100.00'));
     const leo = rows.indexOf(row(roomA, 'Leo Park', 1, '25.00'));
-    const total = rows.indexOf(row(roomA, 'Class total', 2, '125.00'));
     expect(mia).toBeGreaterThan(0);
     expect(leo).toBe(mia + 1);
-    expect(total).toBe(leo + 1);
+    expect(rows.join('\n')).not.toContain('Class total');
   });
 
   it('merges spellings of the same student', async () => {
@@ -748,7 +1008,7 @@ describe('admin export', () => {
       id: 'cs_2', amount_total: 5000, created: 1756100060,
       metadata: { students: JSON.stringify([{ c: ROOM_A, n: '  mia RODRIGUEZ ' }]) },
     }));
-    const rows = await exportRows();
+    const rows = await report('students');
     expect(rows).toContain(row(roomA, 'Mia Rodriguez', 2, '150.00'));
     expect(rows.filter((r) => /rodriguez/i.test(r))).toHaveLength(1);
   });
@@ -757,24 +1017,23 @@ describe('admin export', () => {
     await deliverWebhook(sessionEvent({
       metadata: { students: JSON.stringify([{ c: ROOM_A, n: 'Mia Rodriguez' }, { c: ROOM_B, n: 'Leo Park' }]) },
     }));
-    const rows = await exportRows();
+    const rows = await report('students');
     expect(rows).toContain(row(roomA, 'Mia Rodriguez', 1, '50.00'));
-    expect(rows).toContain(row(roomA, 'Class total', 1, '50.00'));
     expect(rows).toContain(row(roomB, 'Leo Park', 1, '50.00'));
-    expect(rows).toContain(row(roomB, 'Class total', 1, '50.00'));
   });
 
-  it('lists every classroom in roster order, zeros included', async () => {
+  it('gives each shirt’s share to its own Rocket and splits only the gift', async () => {
+    // $50 for Mia & Leo plus a shirt for Mia: $25 each, and Mia's shirt.
     await deliverWebhook(sessionEvent({
-      metadata: { students: JSON.stringify([{ c: ROOM_B, n: 'Leo Park' }]) },
+      amount_total: 5000 + SHIRT_CENTS,
+      metadata: {
+        students: JSON.stringify([{ c: ROOM_A, n: 'Mia Rodriguez' }, { c: ROOM_B, n: 'Leo Park' }]),
+        shirts: `0:${SIZE_A}`,
+      },
     }));
-    const rows = await exportRows();
-    const a = rows.indexOf(row(roomA, 'Class total', 0, '0.00'));
-    const b = rows.indexOf(row(roomB, 'Class total', 1, '100.00'));
-    const c = rows.indexOf(row(roomC, 'Class total', 0, '0.00'));
-    expect(a).toBeGreaterThan(0);
-    expect(b).toBeGreaterThan(a);
-    expect(c).toBeGreaterThan(b);
+    const rows = await report('students');
+    expect(rows).toContain(row(roomA, 'Mia Rodriguez', 1, dollars(2500 + CREDIT_CENTS)));
+    expect(rows).toContain(row(roomB, 'Leo Park', 1, '25.00'));
   });
 
   it('groups nameless credits and gifts that named no Rocket', async () => {
@@ -782,35 +1041,324 @@ describe('admin export', () => {
       metadata: { students: JSON.stringify([{ c: ROOM_A, n: '' }]) },
     }));
     await deliverWebhook(sessionEvent({ id: 'cs_2', amount_total: 4000, metadata: { students: '[]' } }));
-    const rows = await exportRows();
+    const rows = await report('students');
     expect(rows).toContain(row(roomA, '(no name given)', 1, '100.00'));
     expect(rows).toContain('"","","No Rocket named","1","40.00"');
   });
 
   it('counts the gift, not the fee cover', async () => {
     await deliverWebhook(sessionEvent({ amount_total: 10330, metadata: { fee_cents: '330' } }));
-    const rows = await exportRows();
+    const rows = await report('students');
     expect(rows).toContain(row(roomA, 'Mia Rodriguez', 1, '100.00'));
     expect(rows.join('\n')).not.toContain('103.30');
   });
 
   it('leaves partners and donor details out', async () => {
-    await deliverWebhook(sessionEvent());
+    await deliverWebhook(sessionEvent({ metadata: { shirts: `0:${SIZE_A}` } }));
     await deliverWebhook(partnerSession());
-    const csv = (await exportRows()).join('\n');
-    expect(csv).not.toContain('Galaxy');
-    expect(csv).not.toContain(LOGO_TIER.id);
-    expect(csv).not.toContain('Rodriguez Family');
-    expect(csv).not.toContain('fam@example.com');
-    expect(csv).not.toContain('Rocket Way');
+    for (const name of ['students', 'shirts', 'classrooms']) {
+      const csv = (await report(name)).join('\n');
+      expect(csv, name).not.toContain('Galaxy');
+      expect(csv, name).not.toContain(LOGO_TIER.id);
+      expect(csv, name).not.toContain('Rodriguez Family');
+      expect(csv, name).not.toContain('fam@example.com');
+      expect(csv, name).not.toContain('Rocket Way');
+    }
   });
 
   it('neutralizes spreadsheet formulas in exported names', async () => {
     await deliverWebhook(sessionEvent({
-      metadata: { students: JSON.stringify([{ c: ROOM_A, n: '@SUM(A1)' }]) },
+      amount_total: 10000 + SHIRT_CENTS,
+      metadata: { students: JSON.stringify([{ c: ROOM_A, n: '@SUM(A1)' }]), shirts: `0:${SIZE_A}` },
     }));
-    const rows = await exportRows();
-    expect(rows).toContain(row(roomA, "'@SUM(A1)", 1, '100.00'));
+    expect(await report('students')).toContain(row(roomA, "'@SUM(A1)", 1, dollars(10000 + CREDIT_CENTS)));
+    expect(await report('shirts')).toContain(row(roomA, "'@SUM(A1)", data.SHIRT.sizes[0].label, 1, DAY_A));
+  });
+
+  /* Shirts go to the printer in batches, so the sheet has to say when
+     each order came in and cut at a day. */
+  describe('the shirt order in batches', () => {
+    const orderOn = (id, created, size) => deliverWebhook(sessionEvent({
+      id, created, amount_total: SHIRT_CENTS,
+      metadata: { students: JSON.stringify([{ c: ROOM_A, n: 'Mia Rodriguez' }]), shirts: `0:${size}` },
+    }));
+    const [SZ1, SZ2] = data.SHIRT.sizes;
+
+    it('dates each order by the school\'s own day, not UTC', async () => {
+      // 10:33pm Pacific on the 24th is the 25th in UTC. A batch that
+      // cut on UTC would put this shirt in the wrong box.
+      await orderOn('cs_tz', 1756100000, SZ1.id);
+      const rows = await report('shirts');
+      expect(rows.some((r) => r.includes(DAY_A))).toBe(true);
+      expect(rows.some((r) => r.includes('2025-08-25'))).toBe(false);
+    });
+
+    it('splits the same size into two rows when it was ordered on two days', async () => {
+      await orderOn('cs_d1', 1756100000, SZ1.id);   // Aug 24 Pacific
+      await orderOn('cs_d2', 1756200000, SZ1.id);   // Aug 26 Pacific
+      const rows = await report('shirts');
+      expect(rows).toContain(row(roomA, 'Mia Rodriguez', SZ1.label, 1, DAY_A));
+      expect(rows).toContain(row(roomA, 'Mia Rodriguez', SZ1.label, 1, '2025-08-26 02:20'));
+    });
+
+    it('cuts the batch at a day, both ends inclusive', async () => {
+      await orderOn('cs_w1', 1756100000, SZ1.id);   // Aug 24
+      await orderOn('cs_w2', 1756200000, SZ2.id);   // Aug 26
+      const first = await report('shirts', '&to=2025-08-24');
+      expect(first.some((r) => r.includes(SZ1.label))).toBe(true);
+      expect(first.some((r) => r.includes(SZ2.label))).toBe(false);
+
+      const second = await report('shirts', '&from=2025-08-25');
+      expect(second.some((r) => r.includes(SZ1.label))).toBe(false);
+      expect(second.some((r) => r.includes(SZ2.label))).toBe(true);
+
+      // The day itself belongs to both a `to` and a `from` on it.
+      const onTheDay = await report('shirts', '&from=2025-08-26&to=2025-08-26');
+      expect(onTheDay.some((r) => r.includes(SZ2.label))).toBe(true);
+    });
+
+    it('cuts a batch mid-day, at the minute the order was placed', async () => {
+      // Two orders forty minutes apart on the same afternoon: the PTA
+      // placed the printer's order between them.
+      const noon = 1758214800;              // 2025-09-18 10:00 Pacific
+      await orderOn('cs_m1', noon, SZ1.id);
+      await orderOn('cs_m2', noon + 40 * 60, SZ2.id);
+
+      const before = await report('shirts', '&to=2025-09-18 10:20');
+      expect(before.some((r) => r.includes(SZ1.label))).toBe(true);
+      expect(before.some((r) => r.includes(SZ2.label))).toBe(false);
+
+      const after = await report('shirts', '&from=2025-09-18T10:20');
+      expect(after.some((r) => r.includes(SZ1.label))).toBe(false);
+      expect(after.some((r) => r.includes(SZ2.label))).toBe(true);
+    });
+
+    it('takes a bare day as the whole of it, both ends', async () => {
+      await orderOn('cs_day', 1758214800, SZ1.id);   // 10:00 that morning
+      // A `to` of the day must not cut the morning off at midnight.
+      const whole = await report('shirts', '&from=2025-09-18&to=2025-09-18');
+      expect(whole.some((r) => r.includes(SZ1.label))).toBe(true);
+    });
+
+    it('ignores a window it cannot read rather than hiding a shirt', async () => {
+      await orderOn('cs_bad', 1756100000, SZ1.id);
+      for (const q of ['&to=nonsense', '&from=2025-8-4', '&to=', '&from=2025-08-24x']) {
+        const rows = await report('shirts', q);
+        expect(rows.some((r) => r.includes(SZ1.label)), q).toBe(true);
+      }
+    });
+
+    it('adds the batch up by size, matching the rows it came from', async () => {
+      await orderOn('cs_t1', 1756100000, SZ1.id);
+      await orderOn('cs_t2', 1756100000, SZ1.id);
+      await orderOn('cs_t3', 1756100000, SZ2.id);
+      const res = await SELF.fetch('https://rally.test/api/admin.json', {
+        headers: { authorization: 'Bearer test-admin-key' },
+      });
+      const { shirts } = await res.json();
+      const qtyFor = (label) => shirts.rows
+        .filter((r) => r[3] === label).reduce((n, r) => n + r[4], 0);
+      expect(shirts.rows.reduce((n, r) => n + r[4], 0)).toBe(3);
+      expect(qtyFor(SZ1.label)).toBe(2);
+      expect(qtyFor(SZ2.label)).toBe(1);
+    });
+  });
+
+  it('serves every report at once as JSON for the admin page', async () => {
+    await deliverWebhook(sessionEvent({ amount_total: 10000 + SHIRT_CENTS, metadata: { shirts: `0:${SIZE_A}` } }));
+    expect((await SELF.fetch('https://rally.test/api/admin.json')).status).toBe(401);
+    const res = await SELF.fetch('https://rally.test/api/admin.json', {
+      headers: { authorization: 'Bearer test-admin-key' },
+    });
+    expect(res.status).toBe(200);
+    expect(res.headers.get('cache-control')).toBe('no-store');
+    const body = await res.json();
+    expect(body.campaign).toEqual({ raised: 100 + data.SHIRT.credit, goal: data.CAMPAIGN.goal, gifts: 1 });
+    expect(body.students.columns).toEqual(['grade', 'teacher', 'student', 'gifts', 'raised']);
+    expect(body.students.rows).toContainEqual([roomA.grade, roomA.teacher, 'Mia Rodriguez', 1, dollars(10000 + CREDIT_CENTS)]);
+    expect(body.classrooms.rows).toContainEqual([roomA.grade, roomA.teacher, roomA.students, 1, 1, Math.round(100 / roomA.students), dollars(10000 + CREDIT_CENTS), 1]);
+    expect(body.shirts.rows).toEqual([[roomA.grade, roomA.teacher, 'Mia Rodriguez', data.SHIRT.sizes[0].label, 1, DAY_A]]);
+    expect(JSON.stringify(body)).not.toContain('example.com');
+  });
+
+  it('shows the board the same class dollars the PTA pays the prize on', async () => {
+    // The Top Class prize is decided on dollars. If the board and this
+    // sheet ever disagree, the argument is with a family, so pin them
+    // together on a gift split across two classrooms.
+    await deliverWebhook(sessionEvent({
+      id: 'cs_split',
+      metadata: { students: JSON.stringify([{ c: ROOM_A, n: 'Mia' }, { c: ROOM_B, n: 'Leo' }]) },
+    }));
+    await deliverWebhook(sessionEvent({ id: 'cs_solo', amount_total: 2500 }));
+    const board = (await getJson('/api/board')).classrooms;
+    const sheet = Object.fromEntries((await (await SELF.fetch('https://rally.test/api/admin.json',
+      { headers: { authorization: 'Bearer test-admin-key' } })).json())
+      .classrooms.rows.map((r) => [r[1], Number(r[6])]));
+    for (const id of Object.keys(board)) {
+      expect(board[id].raised, id).toBe(Math.round(sheet[data.classroomById(id).teacher]));
+    }
+  });
+
+  it('separates gifts from Rockets on the classroom sheet', async () => {
+    // Two gifts for one kid, one for another: three gifts, two Rockets.
+    const forRoomA = (id, n) => sessionEvent({ id, metadata: { students: JSON.stringify([{ c: ROOM_A, n }]) } });
+    await deliverWebhook(forRoomA('cs_c1', 'Mia Rodriguez'));
+    await deliverWebhook(forRoomA('cs_c2', 'Mia Rodriguez'));
+    await deliverWebhook(forRoomA('cs_c3', 'Leo Park'));
+    const rows = await report('classrooms');
+    expect(rows).toContain(row(roomA, roomA.students, 3, 2,
+      Math.round(200 / roomA.students), dollars(3 * 10000), 0));
+  });
+
+  it('lists shirts by Rocket, size and order for the printer', async () => {
+    await deliverWebhook(sessionEvent({
+      amount_total: 10000 + 2 * SHIRT_CENTS, metadata: { shirts: `0:${SIZE_A},0:${SIZE_B}` },
+    }));
+    await deliverWebhook(sessionEvent({
+      id: 'cs_2', amount_total: SHIRT_CENTS, created: 1756100060,
+      metadata: { students: JSON.stringify([{ c: ROOM_A, n: 'mia rodriguez' }]), shirts: `0:${SIZE_A}` },
+    }));
+    const rows = await report('shirts');
+    expect(rows[0]).toBe('grade,teacher,student,size,quantity,ordered');
+    // The first checkout bought both sizes at once; the second bought
+    // one more of the first size a minute later, which is its own row.
+    const a = rows.indexOf(row(roomA, 'Mia Rodriguez', data.SHIRT.sizes[0].label, 1, DAY_A));
+    const b = rows.indexOf(row(roomA, 'Mia Rodriguez', data.SHIRT.sizes[1].label, 1, DAY_A));
+    const c = rows.indexOf(row(roomA, 'Mia Rodriguez', data.SHIRT.sizes[0].label, 1, '2025-08-24 22:34'));
+    expect(a).toBeGreaterThan(0);
+    expect(b).toBe(a + 1);
+    expect(c).toBe(b + 1);
+    expect(rows).toHaveLength(5); // header, three rows, trailing newline
+  });
+
+  it('sums every classroom in roster order with participation, dollars, and shirts', async () => {
+    await deliverWebhook(sessionEvent({
+      amount_total: 5000 + SHIRT_CENTS,
+      metadata: {
+        students: JSON.stringify([{ c: ROOM_B, n: 'Leo Park' }, { c: ROOM_B, n: 'Ana Park' }]),
+        shirts: `1:${SIZE_A}`,
+      },
+    }));
+    const rows = await report('classrooms');
+    expect(rows[0]).toBe('grade,teacher,students,gifts,rockets,participation_pct,raised,shirts');
+    const a = rows.indexOf(row(roomA, roomA.students, 0, 0, 0, '0.00', 0));
+    const b = rows.indexOf(row(roomB, roomB.students, 2, 2, Math.round(200 / roomB.students), dollars(5000 + CREDIT_CENTS), 1));
+    const c = rows.indexOf(row(roomC, roomC.students, 0, 0, 0, '0.00', 0));
+    expect(a).toBeGreaterThan(0);
+    expect(b).toBeGreaterThan(a);
+    expect(c).toBeGreaterThan(b);
+    expect(rows).toHaveLength(data.CLASSROOMS.length + 2);
+  });
+
+  /* A room kept off the public race is still the PTA's to run: the
+     classroom sheet is where prizes are awarded from, so leaving it out
+     here would quietly disqualify those children. */
+  it('lists a classroom kept off the Rally Board like any other', async () => {
+    const off = data.CLASSROOMS.filter((c) => c.offBoard);
+    expect(off.length).toBeGreaterThan(0);
+    const rows = await report('classrooms');
+    for (const c of off) {
+      expect(rows.some((r) => r.includes(c.teacher)), c.teacher).toBe(true);
+    }
+  });
+});
+
+/* A partner's own child: participation, and deliberately nothing else. */
+describe('crediting a partner\'s student', () => {
+  const credit = (body) => SELF.fetch('https://rally.test/api/partner-credit', {
+    method: 'POST',
+    headers: { authorization: 'Bearer test-admin-key', 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const board = async () => (await getJson('/api/board'));
+  const sheet = async (name) => {
+    const res = await SELF.fetch(`https://rally.test/api/${name}.csv?key=test-admin-key`);
+    expect(res.status).toBe(200);
+    return (await res.text()).split('\n');
+  };
+  const roomA = data.CLASSROOMS[0];
+
+  it('counts the student for their class without adding a dollar', async () => {
+    const before = await board();
+    const res = await credit({ business: 'CH Design', students: [{ c: ROOM_A, n: 'Oliver Hanhart' }] });
+    expect(res.status).toBe(200);
+
+    const after = await board();
+    expect(after.classrooms[ROOM_A].rockets).toBe((before.classrooms[ROOM_A] || { rockets: 0 }).rockets + 1);
+    expect(after.classrooms[ROOM_A].raised).toBe((before.classrooms[ROOM_A] || { raised: 0 }).raised);
+    expect(after.campaign.raised).toBe(before.campaign.raised);
+    // Not a gift: the family-gift tally must not move either.
+    expect(after.campaign.gifts).toBe(before.campaign.gifts);
+  });
+
+  it('never reaches the honor roll, under the business name or Anonymous', async () => {
+    const before = (await board()).donors.length;
+    await credit({ business: 'The O’Dell Group', students: [{ c: ROOM_A, n: 'Scott Hendrickson' }] });
+    const after = await board();
+    expect(after.donors).toHaveLength(before);
+    expect(JSON.stringify(after.donors)).not.toContain('Dell');
+  });
+
+  it('shows the student on the sheets with no gift and no dollars', async () => {
+    await credit({ business: 'Tustin Dentistry', students: [{ c: ROOM_A, n: 'Sloane Lamp' }] });
+    const rows = await sheet('students');
+    const mine = rows.find((r) => r.includes('Sloane Lamp'));
+    expect(mine).toBeTruthy();
+    // grade,teacher,student,gifts,raised — a credit is neither a gift
+    // nor a dollar, so the last two columns stay at zero.
+    expect(mine).toContain(roomA.teacher);
+    expect(mine).toMatch(/"?0"?,"?0\.00"?\s*$/);
+  });
+
+  it('still counts one Rocket when the family also gives', async () => {
+    await credit({ business: 'CH Design', students: [{ c: ROOM_A, n: 'Oliver Hanhart' }] });
+    await deliverWebhook(sessionEvent({
+      id: 'cs_pc1', amount_total: 5000,
+      metadata: { students: JSON.stringify([{ c: ROOM_A, n: 'Oliver Hanhart' }]) },
+    }));
+    const after = await board();
+    expect(after.classrooms[ROOM_A].rockets).toBe(1);
+    expect(after.classrooms[ROOM_A].raised).toBe(50);
+  });
+
+  it('refuses a credit with no student named', async () => {
+    for (const body of [
+      { business: 'CH Design', students: [] },
+      { business: 'CH Design', students: [{ c: ROOM_A, n: '' }] },
+      { business: '', students: [{ c: ROOM_A, n: 'Oliver Hanhart' }] },
+    ]) {
+      expect((await credit(body)).status, JSON.stringify(body)).toBe(400);
+    }
+  });
+
+  it('needs the admin key', async () => {
+    const res = await SELF.fetch('https://rally.test/api/partner-credit', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ business: 'CH Design', students: [{ c: ROOM_A, n: 'Oliver Hanhart' }] }),
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it('comes off again, and takes the participation with it', async () => {
+    const res = await credit({ business: 'CH Design', students: [{ c: ROOM_A, n: 'Oliver Hanhart' }] });
+    const { id } = await res.json();
+    expect((await board()).classrooms[ROOM_A].rockets).toBe(1);
+
+    const gone = await SELF.fetch(`https://rally.test/api/partner-credit?id=${id}`, {
+      method: 'DELETE', headers: { authorization: 'Bearer test-admin-key' },
+    });
+    expect(gone.status).toBe(200);
+    expect((await board()).classrooms[ROOM_A]).toBeUndefined();
+  });
+
+  it('will not delete a real gift through the credit route', async () => {
+    await deliverWebhook(sessionEvent({ id: 'cs_pc2', amount_total: 5000 }));
+    const res = await SELF.fetch('https://rally.test/api/partner-credit?id=cs_pc2', {
+      method: 'DELETE', headers: { authorization: 'Bearer test-admin-key' },
+    });
+    expect(res.status).toBe(404);
+    expect((await board()).campaign.raised).toBe(50);
   });
 });
 
@@ -828,5 +1376,553 @@ describe('static asset headers', () => {
       expect(res.headers.get('x-frame-options'), path).toBe('DENY');
       expect(res.headers.get('link'), path).toBeNull();
     }
+  });
+});
+
+/* ---- the Thursday classroom digest ---- */
+
+describe('the Thursday teacher digest', () => {
+  const KEY = { authorization: 'Bearer test-admin-key' };
+  const MAIL = { RESEND_API_KEY: 're_test', MAIL_FROM: 'Rally <rally@rally.test>' };
+  const roomA = data.classroomById(ROOM_A);
+  const roomB = data.classroomById(ROOM_B);
+
+  /* Stub the provider, not the digest: every test here proves what
+     actually would have been mailed. */
+  const stubMail = (reply = { ok: true, status: 200 }) => {
+    const sent = [];
+    vi.stubGlobal('fetch', async (input, init) => {
+      const target = typeof input === 'string' ? input : input.url;
+      if (!target.startsWith('https://api.resend.com/')) throw new Error('unexpected fetch: ' + target);
+      sent.push(JSON.parse(String(init.body)));
+      return new Response('{}', { status: reply.status });
+    });
+    return sent;
+  };
+
+  const setList = (rows) => SELF.fetch('https://rally.test/api/teacher-emails', {
+    method: 'POST',
+    headers: { ...KEY, 'content-type': 'application/json' },
+    body: JSON.stringify({ rows }),
+  });
+
+  const giftFor = (id, room, name, cents = 10000) => deliverWebhook(sessionEvent({
+    id, amount_total: cents, metadata: { students: JSON.stringify([{ c: room, n: name }]) },
+  }));
+
+  it('keeps the address list behind the admin key', async () => {
+    const res = await SELF.fetch('https://rally.test/api/teacher-emails', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ rows: [{ c: ROOM_A, e: 'a@b.co' }] }),
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it('saves the list and refuses a row it cannot use', async () => {
+    expect((await setList([{ c: ROOM_A, e: 'teacher@school.test' }])).status).toBe(200);
+    const body = await (await SELF.fetch('https://rally.test/api/admin.json', { headers: KEY })).json();
+    expect(body.digest.emails[ROOM_A]).toBe('teacher@school.test');
+
+    expect((await setList([{ c: 'not-a-room', e: 'teacher@school.test' }])).status).toBe(400);
+    expect((await setList([{ c: ROOM_A, e: 'not an address' }])).status).toBe(400);
+    // Saving replaces the list, so dropping a class stops its email.
+    await setList([{ c: ROOM_B, e: 'other@school.test' }]);
+    const after = await (await SELF.fetch('https://rally.test/api/admin.json', { headers: KEY })).json();
+    expect(after.digest.emails).toEqual({ [ROOM_B]: 'other@school.test' });
+  });
+
+  it('mails nobody when email is not configured', async () => {
+    await setList([{ c: ROOM_A, e: 'teacher@school.test' }]);
+    const sent = stubMail();
+    expect(await sendWeeklyDigests(env)).toEqual({ sent: 0, skipped: 0, failed: 0 });
+    expect(sent).toHaveLength(0);
+  });
+
+  it('sends one email per class that has an address, and skips the rest', async () => {
+    await giftFor('cs_d1', ROOM_A, 'Mia Rodriguez');
+    await setList([{ c: ROOM_A, e: 'a@school.test' }, { c: ROOM_B, e: 'b@school.test' }]);
+    const sent = stubMail();
+    const run = await sendWeeklyDigests({ ...env, ...MAIL });
+    expect(run).toMatchObject({ sent: 2, failed: 0 });
+    expect(run.skipped).toBe(data.CLASSROOMS.length - 2);
+    expect(sent.map((m) => m.to[0]).sort()).toEqual(['a@school.test', 'b@school.test']);
+
+    const mine = sent.find((m) => m.to[0] === 'a@school.test');
+    expect(mine.subject).toContain(roomA.teacher);
+    expect(mine.text).toContain('Mia Rodriguez');
+    expect(mine.text).toContain(`1 of ${roomA.students} Rockets have a gift`);
+    // A class with nothing yet still gets asked, not told it failed.
+    const theirs = sent.find((m) => m.to[0] === 'b@school.test');
+    expect(theirs.text).toContain('No gifts in your class yet');
+    expect(theirs.text).toContain(`${roomB.teacher}`);
+  });
+
+  it('will not mail the same week twice', async () => {
+    await setList([{ c: ROOM_A, e: 'a@school.test' }]);
+    const first = stubMail();
+    await sendWeeklyDigests({ ...env, ...MAIL }, Date.UTC(2026, 8, 11, 0, 0));
+    expect(first).toHaveLength(1);
+
+    // A retried cron, an hour later, in the same week.
+    const again = stubMail();
+    const run = await sendWeeklyDigests({ ...env, ...MAIL }, Date.UTC(2026, 8, 11, 1, 0));
+    expect(again).toHaveLength(0);
+    expect(run.sent).toBe(0);
+
+    // Next week it goes again.
+    const next = stubMail();
+    await sendWeeklyDigests({ ...env, ...MAIL }, Date.UTC(2026, 8, 18, 0, 0));
+    expect(next).toHaveLength(1);
+  });
+
+  it('lets a class that failed try again rather than losing its week', async () => {
+    await setList([{ c: ROOM_A, e: 'a@school.test' }]);
+    stubMail({ status: 422 });
+    const bad = await sendWeeklyDigests({ ...env, ...MAIL }, Date.UTC(2026, 8, 11, 0, 0));
+    expect(bad).toMatchObject({ sent: 0, failed: 1 });
+
+    const retry = stubMail();
+    const good = await sendWeeklyDigests({ ...env, ...MAIL }, Date.UTC(2026, 8, 11, 2, 0));
+    expect(good.sent).toBe(1);
+    expect(retry).toHaveLength(1);
+  });
+
+  it('sends a sample only to the address on the request, never the teacher', async () => {
+    await setList([{ c: ROOM_A, e: 'teacher@school.test' }]);
+    const sent = stubMail();
+    // Called in this isolate so the stubbed fetch and the mail secrets
+    // both apply.
+    const res = await worker.fetch(
+      jsonRequest('/api/digest-test', { to: 'pta@school.test', classroom: ROOM_A }),
+      { ...env, ...MAIL, ADMIN_KEY: 'test-admin-key' },
+      createExecutionContext(),
+    );
+    expect(res.status).toBe(401); // the key travels as a header, not a body field
+    expect(sent).toHaveLength(0);
+
+    const okRes = await worker.fetch(
+      new Request('https://rally.test/api/digest-test', {
+        method: 'POST',
+        headers: { ...KEY, 'content-type': 'application/json' },
+        body: JSON.stringify({ to: 'pta@school.test', classroom: ROOM_A }),
+      }),
+      { ...env, ...MAIL, ADMIN_KEY: 'test-admin-key' },
+      createExecutionContext(),
+    );
+    expect(okRes.status).toBe(200);
+    expect(sent).toHaveLength(1);
+    expect(sent[0].to).toEqual(['pta@school.test']);
+    expect(sent[0].subject).toContain('[sample]');
+    expect(sent[0].text).toContain(roomA.teacher);
+    // And it left no mark on the week, so Thursday still goes out.
+    const body = await (await SELF.fetch('https://rally.test/api/admin.json', { headers: KEY })).json();
+    expect(body.digest.history).toHaveLength(0);
+  });
+
+  it('answers plainly when email is not switched on yet', async () => {
+    const res = await SELF.fetch('https://rally.test/api/digest-test', {
+      method: 'POST',
+      headers: { ...KEY, 'content-type': 'application/json' },
+      body: JSON.stringify({ to: 'pta@school.test' }),
+    });
+    expect(res.status).toBe(503);
+    expect((await res.json()).error).toContain('switched on');
+  });
+
+  it('marks no week as done when nothing was mailed', async () => {
+    await setList([{ c: ROOM_A, e: 'a@school.test' }]);
+    stubMail();
+    await sendWeeklyDigests(env, Date.UTC(2026, 8, 11, 0, 0)); // unconfigured
+    const body = await (await SELF.fetch('https://rally.test/api/admin.json', { headers: KEY })).json();
+    expect(body.digest.history).toHaveLength(0);
+  });
+});
+
+/* ---- fixing a mistyped Rocket ---- */
+
+describe('renaming a Rocket', () => {
+  const KEY = { authorization: 'Bearer test-admin-key' };
+  const roomA = data.classroomById(ROOM_A);
+  const roomB = data.classroomById(ROOM_B);
+
+  const giftFor = (id, room, name, cents = 10000) => deliverWebhook(sessionEvent({
+    id, amount_total: cents, metadata: { students: JSON.stringify([{ c: room, n: name }]) },
+  }));
+
+  const rename = (body) => SELF.fetch('https://rally.test/api/rename-rocket', {
+    method: 'POST',
+    headers: { ...KEY, 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+
+  const sheet = async () => (await (await SELF.fetch('https://rally.test/api/admin.json', { headers: KEY })).json());
+
+  it('needs the admin key', async () => {
+    const res = await SELF.fetch('https://rally.test/api/rename-rocket', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ classroom: ROOM_A, from: 'Audrey', to: 'Audrey Webber' }),
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it('moves every gift under the old spelling to the new one', async () => {
+    await giftFor('cs_r1', ROOM_A, 'Audrey', 5000);
+    await giftFor('cs_r2', ROOM_A, 'audrey', 2500);
+    const res = await rename({ classroom: ROOM_A, from: 'Audrey', to: 'Audrey Webber' });
+    expect(res.status).toBe(200);
+    // Both spellings folded, so both gifts moved.
+    expect((await res.json()).moved).toBe(2);
+
+    const body = await sheet();
+    const rows = body.students.rows.filter((r) => r[1] === roomA.teacher);
+    expect(rows).toHaveLength(1);
+    expect(rows[0][2]).toBe('Audrey Webber');
+    expect(rows[0][3]).toBe(2);              // gifts
+    expect(rows[0][4]).toBe(dollars(7500));  // and their dollars together
+  });
+
+  it('merges two Rockets into one and corrects the class count', async () => {
+    await giftFor('cs_m1', ROOM_A, 'Audrey', 5000);
+    await giftFor('cs_m2', ROOM_A, 'Audrey Webber', 2500);
+    // Two spellings read as two kids participating.
+    let board = await getJson('/api/board');
+    expect(board.classrooms[ROOM_A].rockets).toBe(2);
+
+    expect((await rename({ classroom: ROOM_A, from: 'Audrey', to: 'Audrey Webber' })).status).toBe(200);
+
+    board = await getJson('/api/board');
+    expect(board.classrooms[ROOM_A].rockets).toBe(1);
+    expect(board.classrooms[ROOM_A].raised).toBe(75);
+    const rows = (await sheet()).students.rows.filter((r) => r[1] === roomA.teacher);
+    expect(rows).toHaveLength(1);
+    expect(rows[0][3]).toBe(2);
+  });
+
+  it('never reaches the same name in another classroom', async () => {
+    await giftFor('cs_x1', ROOM_A, 'Audrey', 5000);
+    await giftFor('cs_x2', ROOM_B, 'Audrey', 5000);
+    expect((await rename({ classroom: ROOM_A, from: 'Audrey', to: 'Audrey Webber' })).status).toBe(200);
+
+    const rows = (await sheet()).students.rows;
+    expect(rows.find((r) => r[1] === roomA.teacher)[2]).toBe('Audrey Webber');
+    expect(rows.find((r) => r[1] === roomB.teacher)[2]).toBe('Audrey');
+  });
+
+  it('puts a name to a gift that named no Rocket', async () => {
+    await giftFor('cs_b1', ROOM_A, '', 5000);
+    const body = await sheet();
+    expect(body.noName).toBeTruthy();
+    expect(body.students.rows.find((r) => r[1] === roomA.teacher)[2]).toBe(body.noName);
+
+    expect((await rename({ classroom: ROOM_A, from: '', to: 'Audrey Webber' })).status).toBe(200);
+    const after = (await sheet()).students.rows.filter((r) => r[1] === roomA.teacher);
+    expect(after).toHaveLength(1);
+    expect(after[0][2]).toBe('Audrey Webber');
+  });
+
+  it('fixes capitalization on its own', async () => {
+    await giftFor('cs_c1', ROOM_A, 'audrey webber', 5000);
+    expect((await rename({ classroom: ROOM_A, from: 'audrey webber', to: 'Audrey Webber' })).status).toBe(200);
+    expect((await sheet()).students.rows.find((r) => r[1] === roomA.teacher)[2]).toBe('Audrey Webber');
+  });
+
+  it('refuses what it cannot do', async () => {
+    await giftFor('cs_z1', ROOM_A, 'Audrey', 5000);
+    const bad = async (body) => (await rename(body)).status;
+    expect(await bad({ classroom: 'not-a-room', from: 'Audrey', to: 'A' })).toBe(400);
+    expect(await bad({ classroom: ROOM_A, from: 'Audrey', to: '   ' })).toBe(400);
+    expect(await bad({ classroom: ROOM_A, to: 'Audrey Webber' })).toBe(400);
+    // A name nobody in that class carries changes nothing, and says so.
+    expect(await bad({ classroom: ROOM_A, from: 'Nobody', to: 'Audrey Webber' })).toBe(404);
+    expect((await sheet()).students.rows.find((r) => r[1] === roomA.teacher)[2]).toBe('Audrey');
+  });
+
+  it('holds the name to the same length limit checkout does', async () => {
+    await giftFor('cs_l1', ROOM_A, 'Audrey', 5000);
+    await rename({ classroom: ROOM_A, from: 'Audrey', to: 'x'.repeat(data.MAX_NAME + 20) });
+    const name = (await sheet()).students.rows.find((r) => r[1] === roomA.teacher)[2];
+    expect(name).toHaveLength(data.MAX_NAME);
+  });
+});
+
+
+/* ---- the donor's own Rockets, for the thank-you page ---- */
+
+describe('a donor checking their Rocket', () => {
+  const roomA = data.classroomById(ROOM_A);
+
+  const giftFor = (id, room, name, cents = 10000) => deliverWebhook(sessionEvent({
+    id, amount_total: cents, metadata: { students: JSON.stringify([{ c: room, n: name }]) },
+  }));
+
+  const mine = (sid) => getJson(`/api/my-rockets?sid=${encodeURIComponent(sid)}`);
+
+  it('answers with the Rocket that gift credited, and the ask to measure against', async () => {
+    await giftFor('cs_t1', ROOM_A, 'Audrey Webber', 2500);
+    const body = await mine('cs_t1');
+    expect(body.goal).toBe(data.STUDENT_GOAL);
+    expect(body.rockets).toEqual([{
+      name: 'Audrey Webber', teacher: roomA.teacher, grade: roomA.grade, raised: 25, gifts: 1,
+      donors: ['The Rodriguez Family'], anonGifts: 0,
+    }]);
+  });
+
+  it('keeps counting after the donor leaves, which is the point', async () => {
+    await giftFor('cs_t2', ROOM_A, 'Audrey Webber', 2500);
+    expect((await mine('cs_t2')).rockets[0].raised).toBe(25);
+
+    // Grandmother gives days later, through her own checkout.
+    await giftFor('cs_t3', ROOM_A, 'Audrey Webber', 10000);
+    const later = await mine('cs_t2');
+    expect(later.rockets[0].raised).toBe(125);
+    expect(later.rockets[0].gifts).toBe(2);
+  });
+
+  it('lists every Rocket a family gift named, once each', async () => {
+    await deliverWebhook(sessionEvent({
+      id: 'cs_t4',
+      amount_total: 10000,
+      metadata: { students: JSON.stringify([
+        { c: ROOM_A, n: 'Audrey Webber' }, { c: ROOM_B, n: 'Sammy Webber' },
+      ]) },
+    }));
+    const body = await mine('cs_t4');
+    expect(body.rockets.map((r) => r.name)).toEqual(['Audrey Webber', 'Sammy Webber']);
+  });
+
+  it('tells a stranger nothing', async () => {
+    await giftFor('cs_t5', ROOM_A, 'Audrey Webber', 2500);
+    for (const sid of ['', 'cs_', 'nope', 'cs_not_a_real_session', 'off_deadbeef12']) {
+      const res = await SELF.fetch(`https://rally.test/api/my-rockets?sid=${encodeURIComponent(sid)}`);
+      expect(res.status, sid).toBe(404);
+    }
+  });
+
+  /* The thank-you list. A donor who asked to be listed is already on
+     the public honor roll, so naming them to the family they gave for
+     tells nobody anything new. A donor who asked for anonymity is
+     never named here, and no donor's amount is, listed or not. */
+  it('names the donors who chose to be listed, and never the anonymous one', async () => {
+    await deliverWebhook(sessionEvent({
+      id: 'cs_t6', amount_total: 2500,
+      metadata: { students: JSON.stringify([{ c: ROOM_A, n: 'Audrey Webber' }]), donor_name: 'The Rodriguez Family' },
+    }));
+    await deliverWebhook(sessionEvent({
+      id: 'cs_t7', amount_total: 50000,
+      metadata: {
+        students: JSON.stringify([{ c: ROOM_A, n: 'Audrey Webber' }]),
+        donor_name: 'Anonymous Grandma', visibility: 'anon',
+      },
+    }));
+    const rocket = (await mine('cs_t6')).rockets[0];
+    expect(rocket.donors).toEqual(['The Rodriguez Family']);
+    expect(rocket.anonGifts).toBe(1);
+    // The anonymous gift counts toward the child's total, unnamed.
+    expect(rocket.raised).toBe(525);
+
+    const text = JSON.stringify(await mine('cs_t6'));
+    expect(text).not.toContain('Grandma');
+    // No per-donor amount anywhere, and no contact details ever.
+    expect(text).not.toContain('500');
+    expect(text).not.toContain('example.com');
+    expect(text).not.toContain('Rocket Way');
+    expect(text).not.toContain('Rosa');
+  });
+
+  it('thanks a repeat donor once, however many times they gave', async () => {
+    for (const id of ['cs_t6a', 'cs_t6b', 'cs_t6c']) {
+      await deliverWebhook(sessionEvent({
+        id, amount_total: 1000,
+        metadata: { students: JSON.stringify([{ c: ROOM_A, n: 'Audrey Webber' }]), donor_name: 'Grandma Webber' },
+      }));
+    }
+    const rocket = (await mine('cs_t6a')).rockets[0];
+    expect(rocket.donors).toEqual(['Grandma Webber']);
+    expect(rocket.gifts).toBe(3);
+  });
+
+  it('treats a listed gift with no name typed as anonymous', async () => {
+    await deliverWebhook(sessionEvent({
+      id: 'cs_t6d', amount_total: 1000,
+      metadata: {
+        students: JSON.stringify([{ c: ROOM_A, n: 'Audrey Webber' }]),
+        donor_name: '', visibility: 'public',
+      },
+    }));
+    const rocket = (await mine('cs_t6d')).rockets[0];
+    expect(rocket.donors).toEqual([]);
+    expect(rocket.anonGifts).toBe(1);
+  });
+
+  it('leaves a business partnership out of a child\'s thank-you list', async () => {
+    await deliverWebhook(sessionEvent({
+      id: 'cs_t6e', amount_total: 1000,
+      metadata: { students: JSON.stringify([{ c: ROOM_A, n: 'Audrey Webber' }]), donor_name: 'Nana Webber' },
+    }));
+    await deliverWebhook(partnerSession({ id: 'cs_t6f', metadata: { donor_name: 'Tustin Tire' } }));
+    const rocket = (await mine('cs_t6e')).rockets[0];
+    expect(rocket.donors).toEqual(['Nana Webber']);
+  });
+
+  it('leaves a partner\'s participation credit off the thank-you list, and out of anonGifts', async () => {
+    await SELF.fetch('https://rally.test/api/partner-credit', {
+      method: 'POST',
+      headers: { authorization: 'Bearer test-admin-key', 'content-type': 'application/json' },
+      body: JSON.stringify({ business: 'CH Design', students: [{ c: ROOM_A, n: 'Oliver Hanhart' }] }),
+    });
+    await deliverWebhook(sessionEvent({
+      id: 'cs_t6cr', amount_total: 1000,
+      metadata: { students: JSON.stringify([{ c: ROOM_A, n: 'Oliver Hanhart' }]), donor_name: 'Grandpa Hanhart' },
+    }));
+    const rocket = (await mine('cs_t6cr')).rockets[0];
+    expect(rocket.donors).toEqual(['Grandpa Hanhart']);
+    expect(rocket.anonGifts).toBe(0);
+    expect(rocket.gifts).toBe(1);
+  });
+
+  it('thanks only the donors who named that child', async () => {
+    await deliverWebhook(sessionEvent({
+      id: 'cs_t6g', amount_total: 1000,
+      metadata: { students: JSON.stringify([{ c: ROOM_A, n: 'Audrey Webber' }]), donor_name: 'Webber Side' },
+    }));
+    await deliverWebhook(sessionEvent({
+      id: 'cs_t6h', amount_total: 1000,
+      metadata: { students: JSON.stringify([{ c: ROOM_B, n: 'Leo Park' }]), donor_name: 'Park Side' },
+    }));
+    const rocket = (await mine('cs_t6g')).rockets[0];
+    expect(rocket.donors).toEqual(['Webber Side']);
+    expect(JSON.stringify(await mine('cs_t6g'))).not.toContain('Park Side');
+  });
+
+  it('answers for a gift the PTA recorded by hand too', async () => {
+    const res = await SELF.fetch('https://rally.test/api/offline-gift', {
+      method: 'POST',
+      headers: { authorization: 'Bearer test-admin-key', 'content-type': 'application/json' },
+      body: JSON.stringify({
+        amount: 250, priority: P_MAIN.id, donorName: 'The Nguyen Family',
+        visibility: 'public', students: [{ c: ROOM_A, n: 'Audrey Webber' }],
+      }),
+    });
+    const { id } = await res.json();
+    expect((await mine(id)).rockets[0].raised).toBe(250);
+  });
+
+  it('says nothing for a gift that named no Rocket', async () => {
+    await deliverWebhook(sessionEvent({ id: 'cs_t8', metadata: { students: '[]' } }));
+    expect((await SELF.fetch('https://rally.test/api/my-rockets?sid=cs_t8')).status).toBe(404);
+  });
+});
+
+
+/* ---- emailing a donor their own link ---- */
+
+describe('emailing a donor their Rocket link', () => {
+  const MAIL = { RESEND_API_KEY: 're_test', MAIL_FROM: 'Rally <rally@rally.test>' };
+
+  const stubMail = (status = 200) => {
+    const sent = [];
+    vi.stubGlobal('fetch', async (input, init) => {
+      const target = typeof input === 'string' ? input : input.url;
+      if (!target.startsWith('https://api.resend.com/')) throw new Error('unexpected fetch: ' + target);
+      sent.push(JSON.parse(String(init.body)));
+      return new Response('{}', { status });
+    });
+    return sent;
+  };
+
+  const gaveAs = (id, email, name = 'Audrey Webber') => deliverWebhook(sessionEvent({
+    id,
+    customer_details: { email, name: 'A Donor', address: {} },
+    metadata: { students: JSON.stringify([{ c: ROOM_A, n: name }]) },
+  }));
+
+  const ask = (email, envOver = {}) => worker.fetch(
+    jsonRequest('/api/my-link', { email }),
+    { ...env, ...envOver },
+    createExecutionContext(),
+  );
+
+  it('sends the link to the address that gave', async () => {
+    await gaveAs('cs_e1', 'parent@family.test');
+    const sent = stubMail();
+    const res = await ask('parent@family.test', MAIL);
+    expect(res.status).toBe(200);
+    expect(sent).toHaveLength(1);
+    expect(sent[0].to).toEqual(['parent@family.test']);
+    expect(sent[0].text).toContain('Audrey Webber');
+    expect(sent[0].text).toContain('/thanks?sid=cs_e1');
+  });
+
+  it('answers the same way for an address that never gave', async () => {
+    await gaveAs('cs_e2', 'parent@family.test');
+    const sent = stubMail();
+    const res = await ask('stranger@example.test', MAIL);
+    // Identical to the found case: no way to ask the site who donated.
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ sent: true });
+    expect(sent).toHaveLength(0);
+  });
+
+  it('will not mail the same address again straight away', async () => {
+    await gaveAs('cs_e3', 'parent@family.test');
+    const first = stubMail();
+    await ask('parent@family.test', MAIL);
+    expect(first).toHaveLength(1);
+
+    const again = stubMail();
+    const res = await ask('parent@family.test', MAIL);
+    expect(res.status).toBe(200);
+    expect(again).toHaveLength(0);
+  });
+
+  it('matches the address however it was typed', async () => {
+    await gaveAs('cs_e4', 'Parent@Family.test');
+    const sent = stubMail();
+    await ask('  parent@family.test  ', MAIL);
+    expect(sent).toHaveLength(1);
+  });
+
+  it('lists every gift that address made, newest first', async () => {
+    await gaveAs('cs_e5', 'parent@family.test', 'Audrey Webber');
+    await deliverWebhook(sessionEvent({
+      id: 'cs_e6', created: 1756200000,
+      customer_details: { email: 'parent@family.test', name: 'A Donor', address: {} },
+      metadata: { students: JSON.stringify([{ c: ROOM_B, n: 'Sammy Webber' }]) },
+    }));
+    const sent = stubMail();
+    await ask('parent@family.test', MAIL);
+    const text = sent[0].text;
+    expect(text).toContain('Sammy Webber');
+    expect(text).toContain('Audrey Webber');
+    expect(text.indexOf('Sammy')).toBeLessThan(text.indexOf('Audrey'));
+  });
+
+  it('leaves a business partnership out of it', async () => {
+    await deliverWebhook(partnerSession({
+      id: 'cs_e7',
+      customer_details: { email: 'shop@business.test', name: 'A Shop', address: {} },
+    }));
+    const sent = stubMail();
+    await ask('shop@business.test', MAIL);
+    expect(sent).toHaveLength(0);
+  });
+
+  it('rejects something that is not an address, and mails nobody', async () => {
+    const sent = stubMail();
+    for (const bad of ['', 'nope', 'a@b', 'a b@c.test']) {
+      const res = await ask(bad, MAIL);
+      expect(res.status, bad).toBe(400);
+    }
+    expect(sent).toHaveLength(0);
+  });
+
+  it('stays quiet when email is not switched on', async () => {
+    await gaveAs('cs_e8', 'parent@family.test');
+    const sent = stubMail();
+    const res = await ask('parent@family.test');
+    expect(res.status).toBe(200);
+    expect(sent).toHaveLength(0);
   });
 });

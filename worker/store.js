@@ -8,8 +8,9 @@
    Stripe dashboard). */
 
 import data from '../site/js/data.js';
+import { shirtsFromMetadata } from './students.js';
 
-const { CAMPAIGN, CLASSROOMS, priorityById, classroomById, MAX_STUDENTS } = data;
+const { CAMPAIGN, CLASSROOMS, PRIORITIES, SUPPORT_ALL, SHIRT, priorityById, classroomById, shirtSizeById, pacificAt, MAX_STUDENTS } = data;
 
 /* A session's Rockets: the `students` JSON our checkout stamps into
    metadata (a partnership carries none). */
@@ -31,10 +32,14 @@ export async function recordDonation(db, session, createdSec) {
   const md = session.metadata || {};
   const cd = session.customer_details || {};
   const addr = cd.address || {};
-  // amount_cents is the intended gift: the charge total minus the
-  // opt-in fee cover our checkout endpoint stamped into metadata.
-  // Every stat (campaign, board, circles) counts the gift alone.
+  // amount_cents is the fundraising: the charge total minus the opt-in
+  // fee cover our checkout endpoint stamped into metadata, minus the
+  // part of each shirt that is the shirt. Every stat (campaign, board,
+  // circles) counts that alone.
   const total = session.amount_total || 0;
+  const shirts = shirtsFromMetadata(md.shirts);
+  const shirtCount = Object.values(shirts).reduce((n, sizes) => n + sizes.length, 0);
+  const shirtCost = shirtCount * (SHIRT.price - SHIRT.credit) * 100;
   const feeCents = Math.min(Math.max(Number(md.fee_cents) || 0, 0), total);
   const gift = db.prepare(`
     INSERT INTO donations
@@ -45,7 +50,7 @@ export async function recordDonation(db, session, createdSec) {
     ON CONFLICT(id) DO NOTHING`)
     .bind(
       session.id,
-      total - feeCents,
+      Math.max(total - feeCents - shirtCost, 0),
       feeCents,
       md.priority || '',
       md.partner_tier || '',
@@ -66,8 +71,8 @@ export async function recordDonation(db, session, createdSec) {
   // One row per Rocket. The (donation_id, position) key makes Stripe's
   // webhook retries no-ops here, as ON CONFLICT does for the gift.
   const credits = studentsFromMetadata(md).map((s, i) => db.prepare(`
-    INSERT OR IGNORE INTO donation_students (donation_id, position, classroom, student_name)
-    VALUES (?1, ?2, ?3, ?4)`).bind(session.id, i, s.c, s.n));
+    INSERT OR IGNORE INTO donation_students (donation_id, position, classroom, student_name, shirts)
+    VALUES (?1, ?2, ?3, ?4, ?5)`).bind(session.id, i, s.c, s.n, (shirts[i] || []).join(',')));
   await db.batch([gift, ...credits]);
 }
 
@@ -78,7 +83,8 @@ export async function recordDonation(db, session, createdSec) {
    brings in. */
 const totalsStmt = (db) =>
   db.prepare(`SELECT COALESCE(SUM(amount_cents), 0) AS cents,
-    COALESCE(SUM(CASE WHEN partner_tier = '' THEN 1 ELSE 0 END), 0) AS gifts FROM donations`);
+    COALESCE(SUM(CASE WHEN partner_tier = '' AND id NOT LIKE 'pc\\_%' ESCAPE '\\'
+      THEN 1 ELSE 0 END), 0) AS gifts FROM donations`);
 
 const campaignShape = (totals) => ({
   raised: Math.round(totals.results[0].cents / 100),
@@ -99,6 +105,131 @@ const partnerShape = (rows) => rows.results.map((row) => ({
 /* Home and /partners payload: campaign progress, per-priority totals,
    and the partner list — no donor rows, so it stays a few hundred
    bytes for the life of the campaign. */
+/* Gifts the PTA takes in by hand — a check left in the office, cash at
+   a Gathering. They land in the same tables as a card gift, so the
+   ticker, the classroom race, the honor roll and the student sheet all
+   count them without knowing the difference.
+
+   The `off_` id prefix is what makes them safe to undo: a Stripe gift
+   is keyed by its `cs_` session id, so the delete below can only ever
+   reach a row the PTA typed in itself. */
+const OFFLINE_PREFIX = 'off_';
+const offlineId = () => OFFLINE_PREFIX + crypto.randomUUID().replace(/-/g, '').slice(0, 20);
+
+/* A business partner's own child, counted as a participant without a
+   dollar attached.
+
+   The partnership's money is already in the campaign total and is
+   deliberately kept out of the classroom race, so crediting the child
+   with any share of it would double-count it and hand one class a
+   windfall. What the family is owed is the participation, so that is
+   all this records: one Rocket, no dollars, no gift.
+
+   The `pc_` id is the whole mechanism. Rows carrying it are credits and
+   not gifts, so they stay out of the campaign's gift count, out of the
+   honor roll, and out of every "gifts" figure — while the credit row in
+   donation_students does what any credit does and counts the child. */
+const CREDIT_PREFIX = 'pc_';
+const creditId = () => CREDIT_PREFIX + crypto.randomUUID().replace(/-/g, '').slice(0, 20);
+const isCreditOnly = (id) => String(id).startsWith(CREDIT_PREFIX);
+
+export async function recordPartnerCredit(db, { businessName, students, createdSec }) {
+  const id = creditId();
+  /* Anonymous and priority-less on purpose: the business is thanked on
+     the partner wall, not a second time in the family honor roll, and
+     no priority was chosen because no money moved here. */
+  const row = db.prepare(`
+    INSERT INTO donations
+      (id, amount_cents, fee_cents, priority, partner_tier, donor_name,
+       visibility, email, employer_match, via_link, created)
+    VALUES (?1, 0, 0, '', '', ?2, 'anon', '', 0, 0, ?3)`)
+    .bind(id, businessName, createdSec);
+  const credits = students.map((s, i) => db.prepare(`
+    INSERT INTO donation_students (donation_id, position, classroom, student_name, shirts)
+    VALUES (?1, ?2, ?3, ?4, '')`).bind(id, i, s.c, s.n));
+  await db.batch([row, ...credits]);
+  return id;
+}
+
+export async function deletePartnerCredit(db, id) {
+  if (!isCreditOnly(id)) return false;
+  const [, gone] = await db.batch([
+    db.prepare("DELETE FROM donation_students WHERE donation_id = ?1 AND ?1 LIKE 'pc\\_%' ESCAPE '\\'").bind(id),
+    db.prepare("DELETE FROM donations WHERE id = ?1 AND id LIKE 'pc\\_%' ESCAPE '\\'").bind(id),
+  ]);
+  return (gone.meta && gone.meta.changes) > 0;
+}
+
+/* The credits already recorded, for the list under the form. */
+export async function partnerCredits(db) {
+  const { results } = await db.prepare(`
+    SELECT d.id, d.donor_name, d.created,
+           COALESCE(GROUP_CONCAT(s.student_name, ', '), '') AS students,
+           COALESCE(MIN(s.classroom), '') AS classroom
+    FROM donations d LEFT JOIN donation_students s ON s.donation_id = d.id
+    WHERE d.id LIKE 'pc\\_%' ESCAPE '\\'
+    GROUP BY d.id ORDER BY d.created DESC, d.id DESC`).all();
+  return results.map((r) => ({
+    id: r.id, business: r.donor_name, created: r.created,
+    students: r.students, classroom: r.classroom,
+  }));
+}
+
+export async function recordOfflineGift(db, { amountCents, priority, donorName, visibility, students, createdSec }) {
+  const id = offlineId();
+  const gift = db.prepare(`
+    INSERT INTO donations
+      (id, amount_cents, fee_cents, priority, partner_tier, donor_name,
+       visibility, email, employer_match, via_link, created)
+    VALUES (?1, ?2, 0, ?3, '', ?4, ?5, '', 0, 0, ?6)`)
+    .bind(id, amountCents, priority, donorName, visibility, createdSec);
+  const credits = students.map((s, i) => db.prepare(`
+    INSERT INTO donation_students (donation_id, position, classroom, student_name, shirts)
+    VALUES (?1, ?2, ?3, ?4, '')`).bind(id, i, s.c, s.n));
+  await db.batch([gift, ...credits]);
+  return id;
+}
+
+/* Only ever an offline row: the LIKE guard means a mistyped id, or a
+   pasted Stripe session id, deletes nothing. */
+export async function deleteOfflineGift(db, id) {
+  if (typeof id !== 'string' || !id.startsWith(OFFLINE_PREFIX)) return false;
+  const [, gone] = await db.batch([
+    db.prepare("DELETE FROM donation_students WHERE donation_id = ?1 AND ?1 LIKE 'off\\_%' ESCAPE '\\'").bind(id),
+    db.prepare("DELETE FROM donations WHERE id = ?1 AND id LIKE 'off\\_%' ESCAPE '\\'").bind(id),
+  ]);
+  return (gone.meta && gone.meta.changes) > 0;
+}
+
+/* What the PTA has entered by hand, newest first, so a wrong amount can
+   be found and removed without anyone touching the database. */
+export async function offlineGifts(db) {
+  const { results } = await db.prepare(
+    `SELECT d.id, d.amount_cents, d.priority, d.donor_name, d.visibility, d.created,
+            COALESCE(GROUP_CONCAT(s.classroom || '|' || s.student_name, ';'), '') AS rockets
+     FROM donations d LEFT JOIN donation_students s ON s.donation_id = d.id
+     WHERE d.id LIKE 'off\\_%' ESCAPE '\\'
+     GROUP BY d.id ORDER BY d.created DESC, d.id DESC`,
+  ).all();
+  return results.map((row) => {
+    const named = row.rockets ? row.rockets.split(';').map((pair) => {
+      const [c, ...rest] = pair.split('|');
+      const room = classroomById(c);
+      const name = rest.join('|').trim();
+      return [name || '(no name)', room ? room.teacher : c].join(' · ');
+    }) : [];
+    const p = priorityById(row.priority);
+    return {
+      id: row.id,
+      amount: row.amount_cents / 100,
+      priority: p ? p.name : row.priority,
+      donor: row.visibility === 'anon' ? 'Anonymous' : row.donor_name,
+      rockets: named.join(', '),
+      created: row.created,
+    };
+  });
+}
+
 export async function campaignStats(db) {
   const [totals, byPriority, partnerRows] = await db.batch([
     totalsStmt(db),
@@ -106,26 +237,46 @@ export async function campaignStats(db) {
     partnersStmt(db),
   ]);
   const priorities = {};
-  for (const row of byPriority.results) priorities[row.priority] = Math.round(row.cents / 100);
+  let sharedCents = 0;
+  for (const row of byPriority.results) {
+    if (row.priority === SUPPORT_ALL.id) sharedCents += row.cents;
+    else priorities[row.priority] = Math.round(row.cents / 100);
+  }
+  // A Support It All gift is one gift that lands on all six. The cards
+  // print whole dollars, so the split is made in dollars with the
+  // remainder going to the first few: $100 reads 17/17/17/17/16/16,
+  // which adds back to exactly what was given. Splitting the cents
+  // instead rounds each card up and shows $102.
+  if (sharedCents) {
+    const dollars = Math.round(sharedCents / 100);
+    const each = Math.floor(dollars / PRIORITIES.length);
+    let extra = dollars - each * PRIORITIES.length;
+    for (const p of PRIORITIES) {
+      priorities[p.id] = (priorities[p.id] || 0) + each + (extra-- > 0 ? 1 : 0);
+    }
+  }
   return { campaign: campaignShape(totals), priorities, partners: partnerShape(partnerRows) };
 }
 
 /* Rally Board payload: campaign progress plus the classroom race and
-   the full honor roll (one row per gift, newest first). */
+   the full honor roll (one row per gift, newest first). Each classroom
+   carries both prize races — Rockets participating and dollars
+   raised — from the same tally the PTA's classroom sheet reads, and no
+   student name. */
 export async function boardStats(db) {
-  const [totals, byClassroom, roll, partnerRows] = await db.batch([
+  const [totals, credits, roll, partnerRows] = await db.batch([
     totalsStmt(db),
-    // Joined so a gift deleted by hand (refund, the go-live wipe)
-    // takes its classroom credits with it.
-    db.prepare(`SELECT s.classroom, COUNT(*) AS gifts FROM donation_students s
-                JOIN donations d ON d.id = s.donation_id GROUP BY s.classroom`),
+    creditsStmt(db),
     db.prepare(`SELECT donor_name, priority, partner_tier, amount_cents, visibility
-                FROM donations ORDER BY created DESC, id DESC`),
+                FROM donations WHERE id NOT LIKE 'pc\\_%' ESCAPE '\\'
+                ORDER BY created DESC, id DESC`),
     partnersStmt(db),
   ]);
 
   const classrooms = {};
-  for (const row of byClassroom.results) classrooms[row.classroom] = row.gifts;
+  for (const [id, line] of Object.entries(perClassroom(tally(credits.results)))) {
+    classrooms[id] = { rockets: line.rockets, raised: Math.round(line.cents / 100) };
+  }
 
   const donors = roll.results.map((row) => {
     const isPublic = row.visibility === 'public' && row.donor_name;
@@ -142,74 +293,408 @@ export async function boardStats(db) {
   return { campaign: campaignShape(totals), classrooms, donors, partners: partnerShape(partnerRows) };
 }
 
-/* The PTA's student sheet (admin-only): what each classroom and each
-   Rocket has raised, one row per student under their class and a
-   class-total row after each. Every roster classroom appears, so a
-   class with nothing yet shows a zero. */
-export async function exportCsv(db) {
-  const [credits, uncredited] = await db.batch([
-    // Joined so a gift deleted by hand (refund, the go-live wipe)
-    // takes its classroom credits with it.
-    db.prepare(`SELECT s.donation_id, s.classroom, s.student_name, d.amount_cents
-                FROM donation_students s JOIN donations d ON d.id = s.donation_id
-                ORDER BY d.created, d.id, s.position`),
-    // Family gifts that named no Rocket, so the sheet still adds up to
-    // the board. Partnerships are not family fundraising and stay out.
-    db.prepare(`SELECT COUNT(*) AS gifts, COALESCE(SUM(amount_cents), 0) AS cents
-                FROM donations d WHERE partner_tier = ''
-                AND NOT EXISTS (SELECT 1 FROM donation_students s WHERE s.donation_id = d.id)`),
-  ]);
+/* ---- the PTA's reports (admin-only) ---- */
 
-  // A gift naming several Rockets counts once for each (as the race
-  // does) and splits its dollars evenly, so class totals stay real
-  // money; leftover cents go to the first named.
-  const rocketsPerGift = {};
-  for (const c of credits.results) rocketsPerGift[c.donation_id] = (rocketsPerGift[c.donation_id] || 0) + 1;
+const cell = (value) => {
+  let s = String(value == null ? '' : value);
+  // Student names are attacker-supplied and these files' purpose is to
+  // be opened in Excel/Sheets — neutralize formula-leading characters.
+  if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+  return `"${s.replace(/"/g, '""')}"`;
+};
+const dollars = (cents) => (cents / 100).toFixed(2);
+/* A report is { columns, rows }; the CSV form opens in Excel/Sheets
+   (BOM so UTF-8 names read), the JSON form feeds /admin. */
+export const csv = ({ columns, rows }) =>
+  '﻿' + [columns.join(','), ...rows.map((r) => r.map(cell).join(','))].join('\n') + '\n';
+
+/* Roster order, then any classroom the roster no longer lists. */
+const roomOrder = (seen) => {
+  const known = CLASSROOMS.map((r) => r.id);
+  return [...known, ...Object.keys(seen).filter((id) => !known.includes(id))]
+    .map((id) => classroomById(id) || { id, grade: '', teacher: id, students: 0 });
+};
+
+/* Every Rocket credit with its gift: joined so a gift deleted by hand
+   (refund, the go-live wipe) takes its classroom credits with it.
+   Partnerships carry no credits and stay out. */
+const creditsStmt = (db) => db.prepare(`
+  SELECT s.donation_id, s.classroom, s.student_name, s.shirts, d.amount_cents, d.created
+  FROM donation_students s JOIN donations d ON d.id = s.donation_id
+  ORDER BY d.created, d.id, s.position`);
+
+/* The school's own clock, not UTC. Shirts go to the printer in
+   batches, and the cutoff is a moment: an order placed at 6pm Pacific
+   reads as tomorrow in UTC, which would drop that child's shirt into
+   the next box or out of both. `pacificAt` in data.js is the one place
+   that decides, shared with the ordering deadline, and its
+   "YYYY-MM-DD HH:MM" sorts as a string — which is what the window
+   comparison below relies on. */
+const orderedAt = (createdSec) => pacificAt(new Date(createdSec * 1000));
+
+/* A window end as the PTA typed it → something comparable to the
+   above. A bare day means the whole day, so `to` runs to its last
+   minute; anything unreadable is dropped, because a stray character
+   should show too many shirts and never too few. */
+const windowEnd = (v, end) => {
+  const raw = String(v || '').trim().replace('T', ' ');
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return end ? `${raw} 23:59` : raw;
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(raw)) return raw;
+  return '';
+};
+
+/* What the reports call a credit whose donor left the name box empty.
+   Mission Control shows this in the picker, and sends '' back when the
+   PTA puts a name to one. */
+export const NO_NAME = '(no name given)';
+
+/* Credits -> classroom id -> lowercase name -> { name, gifts, cents,
+   shirts }. A gift naming several Rockets counts once for each (as the
+   race does) and splits its dollars evenly, so class totals stay real
+   money; each shirt's share goes to its own Rocket first, and leftover
+   cents go to the first named. */
+const tally = (credits) => {
+  const perGift = {};
+  for (const c of credits) {
+    const g = (perGift[c.donation_id] ||= { rockets: 0, shirts: 0 });
+    g.rockets += 1;
+    g.shirts += c.shirts ? c.shirts.split(',').length : 0;
+  }
   const handedOut = {};
-  const rooms = {}; // classroom id -> lowercase name -> { name, gifts, cents }
-  for (const c of credits.results) {
-    const n = rocketsPerGift[c.donation_id];
+  const rooms = {};
+  for (const c of credits) {
+    const g = perGift[c.donation_id];
     const i = handedOut[c.donation_id] = (handedOut[c.donation_id] || 0) + 1;
-    const share = Math.floor(c.amount_cents / n) + (i <= c.amount_cents % n ? 1 : 0);
+    const own = c.shirts ? c.shirts.split(',').length : 0;
+    const gift = c.amount_cents - g.shirts * SHIRT.credit * 100;
+    const share = Math.floor(gift / g.rockets) + (i <= gift % g.rockets ? 1 : 0) + own * SHIRT.credit * 100;
     // Grandparents and parents spell a kid differently; keep the first
     // spelling seen and merge the rest.
     const name = c.student_name.trim();
     const room = (rooms[c.classroom] ||= {});
-    const student = (room[name.toLowerCase()] ||= { name: name || '(no name given)', gifts: 0, cents: 0 });
-    student.gifts += 1;
+    const student = (room[name.toLowerCase()] ||= { name: name || NO_NAME, gifts: 0, cents: 0, shirts: 0 });
+    student.gifts += isCreditOnly(c.donation_id) ? 0 : 1;
     student.cents += share;
+    student.shirts += own;
   }
+  return rooms;
+};
 
-  const cell = (value) => {
-    let s = String(value == null ? '' : value);
-    // Student names are attacker-supplied and this file's purpose is to
-    // be opened in Excel/Sheets — neutralize formula-leading characters.
-    if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
-    return `"${s.replace(/"/g, '""')}"`;
-  };
-  const dollars = (cents) => (cents / 100).toFixed(2);
-  const rows = ['grade,teacher,student,gifts,raised'];
-  const line = (...values) => rows.push(values.map(cell).join(','));
+/* One classroom's line in both races: how many Rockets are
+   participating, how many gifts stand behind them, and what the class
+   has raised. Each named Rocket counts once however many gifts they
+   draw; a gift that named no Rocket counts once, as the family behind
+   it, so the optional name box never costs a class credit.
 
-  // Roster order, then any classroom the roster no longer lists.
-  const known = CLASSROOMS.map((r) => r.id);
-  const order = [...known, ...Object.keys(rooms).filter((id) => !known.includes(id))];
-  for (const id of order) {
-    const room = classroomById(id);
-    const grade = room ? room.grade : '';
-    const teacher = room ? room.teacher : id;
-    const students = Object.entries(rooms[id] || {}).sort(([ka, a], [kb, b]) =>
-      (ka === '') - (kb === '') || b.cents - a.cents || b.gifts - a.gifts || a.name.localeCompare(b.name));
-    let gifts = 0;
-    let cents = 0;
-    for (const [, s] of students) {
-      line(grade, teacher, s.name, s.gifts, dollars(s.cents));
-      gifts += s.gifts;
-      cents += s.cents;
+   The board and the PTA's classroom sheet both read this, so the
+   dollars deciding the Top Class prize can't drift between the number
+   families watch and the number the PTA pays out on. It reads names to
+   group by Rocket and returns none: the board's payload and page stay
+   name-free, which `test/api.spec.js` and `test/pages.spec.js` pin. */
+const perClassroom = (rooms) => {
+  const totals = {};
+  for (const [id, students] of Object.entries(rooms)) {
+    const line = totals[id] = { rockets: 0, gifts: 0, cents: 0, shirts: 0 };
+    for (const [key, s] of Object.entries(students)) {
+      line.rockets += key === '' ? s.gifts : 1;
+      line.gifts += s.gifts;
+      line.cents += s.cents;
+      line.shirts += s.shirts;
     }
-    line(grade, teacher, 'Class total', gifts, dollars(cents));
+  }
+  return totals;
+};
+
+export async function classroomTotals(db) {
+  return perClassroom(tally((await creditsStmt(db).all()).results));
+}
+
+/* The student sheet: what each Rocket has raised, under their class,
+   biggest first. Family gifts that named no Rocket close the sheet so
+   it still adds up to the board. */
+export async function studentsReport(db) {
+  const [credits, uncredited] = await db.batch([
+    creditsStmt(db),
+    db.prepare(`SELECT COUNT(*) AS gifts, COALESCE(SUM(amount_cents), 0) AS cents
+                FROM donations d WHERE partner_tier = ''
+                AND NOT EXISTS (SELECT 1 FROM donation_students s WHERE s.donation_id = d.id)`),
+  ]);
+  const rooms = tally(credits.results);
+  const rows = [];
+  for (const room of roomOrder(rooms)) {
+    const students = Object.entries(rooms[room.id] || {}).sort(([ka, a], [kb, b]) =>
+      (ka === '') - (kb === '') || b.cents - a.cents || b.gifts - a.gifts || a.name.localeCompare(b.name));
+    for (const [, s] of students) rows.push([room.grade, room.teacher, s.name, s.gifts, dollars(s.cents)]);
   }
   const rest = uncredited.results[0];
-  if (rest.gifts) line('', '', 'No Rocket named', rest.gifts, dollars(rest.cents));
-  return '\ufeff' + rows.join('\n') + '\n'; // BOM so Excel reads UTF-8 names
+  if (rest.gifts) rows.push(['', '', 'No Rocket named', rest.gifts, dollars(rest.cents)]);
+  return { columns: ['grade', 'teacher', 'student', 'gifts', 'raised'], rows };
+}
+
+/* The classroom sheet for the marquee: every roster classroom with its
+   participation and dollars, so a class with nothing yet shows a zero. */
+export async function classroomsReport(db) {
+  const rooms = await classroomTotals(db);
+  const rows = roomOrder(rooms).map((room) => {
+    const line = rooms[room.id] || { rockets: 0, gifts: 0, cents: 0, shirts: 0 };
+    const pct = room.students > 0 ? Math.round(Math.min(line.rockets / room.students, 1) * 100) : 0;
+    return [room.grade, room.teacher, room.students, line.gifts, line.rockets, pct, dollars(line.cents), line.shirts];
+  });
+  return { columns: ['grade', 'teacher', 'students', 'gifts', 'rockets', 'participation_pct', 'raised', 'shirts'], rows };
+}
+
+/* The printer's sheet: each Rocket's shirts by size, merged across
+   orders, in roster then name then size order. */
+/* The printer's sheet, with the moment each order came in so the PTA
+   can cut a batch at a time as well as a day. One row per Rocket, size
+   and **order**: two of a size bought a week apart are two rows,
+   because one of them may belong to a box already at the printer, and
+   two bought in the same checkout are one row of quantity 2.
+
+   `from`/`to` are inclusive, either end open, and take a bare
+   YYYY-MM-DD (the whole day) or YYYY-MM-DD HH:MM. */
+export async function shirtsReport(db, { from = '', to = '' } = {}) {
+  const lo = windowEnd(from, false);
+  const hi = windowEnd(to, true);
+  const credits = (await creditsStmt(db).all()).results.filter((c) => c.shirts);
+  const rooms = {};
+  for (const c of credits) {
+    const at = orderedAt(c.created);
+    if (lo && at < lo) continue;
+    if (hi && at > hi) continue;
+    const name = c.student_name.trim();
+    const student = ((rooms[c.classroom] ||= {})[name.toLowerCase()] ||= { name, orders: {} });
+    // Keyed by the order, so the clock time on the row is one real
+    // moment rather than a mix of two.
+    const order = (student.orders[`${at} ${c.donation_id}`] ||= { at, sizes: {} });
+    for (const z of c.shirts.split(',')) order.sizes[z] = (order.sizes[z] || 0) + 1;
+  }
+  const sizeOrder = SHIRT.sizes.map((z) => z.id);
+  const rows = [];
+  for (const room of roomOrder(rooms)) {
+    const students = Object.values(rooms[room.id] || {}).sort((a, b) => a.name.localeCompare(b.name));
+    for (const s of students) {
+      for (const k of Object.keys(s.orders).sort()) {
+        const order = s.orders[k];
+        for (const z of sizeOrder.filter((id) => order.sizes[id])) {
+          rows.push([room.grade, room.teacher, s.name, shirtSizeById(z).label, order.sizes[z], order.at]);
+        }
+      }
+    }
+  }
+  return { columns: ['grade', 'teacher', 'student', 'size', 'quantity', 'ordered'], rows };
+}
+
+/* What the printer is actually handed: how many of each size. Folded
+   from the sheet's own rows, so the count and the pick list can never
+   disagree about a batch. */
+export const shirtSizeTotals = ({ rows }) => {
+  const byLabel = {};
+  for (const [, , , label, qty] of rows) byLabel[label] = (byLabel[label] || 0) + qty;
+  const ordered = SHIRT.sizes
+    .filter((z) => byLabel[z.label])
+    .map((z) => ({ size: z.label, quantity: byLabel[z.label] }));
+  return { sizes: ordered, total: ordered.reduce((n, z) => n + z.quantity, 0) };
+};
+
+/* ---- the Thursday classroom digest ---------------------------------
+   Teacher addresses live here rather than in data.js: this repository
+   is public and these are staff email addresses. The PTA types them
+   into Mission Control. */
+
+export async function teacherEmails(db) {
+  const { results } = await db.prepare(
+    'SELECT classroom, email FROM teacher_emails').all();
+  const map = {};
+  for (const row of results) map[row.classroom] = row.email;
+  return map;
+}
+
+/* Replaces the whole list: the admin page edits it as one block of
+   text, so a classroom left out of the paste is one taken off the
+   send. */
+export async function setTeacherEmails(db, pairs, nowSec) {
+  const stmts = [db.prepare('DELETE FROM teacher_emails')];
+  for (const [classroom, email] of Object.entries(pairs)) {
+    stmts.push(db.prepare(
+      'INSERT INTO teacher_emails (classroom, email, updated) VALUES (?1, ?2, ?3)')
+      .bind(classroom, email, nowSec));
+  }
+  await db.batch(stmts);
+}
+
+/* The Monday of a send's week, as a plain UTC date — the key that
+   makes a second run of the same week a no-op. */
+export const weekKey = (nowMs) => {
+  const d = new Date(nowMs);
+  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+  return d.toISOString().slice(0, 10);
+};
+
+/* Claims this week's send for a classroom. Returns false if it was
+   already claimed, so a retried cron mails no one twice. */
+export async function claimDigest(db, classroom, week, nowSec) {
+  const res = await db.prepare(
+    `INSERT OR IGNORE INTO digest_log (classroom, week, sent, status)
+     VALUES (?1, ?2, ?3, 'sending')`).bind(classroom, week, nowSec).run();
+  return res.meta.changes === 1;
+}
+
+export async function finishDigest(db, classroom, week, status) {
+  await db.prepare('UPDATE digest_log SET status = ?3 WHERE classroom = ?1 AND week = ?2')
+    .bind(classroom, week, status).run();
+}
+
+/* A failed send shouldn't hold its week's slot: releasing it lets the
+   next run try that classroom again. */
+export async function releaseDigest(db, classroom, week) {
+  await db.prepare('DELETE FROM digest_log WHERE classroom = ?1 AND week = ?2')
+    .bind(classroom, week).run();
+}
+
+/* What Mission Control shows under the address list: when each class
+   last had a digest, and how it went. */
+export async function digestHistory(db) {
+  const { results } = await db.prepare(
+    `SELECT classroom, week, sent, status FROM digest_log
+     ORDER BY week DESC, classroom`).all();
+  return results;
+}
+
+/* Fix a mistyped Rocket, or merge two spellings of one kid.
+
+   Donors type names by hand, so one child arrives as "Audrey", "Audrey
+   Webber" and "audrey w". Left alone each spelling is its own Rocket:
+   the child's total splits across them and the class is credited with
+   three participants instead of one, which decides prizes. This moves
+   every credit from one spelling to another inside a single classroom.
+   Renaming to a name already there merges them, because the reports
+   group by the folded name.
+
+   Scoped to one classroom so two children who share a first name in
+   different rooms can't be merged by accident. Returns how many
+   credits moved. */
+export async function renameRocket(db, classroom, from, to) {
+  const res = await db.prepare(
+    `UPDATE donation_students SET student_name = ?3
+     WHERE classroom = ?1 AND LOWER(TRIM(student_name)) = LOWER(TRIM(?2))`)
+    .bind(classroom, from, to).run();
+  return res.meta.changes || 0;
+}
+
+/* One gift's Rockets, with what each has raised across every gift.
+
+   The donor holds the key here: their own checkout session id, which
+   Stripe puts in the thank-you URL. It is long and random, so the page
+   works as a private link the family can bookmark and come back to
+   after grandparents and neighbours give. This is the one place a
+   student name leaves the backend without the admin key, and it only
+   ever returns the names on that donor's own gift, names they typed
+   themselves. Never donor names, and never a per-donor amount. */
+/* Who a family has to thank. Public names only: those are already on
+   the honor roll, so a family learns nothing about a donor that the
+   Rally Board doesn't already say out loud. No amounts, ever — the
+   honor roll has never carried one, and choosing to be listed was not
+   agreeing to have your gift itemised to somebody's family. Anonymous
+   gifts are counted so the total still adds up, and never named.
+   Partnerships are a business's gift to the school, not a child's. A
+   partner's participation credit (`pc_`) is no gift at all, so it is
+   left out rather than counted toward anonGifts. */
+const donorsStmt = (db) => db.prepare(`
+  SELECT s.classroom, s.student_name, d.donor_name, d.visibility
+  FROM donation_students s JOIN donations d ON d.id = s.donation_id
+  WHERE d.partner_tier = '' AND d.id NOT LIKE 'pc\\_%' ESCAPE '\\'
+  ORDER BY d.created DESC, d.id DESC, s.position`);
+
+const donorsByRocket = (rows) => {
+  const out = {};
+  for (const r of rows) {
+    const key = `${r.classroom} ${r.student_name.trim().toLowerCase()}`;
+    const entry = (out[key] ||= { names: [], anon: 0, seen: new Set() });
+    const name = (r.donor_name || '').trim();
+    // A blank name is anonymous whatever the radio said.
+    if (r.visibility !== 'public' || !name) { entry.anon += 1; continue; }
+    // One line per donor: two gifts from grandma is still one thank-you.
+    const folded = name.toLowerCase();
+    if (entry.seen.has(folded)) continue;
+    entry.seen.add(folded);
+    entry.names.push(name);
+  }
+  return out;
+};
+
+export async function giftRockets(db, donationId) {
+  const { results: mine } = await db.prepare(
+    `SELECT classroom, student_name FROM donation_students
+     WHERE donation_id = ?1 ORDER BY position`).bind(donationId).all();
+  if (!mine.length) return null;
+
+  const rooms = tally((await creditsStmt(db).all()).results);
+  const donors = donorsByRocket((await donorsStmt(db).all()).results);
+  const seen = new Set();
+  const rockets = [];
+  for (const row of mine) {
+    const folded = row.student_name.trim().toLowerCase();
+    const key = `${row.classroom} ${folded}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const tallied = (rooms[row.classroom] || {})[folded];
+    const room = classroomById(row.classroom);
+    const thanks = donors[key] || { names: [], anon: 0 };
+    rockets.push({
+      name: row.student_name.trim(),
+      teacher: room ? room.teacher : '',
+      grade: room ? room.grade : '',
+      raised: tallied ? Math.round(tallied.cents / 100) : 0,
+      gifts: tallied ? tallied.gifts : 0,
+      donors: thanks.names,
+      anonGifts: thanks.anon,
+    });
+  }
+  return rockets;
+}
+
+
+/* ---- "email me my Rocket link" -------------------------------------
+
+   A donor who lost the thank-you link asks for it by email address.
+   Everything here is keyed off the address Stripe already collected on
+   their gift, so the mail can only ever go to someone who really gave,
+   at the address they gave it from. */
+
+/* Their gifts, newest first, each with the Rockets it credited. Only
+   family gifts: a business partnership credits no Rocket. */
+export async function giftsForEmail(db, email) {
+  const { results } = await db.prepare(
+    `SELECT d.id, d.created,
+            COALESCE(GROUP_CONCAT(s.student_name, ', '), '') AS rockets
+     FROM donations d JOIN donation_students s ON s.donation_id = d.id
+     WHERE LOWER(TRIM(d.email)) = LOWER(TRIM(?1)) AND d.partner_tier = ''
+     GROUP BY d.id ORDER BY d.created DESC, d.id DESC LIMIT 20`)
+    .bind(email).all();
+  return results.map((row) => ({
+    id: row.id,
+    created: row.created,
+    rockets: row.rockets.split(', ').map((n) => n.trim()).filter(Boolean),
+  }));
+}
+
+const emailHash = async (email) => {
+  const bytes = new TextEncoder().encode(email.trim().toLowerCase());
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
+};
+
+/* One send per address per cooldown. The endpoint is public and it
+   sends mail, so without this someone could use it to pester a donor,
+   or burn the sending domain's reputation. */
+export async function claimLinkRequest(db, email, nowSec, cooldownSec) {
+  const hash = await emailHash(email);
+  const row = await db.prepare(
+    'SELECT sent FROM link_requests WHERE email_hash = ?1').bind(hash).first();
+  if (row && nowSec - row.sent < cooldownSec) return false;
+  await db.prepare(
+    `INSERT INTO link_requests (email_hash, sent) VALUES (?1, ?2)
+     ON CONFLICT(email_hash) DO UPDATE SET sent = ?2`).bind(hash, nowSec).run();
+  return true;
 }

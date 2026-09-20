@@ -30,8 +30,9 @@ const min = opts.min === undefined ? null : Number(opts.min);
 const forms = opts.form === 'both' ? ['mobile', 'desktop'] : [opts.form];
 
 // The pages are the HTML files; the worker renders whatever is there.
+// The admin page is noindex, which the SEO category scores as a fault.
 const PAGES = readdirSync(new URL('../site/', import.meta.url))
-  .filter((f) => f.endsWith('.html') && f !== '404.html')
+  .filter((f) => f.endsWith('.html') && f !== '404.html' && f !== 'admin.html')
   .map((f) => f.slice(0, -5))
   .map((stem) => (stem === 'index' ? ['home', '/'] : [stem, `/${stem}`]))
   .filter(([name]) => !opts.page || name === opts.page);

@@ -7,8 +7,8 @@
 import data from '../site/js/data.js';
 import ui from '../site/js/ui.js';
 
-const { ORG, PRIORITIES, CAMPAIGN, CLASSROOMS, PARTNER_TIERS, PARTNERS, ANNUAL_LEVELS, priorityById, partnerTierById, annualLevelById, gradeName, priorityTarget, presentingPartner } = data;
-const { html, raw, money, nameList, studentRowsMarkup, LINK_ROWS, dartUp } = ui;
+const { ORG, PRIORITIES, CAMPAIGN, SHIRT, CLASSROOMS, boardClassrooms, PARTNER_TIERS, PARTNERS, ANNUAL_LEVELS, SUPPORT_ALL, priorityById, partnerTierById, annualLevelById, gradeName, priorityTarget, presentingPartner, shirtsOpen } = data;
+const { html, raw, money, nameList, studentRowsMarkup, LINK_ROWS, SHIRT_ROWS, dartUp } = ui;
 
 /* ---- motifs (from the brand guide's Spirit Kit) -------------------- */
 
@@ -61,6 +61,8 @@ const ICONS = {
     <g fill="#000000"><rect x="18.5" y="30" width="7" height="7" rx="1"/><rect x="38.5" y="30" width="7" height="7" rx="1"/></g>
     <g stroke="#FFFFFF" stroke-width="1"><path d="M22 30.5v6.5"/><path d="M18.5 33.5h7"/><path d="M42 30.5v6.5"/><path d="M38.5 33.5h7"/></g>`),
 };
+
+ICONS.all = raw(`<path d="${STAR}" transform="translate(9.2,5.2) scale(1.9)" fill="#E31E24"/>`);
 
 const icon = (id, cls = 'icon') =>
   html`<svg class="${cls}" viewBox="0 0 64 56" aria-hidden="true">${ICONS[id] || ''}</svg>`;
@@ -165,10 +167,13 @@ const mergedPartners = (online) => {
   const rank = (tier) => PARTNER_TIERS.findIndex((t) => t.id === tier);
   const byKey = new Map();
   for (const p of PARTNERS) {
-    byKey.set(key(p.name), { name: p.name, tier: p.tier || '', annual: p.annual || '', src: p.logo ? `/img/partners/${p.logo}` : '' });
+    byKey.set(key(p.name), {
+      name: p.name, tier: p.tier || '', annual: p.annual || '', label: p.label || '',
+      src: p.logo ? `/img/partners/${p.logo}` : '',
+    });
   }
   for (const p of (online || []).filter((o) => o && o.name)) {
-    const cur = byKey.get(key(p.name)) || { name: p.name, tier: '', annual: '', src: '' };
+    const cur = byKey.get(key(p.name)) || { name: p.name, tier: '', annual: '', label: '', src: '' };
     if (rank(p.tier) > rank(cur.tier)) cur.tier = p.tier;
     if (p.logo) cur.src = `/logo/${p.logo}`;
     byKey.set(key(p.name), cur);
@@ -178,9 +183,13 @@ const mergedPartners = (online) => {
     const level = annualLevelById(p.annual);
     return {
       ...p,
-      // An Annual Partner is already backing the whole year, so its
-      // level is the badge and it always keeps its logo.
-      tierName: level ? level.name : (tier ? tier.name : ''),
+      /* An Annual Partner is already backing the whole year, so its
+         level is the badge and it always keeps its logo. A plain
+         `label` is the fallback for a partner the PTA is recognising
+         without a rung: it names what they are and claims no dollar
+         figure, so a real tier — from the roster or from checkout —
+         always wins over it. */
+      tierName: level ? level.name : (tier ? tier.name : (p.label || '')),
       size: level ? level.size : 'sm',
       src: !level && tier && !tier.logo ? '' : p.src,
     };
@@ -198,6 +207,7 @@ const wallRank = (p) => {
    full-size logo cards (name, tier badge), or `empty` when nobody is
    listed yet, plus the thanks line for name-only tiers. `all` is the
    mergedPartners list. */
+const BUSINESS_LIST = new Intl.ListFormat('en', { type: 'conjunction' });
 const partnerWall = (all, empty) => {
   const logos = all.filter((p) => p.src).sort((a, b) => wallRank(a) - wallRank(b));
   const names = all.filter((p) => !p.src);
@@ -209,16 +219,21 @@ const partnerWall = (all, empty) => {
         ${p.tierName ? html`<small class="partner-tier">${p.tierName}</small>` : ''}
       </li>`)}
     </ul>` : (names.length ? '' : empty);
+  // Business names carry their own ampersands, so this list joins with "and".
   const thanks = names.length ? html`
-      <p class="partner-friends">With thanks to ${nameList(names.map((p) => p.name))}.</p>` : '';
+      <p class="partner-friends">With thanks to ${BUSINESS_LIST.format(names.map((p) => p.name))}.</p>` : '';
   return html`${cards}${thanks}`;
 };
 
 /* ---- the shared chrome ---------------------------------------------- */
 
+/* Five links is what fits two rows on a 375px phone, and the header is
+   sticky, so a sixth costs every family 37px of screen for the whole
+   visit. Business Partners is the one aimed at businesses rather than
+   families, so it comes out of the bar and stays in the footer. */
 const NAV = [
-  ['/', 'Home'], ['/rally-board', 'Rally Board'], ['/prizes', 'Prizes'],
-  ['/student-link', 'Student Link'], ['/partners', 'Business Partners'],
+  ['/', 'Home'], ['/student-link', 'Student Link'], ['/rally-board', 'Rally Board'],
+  ['/prizes', 'Prizes'], ['/why-we-rally', 'Why We Rally'],
 ];
 const current = (path, here) => (path === here ? raw(' aria-current="page"') : '');
 
@@ -239,10 +254,13 @@ export const footer = () => html`
   <nav aria-label="Footer">
     <a href="/">Home</a>
     <a href="/donate">Donate</a>
+    <a href="/student-link">Student Link</a>
+    <a href="/my-rocket">Student Progress</a>
+    <a href="/shirt">Rally Shirts</a>
     <a href="/rally-board">Rally Board</a>
     <a href="/prizes">Prizes</a>
-    <a href="/student-link">Student Link</a>
     <a href="/partners">Business Partners</a>
+    <a href="/why-we-rally">Why We Rally</a>
   </nav>
   <p>${ORG.name} &middot; Home of the Rockets &middot; Tustin Unified School District</p>
   <p>Red Hill PTA is a 501(c)(3) nonprofit, EIN ${ORG.ein} &mdash; donations are tax-deductible. Many employers match gifts &mdash; <a href="/matching">here&rsquo;s how</a>.</p>`;
@@ -256,12 +274,21 @@ export const homeSlots = (live) => {
   const per = (live && live.priorities) || {};
   const presenter = presentingPartner();
   return {
+    // The shirt callout carries the deadline while there is one to
+    // make, and the whole card goes once there isn't: a button to a
+    // closed order form is worse than no button.
+    ...(shirtsOpen()
+      ? { 'shirt-callout-note': html`Order a Rally shirt on its own &mdash; half of every shirt still counts toward your Rocket and their classroom. Ordering closes <strong>${SHIRT.deadlineLabel}</strong>.` }
+      : { 'shirt-callout': null }),
     trajectory: trajectorySVG(raised / CAMPAIGN.goal),
     presented: presenter
       ? html`<p class="presented">The 2026 Rocket Rally is generously presented by our Annual Partner <strong>${presenter.name}</strong></p>`
       : '',
     'stat-raised': html`${money(raised)}`,
     'stat-goal': html`${money(CAMPAIGN.goal)}`,
+    // The year-round partners, named on the home page. Reads the same
+    // roster the wall does, so a new Annual Partner appears in both.
+    'partner-names': html`${BUSINESS_LIST.format(PARTNERS.filter((p) => p.annual).map((p) => p.name))}`,
     'priority-grid': html`${PRIORITIES.map((p) => {
       const pRaised = per[p.id] || 0;
       return html`
@@ -279,47 +306,122 @@ export const homeSlots = (live) => {
   };
 };
 
-/* Donate, step 1: one radio card per priority. */
+/* Donate, step 1: one radio card per priority. Step 2 mentions the
+   shirt add-on, so it carries the deadline and then stops mentioning
+   shirts at all once they can't be ordered. */
 export const donateSlots = () => ({
+  'rocket-hint': shirtsOpen()
+    ? html`Every gift counts for your Rocket and their class &mdash; and a Rally shirt does too, through <strong>${SHIRT.deadlineLabel}</strong>.`
+    : html`Every gift counts for your Rocket and their class.`,
   'priority-options': html`${PRIORITIES.map((p) => html`
       <label class="option-card with-icon">
         <input type="radio" name="priority" value="${p.id}">
         ${icon(p.id)}
         <span class="name">${p.name}</span>
         <small class="desc">${p.blurb}</small>
-      </label>`)}`,
+      </label>`)}
+      <label class="option-card with-icon support-all-option">
+        <input type="radio" name="priority" value="${SUPPORT_ALL.id}">
+        ${icon(SUPPORT_ALL.id)}
+        <span class="name">${SUPPORT_ALL.name}</span>
+        <small class="desc">${SUPPORT_ALL.blurb}</small>
+      </label>`,
 });
 
 /* Rally Board: campaign totals, the classroom race (ranked by
    participation), the honor roll, and the partner strip. */
 export const boardSlots = (live) => {
   const raised = live ? live.campaign.raised : 0;
-  const gifts = live ? live.campaign.gifts : 0;
   const perClass = (live && live.classrooms) || {};
   const donors = (live && live.donors) || [];
   const partners = mergedPartners(live && live.partners);
 
-  const totals = [
-    [money(raised), 'raised of ' + money(CAMPAIGN.goal)],
-    [gifts, 'family gifts so far'],
-    [partners.length, 'business partners'],
-    [CLASSROOMS.length, 'classrooms flying'],
-  ].map(([num, label]) => html`
-      <div class="total"><span class="num money">${num}</span><span class="label">${label}</span></div>`);
+  /* Rank and count on the percentage the board prints, not the raw
+     fraction behind it: a family reads the order off the rows, and a
+     class shown at 80% that sorted below one shown at 80% because of a
+     hidden decimal reads as a broken board. Ties break on dollars,
+     which is what happens once classes start piling up at 100% —
+     everyone can reach it, so participation stops separating them. */
+  const measure = (c) => {
+    const { rockets = 0, raised = 0 } = perClass[c.id] || {};
+    const pct = c.students > 0 ? Math.min(rockets / c.students, 1) : 0;
+    return { ...c, rockets, raised, pct, shown: Math.round(pct * 100) };
+  };
 
-  const ranked = [...CLASSROOMS]
-    .map((c) => {
-      const classGifts = perClass[c.id] || 0;
-      return { ...c, gifts: classGifts, pct: c.students > 0 ? Math.min(classGifts / c.students, 1) : 0 };
-    })
-    .sort((a, b) => b.pct - a.pct);
+  /* The race, the Golden Shoe line and the prize counts all read the
+     same list, so a family can check every figure against the rows in
+     front of them. `offBoard` rooms are not in it — see data.js for
+     what that does and does not withhold. */
+  const ranked = boardClassrooms().map(measure)
+    .sort((a, b) => b.shown - a.shown || b.raised - a.raised);
+
+  /* Two headline numbers, because the Rally is run on two: dollars and
+     how many kids have participated. One number alone taught families
+     that only the money counted, which is the opposite of the point — a
+     $1 gift moves this second figure exactly as far as a $100 one. The
+     percentage carries the count under it, because a share alone does
+     not say how many children it is. Rockets are
+     capped per class the way the rows are, so the school can't read
+     over 100%. Deliberately not a gift or partner count: those invited
+     arithmetic nobody should be doing, and read as bad news early. */
+  /* Every child in the school, including the rooms the race leaves out:
+     they are Rockets, and a figure that called itself school-wide while
+     quietly dropping 26 of them would be a lie. */
+  const schoolWide = CLASSROOMS.map(measure);
+  const seats = schoolWide.reduce((n, c) => n + c.students, 0);
+  const flying = schoolWide.reduce((n, c) => n + Math.min(c.rockets, c.students), 0);
+  const totals = [
+    [money(raised), 'raised of ' + money(CAMPAIGN.goal), ''],
+    [`${seats > 0 ? Math.round((flying / seats) * 100) : 0}%`, 'of Rockets have participated',
+     `${flying} of ${seats} students`],
+  /* The count is a div, not a span: pages and stylesheet are separate
+     caches, so a phone can hold yesterday's CSS against today's markup
+     for a while after a deploy. A span in that window runs straight on
+     from the end of the label ("…PARTICIPATED40 of 505 students"); a
+     div takes its own line with no stylesheet at all. */
+  ].map(([num, label, sub]) => html`
+      <div class="total"><span class="num money">${num}</span><span class="label">${label}</span>${
+        sub ? html`<div class="sub">${sub}</div>` : ''}</div>`);
+
   const race = ranked.map((c, i) => html`
-      <li class="${i < 3 && c.gifts > 0 ? 'leader' : ''}">
+      <li class="${i < 3 && c.rockets > 0 ? 'leader' : ''}">
         <span class="rank">${i + 1}</span>
         <span class="room">${c.teacher}<small class="grade">${gradeName(c.grade)}</small></span>
         <span class="trail">${trailSVG(c.pct)}</span>
-        <span class="pct">${Math.round(c.pct * 100)}%<small class="families">${c.gifts} gift${c.gifts === 1 ? '' : 's'} &middot; class of ${c.students}</small></span>
+        <span class="pct">${c.shown}%<small>participation</small></span>
+        <span class="raised">${money(c.raised)}<small>total raised</small></span>
       </li>`);
+
+  /* The Top Class prize is decided on dollars, not participation, so
+     the class leading it needs saying out loud — the list beneath is
+     ranked the other way, and nobody should have to scan it. Early on,
+     several rooms sit level, and naming one of them as the leader is
+     the kind of thing a family writes in about. */
+  const most = Math.max(0, ...ranked.map((c) => c.raised));
+  const leaders = most > 0 ? ranked.filter((c) => c.raised === most) : [];
+  const shoeLine = !leaders.length
+    ? html`Still anyone&rsquo;s. The Top Class prize goes to the room that raises the most.`
+    : leaders.length === 1
+      ? html`<strong>${leaders[0].teacher}&rsquo;s class</strong> &middot; ${money(most)} raised`
+      : leaders.length <= 3
+        ? html`<strong>${nameList(leaders.map((c) => `${c.teacher}’s`))} classes</strong>, tied at ${money(most)}`
+        : html`<strong>${leaders.length} classes</strong> tied at ${money(most)}`;
+  const goldenShoe = html`<small class="label">Leading for the Golden Shoe &middot; dollars raised</small> ${shoeLine}`;
+
+  /* The other race is nothing like the shoe: the participation prizes
+     are thresholds, so every class that reaches one wins it and there
+     is no leader to name. Two counts say that without spelling it out,
+     and keep a class sitting at 84% from reading the board as though
+     it were losing to the room above it. */
+  const at80 = ranked.filter((c) => c.shown >= 80).length;
+  const at100 = ranked.filter((c) => c.shown >= 100).length;
+  const classes = (n) => `${n} class${n === 1 ? '' : 'es'}`;
+  const partLine = !at80
+    ? html`Every class can earn funds for classroom supplies and needs. Reach 80% participation to earn $150 and 100% participation to earn $250.`
+    : html`<strong>${classes(at80)}</strong> at 80% or more &middot; ${at100
+      ? html`<strong>${at100}</strong> at 100%`
+      : html`<strong>none</strong> at 100% yet`}`;
+  const partNote = html`<small class="label">Classroom participation</small> ${partLine}`;
 
   /* Named gifts newest first; anonymous gifts are tallied in one
      closing line so a busy campaign stays readable. */
@@ -355,6 +457,8 @@ export const boardSlots = (live) => {
   return {
     'board-totals': html`${totals}`,
     race: html`${race}`,
+    'shoe-note': goldenShoe,
+    'prize-note': partNote,
     'honor-roll': roll,
     'board-partners': partnerWall(partners, html`
       <p class="board-lede">Your business could be up here &mdash; the Rally runs September&ndash;October.</p>`),
@@ -379,4 +483,23 @@ export const partnersSlots = (live) => ({
 /* Student Link: the first (empty) row, so the form paints complete. */
 export const linkSlots = () => ({
   'sibling-rows': studentRowsMarkup([{ c: '', n: '' }], LINK_ROWS),
+});
+
+/* Shirt page: the first (empty) Rocket row with its size picker, and
+   the price line — both figures come from data.js, never the HTML.
+
+   Past the deadline the form goes rather than greys out, and the page
+   says what happened and points at the thing a family can still do.
+   `null` removes the element, so whichever of the two is wrong for the
+   moment never reaches the browser at all. */
+export const shirtSlots = () => (shirtsOpen() ? {
+  'shirt-assurance': html`Order by <strong>${SHIRT.deadlineLabel}</strong> &mdash; shirts come to your Rocket at school before Rally day`,
+  'shirt-lede': html`Rally shirts are <strong>${money(SHIRT.price)}</strong>, and <strong>${money(SHIRT.credit)}</strong> of every one counts toward your Rocket and their classroom, the same as a gift. The rest buys the shirt.`,
+  'shirt-rows': studentRowsMarkup([{ c: '', n: '', s: [] }], SHIRT_ROWS),
+  'shirt-closed': null,
+} : {
+  'shirt-assurance': html`Ordering closed ${SHIRT.deadlineLabel}`,
+  'shirt-form': null,
+  'shirt-closed': html`Shirt ordering closed <strong>${SHIRT.deadlineLabel}</strong>, so the order could reach the printer in time for Rally day. Shirts are on their way to the Rockets who ordered one.`,
+  'shirt-also': html`You can still give: <a href="/donate">make a donation</a> &mdash; every gift counts for your Rocket and their class.`,
 });

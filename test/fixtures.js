@@ -21,6 +21,8 @@ export const paidSession = (over = {}) => ({
       // Not the school's own ZIP, which the copy prints.
       state: 'CA', postal_code: '99950', country: 'US',
     },
+    // Overridable so a test can give two gifts different donors.
+    ...(over.customer_details || {}),
   },
   metadata: {
     priority: P_MAIN.id,

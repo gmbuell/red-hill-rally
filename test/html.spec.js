@@ -3,7 +3,15 @@ import ui from '../site/js/ui.js';
 import uiSource from '../site/js/ui.js?raw';
 import data from '../site/js/data.js';
 
-const { html, raw, studentRowsMarkup, LINK_ROWS } = ui;
+const { html, raw, nameList, studentRowsMarkup, LINK_ROWS } = ui;
+
+describe('nameList', () => {
+  it('joins student names with an ampersand', () => {
+    expect(nameList(['Mia'])).toBe('Mia');
+    expect(nameList(['Mia', 'Leo'])).toBe('Mia & Leo');
+    expect(nameList(['Mia', 'Leo', 'Sam'])).toBe('Mia, Leo & Sam');
+  });
+});
 
 describe('html tag', () => {
   it('escapes interpolated strings', () => {
@@ -24,13 +32,21 @@ describe('html tag', () => {
     expect(row).toContain('student’s name');
     expect(row).not.toContain('&amp;');
     expect(row).not.toContain('remove-student');
+    expect(row).not.toContain('shirt'); // the link page sells nothing
+  });
+  it('offers a shirt picker under a donate row: chosen sizes plus one empty slot', () => {
+    const [a, b] = data.SHIRT.sizes.map((z) => z.id);
+    const row = String(studentRowsMarkup([{ c: '', n: '', s: [a, b] }], { prefix: 'rocket', shirts: true, classError: 'x' }));
+    expect(row.match(/data-field="s"/g)).toHaveLength(3);
+    expect(row).toContain('Recommend sizing up. Shirts run small.');
+    for (const z of data.SHIRT.sizes) expect(row).toContain(`<option value="${z.id}">${z.label}</option>`);
   });
 });
 
 describe('ui.js as a page script', () => {
   it('uses the page globals even when something defines a `module` global', () => {
-    const load = new Function('module', 'CLASSROOMS', 'classroomById', 'MAX_NAME', 'MAX_STUDENTS', `${uiSource}\nreturn RH;`);
-    const rh = load({}, data.CLASSROOMS, data.classroomById, data.MAX_NAME, data.MAX_STUDENTS);
+    const load = new Function('module', 'CLASSROOMS', 'classroomById', 'MAX_NAME', 'MAX_STUDENTS', 'SHIRT', `${uiSource}\nreturn RH;`);
+    const rh = load({}, data.CLASSROOMS, data.classroomById, data.MAX_NAME, data.MAX_STUDENTS, data.SHIRT);
     expect(String(rh.html`<b>${'<'}</b>`)).toBe('<b>&lt;</b>');
   });
 });

@@ -5,23 +5,36 @@
    run_worker_first in wrangler.jsonc. */
 
 import { createLink, resolveLink } from './links.js';
-import { normalizeStudents } from './students.js';
+import { normalizeStudents, shirtsMetadata } from './students.js';
 import { createCheckoutSession, verifyWebhook } from './stripe.js';
-import { recordDonation, campaignStats, boardStats, exportCsv } from './store.js';
+import { recordDonation, campaignStats, boardStats, studentsReport, shirtsReport, classroomsReport, csv,
+  recordOfflineGift, deleteOfflineGift, offlineGifts,
+  teacherEmails, setTeacherEmails, weekKey, claimDigest, finishDigest, releaseDigest, digestHistory,
+  renameRocket, NO_NAME, giftRockets, giftsForEmail, claimLinkRequest,
+  recordPartnerCredit, deletePartnerCredit, partnerCredits } from './store.js';
+import { buildDigests } from './digest.js';
+import { sendEmail, mailConfigured } from './mail.js';
 import { renderPage } from './pages.js';
 import data from '../site/js/data.js';
+import ui from '../site/js/ui.js';
 
-const { ORG, MAX_NAME, MAX_AMOUNT, feeCoverCents, priorityById, partnerTierById } = data;
+const { moneyCents } = ui;
+const { ORG, MAX_NAME, MAX_AMOUNT, SHIRT, STUDENT_GOAL, feeCoverCents, priorityById, partnerTierById, classroomById, CLASSROOMS, shirtsOpen } = data;
 
 /* The charge description prints on every Stripe receipt, making it the
-   donor's IRS written acknowledgment (Pub 1771): org name + the
-   no-goods-or-services statement; amount and date are on the receipt
-   itself. Required for donors to deduct gifts of $250+ — edit with
-   care. */
-const TAX_ACKNOWLEDGMENT =
-  `Tax-deductible donation to ${ORG.name}` +
-  (ORG.ein ? ` (EIN ${ORG.ein})` : '') +
-  '. No goods or services were provided in exchange for this contribution.';
+   donor's IRS written acknowledgment (Pub 1771): org name, and either
+   the no-goods-or-services statement or, when the payment bought
+   shirts, their description and good-faith value with the deductible
+   remainder; date is on the receipt itself. Required for donors to
+   deduct gifts of $250+ — edit with care. */
+const TAX_ACKNOWLEDGMENT = (totalCents, shirts) => {
+  const org = `Tax-deductible donation to ${ORG.name}${ORG.ein ? ` (EIN ${ORG.ein})` : ''}.`;
+  if (!shirts) return `${org} No goods or services were provided in exchange for this contribution.`;
+  const value = shirts * SHIRT.value * 100;
+  return `${org} Of this ${moneyCents(totalCents)} payment, ${moneyCents(value)} is the estimated fair market value of ` +
+    `${shirts} Rocket Rally shirt${shirts === 1 ? '' : 's'} provided in return; ` +
+    `the remaining ${moneyCents(totalCents - value)} is a contribution for which no other goods or services were provided.`;
+};
 
 const json = (body, status = 200, headers = {}) =>
   new Response(JSON.stringify(body), {
@@ -68,17 +81,19 @@ async function handleLinkVerify(request, env) {
    voluntary fee cover (computed here, never client-side — the webhook
    subtracts fee_cents back out so stats count the gift), the receipt
    description, and the hand-off to Stripe's page. */
-const startCheckout = async (env, { amountCents, coverFees, productName, successUrl, cancelUrl, metadata }) => {
+const startCheckout = async (env, { amountCents, shirts = 0, coverFees, productName, successUrl, cancelUrl, metadata }) => {
   if (!env.STRIPE_SECRET_KEY) {
     return json({ error: 'Online giving isn’t quite open yet — please check back soon!' }, 503);
   }
-  const feeCents = coverFees === true ? feeCoverCents(amountCents) : 0;
+  const lineItems = [];
+  if (amountCents > 0) lineItems.push({ name: productName, cents: amountCents });
+  if (shirts > 0) lineItems.push({ name: 'Rocket Rally shirt', cents: SHIRT.price * 100, quantity: shirts });
+  const charged = amountCents + shirts * SHIRT.price * 100;
+  const feeCents = coverFees === true ? feeCoverCents(charged) : 0;
+  if (feeCents > 0) lineItems.push({ name: 'Covering processing fees', cents: feeCents });
   const session = await createCheckoutSession(env, {
-    amountCents,
-    productName,
-    feeCents,
-    feeName: 'Covering processing fees',
-    description: TAX_ACKNOWLEDGMENT,
+    lineItems,
+    description: TAX_ACKNOWLEDGMENT(charged + feeCents, shirts),
     successUrl,
     cancelUrl,
     metadata: { ...metadata, fee_cents: String(feeCents) },
@@ -96,8 +111,10 @@ async function handleCheckout(request, env, url) {
   const priority = priorityById(body.priority);
   if (!priority) return json({ error: 'Please pick a priority to fund.' }, 400);
 
+  // $0 is allowed for a shirt-only order; that is checked once the
+  // Rockets and their shirts are known.
   const amount = Number(body.amount);
-  if (!Number.isInteger(amount) || amount < 1 || amount > MAX_AMOUNT) {
+  if (!Number.isInteger(amount) || amount < 0 || amount > MAX_AMOUNT) {
     return json({ error: `Please choose a whole-dollar amount between $1 and $${MAX_AMOUNT.toLocaleString('en-US')}.` }, 400);
   }
 
@@ -109,37 +126,55 @@ async function handleCheckout(request, env, url) {
 
   // The Rockets this gift credits: from the link if there is one,
   // otherwise the wizard's rows (validated here, never trusted).
-  let students;
+  let raw = body.students;
   let viaLink = false;
   if (body.link) {
-    students = await linkStudents(env.DB, body.link);
-    if (!students) {
+    const linked = await linkStudents(env.DB, body.link);
+    if (!linked) {
       // `reason` lets the wizard drop the dead link and show the rows.
       return json({ error: 'That student link is no longer valid — you can still type the student’s name on the previous step.', reason: 'link' }, 400);
     }
+    // The wizard's shirt sizes arrive in link order, one list per Rocket.
+    const shirts = Array.isArray(body.shirts) ? body.shirts : [];
+    raw = linked.map((st, i) => ({ ...st, s: shirts[i] }));
     viaLink = true;
-  } else {
-    const norm = normalizeStudents(body.students);
-    if (norm.error) return json({ error: norm.error }, 400);
-    students = norm.students;
+  }
+  const norm = normalizeStudents(raw);
+  if (norm.error) return json({ error: norm.error }, 400);
+  const students = norm.students;
+  const shirts = students.reduce((n, st) => n + (st.s ? st.s.length : 0), 0);
+  // The pages stop offering shirts at the deadline, but a form left
+  // open in a tab through Friday evening would still post sizes. The
+  // charge is the last chance to refuse one; taking the money for a
+  // shirt that can't be printed is the failure worth preventing.
+  if (shirts && !shirtsOpen()) {
+    return json({ error: `Shirt ordering closed ${SHIRT.deadlineLabel}. A gift still counts for your Rocket — please refresh the page.` }, 400);
+  }
+  if (!amount && !shirts) {
+    return json({ error: 'Please choose a gift amount, or add a Rally shirt.' }, 400);
   }
   // Stripe caps a metadata value at 500 characters. Four 80-character
   // names fit (~425) unless a name is mostly quotes and backslashes.
-  const studentsJson = JSON.stringify(students);
+  const studentsJson = JSON.stringify(students.map(({ c, n }) => ({ c, n })));
   if (studentsJson.length > 500) {
     return json({ error: 'Please shorten the student names.' }, 400);
   }
 
   return startCheckout(env, {
     amountCents: amount * 100,
+    shirts,
     coverFees: body.coverFees,
     productName: `Rocket Rally — ${priority.name}`,
-    successUrl: `${url.origin}/thanks?p=${priority.id}&amt=${amount}&sid={CHECKOUT_SESSION_ID}`,
-    // Backing out of Stripe returns to the wizard with the link intact.
-    cancelUrl: `${url.origin}/donate?p=${priority.id}${viaLink ? `&link=${encodeURIComponent(body.link)}` : ''}`,
+    successUrl: `${url.origin}/thanks?p=${priority.id}&amt=${amount}&shirts=${shirts}&sid={CHECKOUT_SESSION_ID}`,
+    // Backing out of Stripe returns where the order started: the shirt
+    // page, or the wizard with its link intact.
+    cancelUrl: body.back === 'shirt'
+      ? `${url.origin}/shirt`
+      : `${url.origin}/donate?p=${priority.id}${viaLink ? `&link=${encodeURIComponent(body.link)}` : ''}`,
     metadata: {
       priority: priority.id,
       students: studentsJson,
+      shirts: shirtsMetadata(students),
       donor_name: donorName,
       visibility,
       employer_match: body.match ? '1' : '0',
@@ -282,24 +317,331 @@ async function handleWebhook(request, env) {
   return json({ received: true });
 }
 
-/* Prefer `Authorization: Bearer <ADMIN_KEY>` — the ?key= form works too
-   but leaves the key in browser history and logged request URLs. */
-async function handleExport(request, url, env) {
+/* The PTA's reports: each as a CSV, and all three at once as JSON
+   for /admin. Prefer `Authorization: Bearer <ADMIN_KEY>` — the ?key=
+   form works too but leaves the key in browser history and logged
+   request URLs. */
+const REPORTS = { students: studentsReport, shirts: shirtsReport, classrooms: classroomsReport };
+
+const adminKeyOk = async (request, url, env) => {
   const auth = request.headers.get('authorization') || '';
   const key = (auth.startsWith('Bearer ') ? auth.slice(7) : '') ||
     url.searchParams.get('key') || '';
-  if (!env.ADMIN_KEY || !(await timingSafeStringEqual(key, env.ADMIN_KEY))) {
+  return !!env.ADMIN_KEY && await timingSafeStringEqual(key, env.ADMIN_KEY);
+};
+
+/* A gift the PTA took in by hand: a check left in the office, cash at a
+   Gathering. Validated exactly like a card gift — the same amount
+   limits, the same roster check on the Rockets — because it reaches
+   the same tables and the same public totals. */
+async function handleOfflineGift(request, env, url) {
+  if (!(await adminKeyOk(request, url, env))) return json({ error: 'unauthorized' }, 401);
+
+  if (request.method === 'DELETE') {
+    const removed = await deleteOfflineGift(env.DB, url.searchParams.get('id') || '');
+    return removed ? json({ removed: true }) : json({ error: 'That gift is no longer here.' }, 404);
+  }
+
+  const body = await request.json().catch(() => null);
+  if (!body) return json({ error: 'Please try that again.' }, 400);
+
+  const priority = priorityById(body.priority);
+  if (!priority) return json({ error: 'Pick which priority this gift is for.' }, 400);
+
+  const amount = Number(body.amount);
+  if (!Number.isInteger(amount) || amount < 1 || amount > MAX_AMOUNT) {
+    return json({ error: `Enter a whole-dollar amount between $1 and $${MAX_AMOUNT.toLocaleString('en-US')}.` }, 400);
+  }
+
+  const visibility = body.visibility === 'anon' ? 'anon' : 'public';
+  const donorName = typeof body.donorName === 'string' ? body.donorName.trim().slice(0, MAX_NAME) : '';
+  if (visibility === 'public' && !donorName) {
+    return json({ error: 'Enter the name to list on the honor roll, or mark it anonymous.' }, 400);
+  }
+
+  const norm = normalizeStudents(body.students);
+  if (norm.error) return json({ error: norm.error }, 400);
+
+  const id = await recordOfflineGift(env.DB, {
+    amountCents: amount * 100,
+    priority: priority.id,
+    donorName,
+    visibility,
+    // A shirt is bought, never recorded by hand, so sizes are dropped.
+    students: norm.students.map((s) => ({ c: s.c, n: s.n })),
+    createdSec: Math.floor(Date.now() / 1000),
+  });
+  return json({ id });
+}
+
+/* What a donor's own Rockets have raised, for the thank-you page.
+
+   The gate is the donor's Stripe session id, which only they hold:
+   Stripe fills it into the success URL, so the thank-you page doubles
+   as a private link the family can bookmark and come back to as more
+   gifts land. An id nobody holds, or one crediting no Rocket, gets
+   nothing back.
+
+   Deliberately no donor names and no per-donor amounts. Donors chose
+   public or anonymous for the honor roll, and neither of those was
+   consent to be itemised to a family. */
+async function handleGiftRockets(request, env, url) {
+  const sid = url.searchParams.get('sid') || '';
+  // Input hygiene, not the lock: the two id shapes that exist, at a
+  // sane length. What actually protects a family is that a real Stripe
+  // session id is long and random, and an id nobody holds matches no
+  // row.
+  if (!/^(cs|off)_[A-Za-z0-9_]{1,100}$/.test(sid)) {
+    return json({ error: 'not found' }, 404);
+  }
+  const rockets = await giftRockets(env.DB, sid);
+  if (!rockets) return json({ error: 'not found' }, 404);
+  return json({ rockets, goal: STUDENT_GOAL }, 200, { 'cache-control': 'no-store' });
+}
+
+/* A partner's own child, credited as a participant with no dollars.
+
+   The partnership money already counts once in the campaign total and
+   is kept out of the classroom race on purpose, so this records the
+   participation alone. See recordPartnerCredit in store.js. */
+async function handlePartnerCredit(request, env, url) {
+  if (!(await adminKeyOk(request, url, env))) return json({ error: 'unauthorized' }, 401);
+
+  if (request.method === 'DELETE') {
+    const removed = await deletePartnerCredit(env.DB, url.searchParams.get('id') || '');
+    return removed ? json({ removed: true }) : json({ error: 'That credit is no longer here.' }, 404);
+  }
+
+  const body = await request.json().catch(() => null);
+  if (!body) return json({ error: 'Please try that again.' }, 400);
+
+  const business = typeof body.business === 'string' ? body.business.trim().slice(0, MAX_NAME) : '';
+  if (!business) return json({ error: 'Which partner is this for?' }, 400);
+
+  const norm = normalizeStudents(body.students);
+  if (norm.error) return json({ error: norm.error }, 400);
+  // A credit with no named Rocket would count nobody, so it is a
+  // mistake worth refusing rather than recording.
+  if (!norm.students.length || norm.students.some((s) => !s.n)) {
+    return json({ error: 'Name the student this credit is for.' }, 400);
+  }
+
+  const id = await recordPartnerCredit(env.DB, {
+    businessName: business,
+    students: norm.students.map((s) => ({ c: s.c, n: s.n })),
+    createdSec: Math.floor(Date.now() / 1000),
+  });
+  return json({ id });
+}
+
+/* "Email me my Rocket link", for a family who lost the thank-you page.
+
+   The address is the whole check: the mail goes only to the address
+   typed, and only if Stripe recorded a gift from it. So the answer to
+   the browser is always the same, whether or not that address ever
+   gave. Saying "we found nothing" would turn this into a way to ask
+   the site who donated. */
+const LINK_COOLDOWN_SEC = 15 * 60;
+
+async function handleMyLink(request, env, url) {
+  const body = await request.json().catch(() => null);
+  const email = body && typeof body.email === 'string' ? body.email.trim().slice(0, 200) : '';
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return json({ error: 'Please check that address and try again.' }, 400);
+  }
+  // Everything past here answers the same way, on purpose.
+  const done = () => json({ sent: true });
+  if (!mailConfigured(env)) return done();
+
+  const gifts = await giftsForEmail(env.DB, email);
+  if (!gifts.length) return done();
+  if (!(await claimLinkRequest(env.DB, email, Math.floor(Date.now() / 1000), LINK_COOLDOWN_SEC))) {
+    return done();
+  }
+
+  const lines = ['Here are your Rocket Rally links.', ''];
+  for (const gift of gifts) {
+    const who = gift.rockets.length ? gift.rockets.join(' and ') : 'your gift';
+    const when = new Date(gift.created * 1000).toLocaleDateString('en-US', {
+      month: 'long', day: 'numeric', timeZone: 'America/Los_Angeles',
+    });
+    lines.push(`${who} (${when})`);
+    lines.push(`${url.origin}/thanks?sid=${encodeURIComponent(gift.id)}`);
+    lines.push('');
+  }
+  lines.push('Each link shows the total raised for that student, every gift counted,');
+  lines.push('and it stays up to date, so bookmark it and check back as the Rally');
+  lines.push('goes on.');
+  lines.push('');
+  lines.push('Thank you for rallying with us,');
+  lines.push('Red Hill Elementary PTA');
+
+  await sendEmail(env, {
+    to: email,
+    subject: 'Your Rocket Rally link',
+    text: lines.join('\n'),
+  });
+  return done();
+}
+
+/* Fixing a Rocket's name. Donors type names by hand, so one child can
+   arrive three ways; each spelling counts as its own Rocket, which
+   splits their total and inflates the class's participation. This
+   moves every credit from one spelling to another inside one
+   classroom, and merges them when the target name is already there.
+
+   The classroom is part of the request precisely so it can't reach a
+   same-named child in another room. */
+async function handleRenameRocket(request, env, url) {
+  if (!(await adminKeyOk(request, url, env))) return json({ error: 'unauthorized' }, 401);
+  const body = await request.json().catch(() => null);
+  if (!body) return json({ error: 'Please try that again.' }, 400);
+
+  const room = classroomById(typeof body.classroom === 'string' ? body.classroom : '');
+  if (!room) return json({ error: 'Please choose a classroom.' }, 400);
+
+  // '' is a real value here: it's the credit whose donor left the name
+  // box empty, which the PTA can now put a name to.
+  const from = typeof body.from === 'string' ? body.from.trim() : null;
+  const to = typeof body.to === 'string' ? body.to.trim().slice(0, MAX_NAME) : '';
+  if (from === null) return json({ error: 'Please pick the name to fix.' }, 400);
+  if (!to) return json({ error: 'Please give the name it should be.' }, 400);
+
+  const moved = await renameRocket(env.DB, room.id, from, to);
+  if (!moved) return json({ error: 'No gifts in that class carry that name.' }, 404);
+  return json({ moved, to });
+}
+
+/* The Thursday digest's address book. The whole list is replaced at
+   once: Mission Control edits it as one block, so a classroom left out
+   of the paste is a classroom taken off the send. */
+async function handleTeacherEmails(request, env, url) {
+  if (!(await adminKeyOk(request, url, env))) return json({ error: 'unauthorized' }, 401);
+  const body = await request.json().catch(() => null);
+  if (!body || !Array.isArray(body.rows)) return json({ error: 'Please try that again.' }, 400);
+
+  const pairs = {};
+  const unknown = [];
+  for (const row of body.rows.slice(0, CLASSROOMS.length * 2)) {
+    const classroom = typeof row.c === 'string' ? row.c : '';
+    const email = typeof row.e === 'string' ? row.e.trim().slice(0, 200) : '';
+    if (!classroomById(classroom)) { unknown.push(classroom); continue; }
+    // Not a validator so much as a typo catch: one @, something either
+    // side of it, and no spaces.
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { unknown.push(classroom); continue; }
+    pairs[classroom] = email;
+  }
+  if (unknown.length) {
+    return json({ error: 'Some rows didn’t look right — check the classroom and the address.', rows: unknown }, 400);
+  }
+  await setTeacherEmails(env.DB, pairs, Math.floor(Date.now() / 1000));
+  return json({ saved: Object.keys(pairs).length });
+}
+
+/* Sends one classroom's digest to whoever asked for it, so the PTA can
+   read exactly what a teacher will get before Thursday. It never mails
+   a teacher: the address is the one on this request. */
+async function handleDigestTest(request, env, url) {
+  if (!(await adminKeyOk(request, url, env))) return json({ error: 'unauthorized' }, 401);
+  if (!mailConfigured(env)) {
+    return json({ error: 'Email isn’t switched on for this site yet.' }, 503);
+  }
+  const body = await request.json().catch(() => null);
+  const to = body && typeof body.to === 'string' ? body.to.trim() : '';
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
+    return json({ error: 'Please give an address to send the sample to.' }, 400);
+  }
+  const digests = await buildDigests(env.DB, Date.now());
+  const pick = digests.find((d) => d.classroom === (body.classroom || '')) || digests[0];
+  const sent = await sendEmail(env, {
+    to,
+    subject: `[sample] ${pick.subject}`,
+    text: `This is the sample copy of Thursday's email. The real one goes to ${pick.teacher}.\n\n${'-'.repeat(60)}\n\n${pick.body}`,
+  });
+  return sent.ok ? json({ sent: true, classroom: pick.classroom })
+    : json({ error: sent.error }, 502);
+}
+
+/* The Thursday send. Every classroom with an address gets its own
+   email; the week key means a retried cron mails no one twice, and a
+   failed send releases its slot so the next run can try again. */
+export async function sendWeeklyDigests(env, nowMs = Date.now()) {
+  if (!mailConfigured(env)) {
+    console.log(JSON.stringify({ event: 'digest_skipped', reason: 'email not configured' }));
+    return { sent: 0, skipped: 0, failed: 0 };
+  }
+  const [addresses, digests] = await Promise.all([
+    teacherEmails(env.DB),
+    buildDigests(env.DB, nowMs),
+  ]);
+  const week = weekKey(nowMs);
+  const nowSec = Math.floor(nowMs / 1000);
+  let sent = 0, skipped = 0, failed = 0;
+
+  for (const digest of digests) {
+    const to = addresses[digest.classroom];
+    if (!to) { skipped += 1; continue; }
+    if (!(await claimDigest(env.DB, digest.classroom, week, nowSec))) { skipped += 1; continue; }
+    const res = await sendEmail(env, { to, subject: digest.subject, text: digest.body });
+    if (res.ok) {
+      sent += 1;
+      await finishDigest(env.DB, digest.classroom, week, 'sent');
+    } else {
+      failed += 1;
+      // Let next week's run — or a hand-fired one — try this class again.
+      await releaseDigest(env.DB, digest.classroom, week);
+    }
+  }
+  console.log(JSON.stringify({ event: 'digest_run', week, sent, skipped, failed }));
+  return { sent, skipped, failed };
+}
+
+async function handleReport(request, url, env, name) {
+  if (!(await adminKeyOk(request, url, env))) {
     return json({ error: 'unauthorized' }, 401);
   }
-  return new Response(await exportCsv(env.DB), {
+  if (name === 'admin') {
+    const [stats, ...reports] = await Promise.all([
+      campaignStats(env.DB), ...Object.values(REPORTS).map((report) => report(env.DB)),
+    ]);
+    const [offline, addresses, history, credits] = await Promise.all([
+      offlineGifts(env.DB), teacherEmails(env.DB), digestHistory(env.DB),
+      partnerCredits(env.DB),
+    ]);
+    const body = {
+      campaign: stats.campaign,
+      offline,
+      credits,
+      digest: { emails: addresses, history, ready: mailConfigured(env) },
+      // So the page can tell an unnamed credit from a real name
+      // without repeating the label.
+      noName: NO_NAME,
+    };
+    Object.keys(REPORTS).forEach((key, i) => { body[key] = reports[i]; });
+    return json(body, 200, { 'cache-control': 'no-store' });
+  }
+  /* The shirts sheet takes a batch window. shirtsReport parses and
+     bounds it — a bare day, a day and a time, or nothing — so the
+     route just hands the raw strings over. */
+  const opts = name === 'shirts'
+    ? { from: url.searchParams.get('from') || '', to: url.searchParams.get('to') || '' }
+    : undefined;
+  return new Response(csv(await REPORTS[name](env.DB, opts)), {
     headers: {
       'content-type': 'text/csv; charset=utf-8',
-      'content-disposition': 'attachment; filename="rocket-rally-students.csv"',
+      'content-disposition': `attachment; filename="rocket-rally-${name}.csv"`,
     },
   });
 }
 
 export default {
+  /* Thursday, 5pm Pacific (the cron in wrangler.jsonc is UTC). A
+     scheduled event can be retried, which is why the send claims each
+     classroom's week before mailing it. */
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(sendWeeklyDigests(env, event.scheduledTime || Date.now()));
+  },
+
   async fetch(request, env) {
     const url = new URL(request.url);
     // One canonical host, so shared links and search results agree.
@@ -370,7 +712,20 @@ export default {
         case 'POST /api/partner/checkout': return await handlePartnerCheckout(request, env, url);
         case 'POST /api/partner/logo': return await handleLogoUpload(request, env, url);
         case 'POST /api/stripe/webhook': return await handleWebhook(request, env);
-        case 'GET /api/export.csv': return await handleExport(request, url, env);
+        case 'POST /api/offline-gift':
+        case 'DELETE /api/offline-gift': return await handleOfflineGift(request, env, url);
+        case 'POST /api/teacher-emails': return await handleTeacherEmails(request, env, url);
+        case 'POST /api/rename-rocket': return await handleRenameRocket(request, env, url);
+        case 'GET /api/my-rockets': return await handleGiftRockets(request, env, url);
+        case 'POST /api/my-link': return await handleMyLink(request, env, url);
+        case 'POST /api/digest-test': return await handleDigestTest(request, env, url);
+        case 'POST /api/partner-credit':
+        case 'DELETE /api/partner-credit': return await handlePartnerCredit(request, env, url);
+        case 'GET /api/students.csv':
+        case 'GET /api/shirts.csv':
+        case 'GET /api/classrooms.csv':
+        case 'GET /api/admin.json':
+          return await handleReport(request, url, env, url.pathname.slice(5).replace(/\.(csv|json)$/, ''));
         default: return json({ error: 'not found' }, 404);
       }
     } catch (err) {

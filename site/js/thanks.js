@@ -4,6 +4,10 @@
   const { html } = RH;
   const p = priorityById(RH.param('p'));
   const amt = Number(RH.param('amt')) || 0;
+  const shirts = Number(RH.param('shirts')) || 0;
+  const shirtLine = shirts
+    ? html` Your <strong>${shirts} Rally shirt${shirts === 1 ? '' : 's'}</strong> will reach your Rocket at school.`
+    : '';
   const partnerTier = partnerTierById(RH.param('partner'));
   const line = RH.qs('#impact-line');
 
@@ -16,17 +20,62 @@
     const top = p.tiers[p.tiers.length - 1];
     const tier = p.tiers.find((t) => t.amount === amt)
       || (top && top.plus && amt >= top.amount ? top : null);
-    line.innerHTML = tier
-      ? html`Your <strong>${RH.money(amt)}</strong> gift to <strong>${p.name}</strong>: ${tier.impact}.`
-      : html`Your <strong>${RH.money(amt)}</strong> is real, visible support for <strong>${p.name}</strong>.`;
+    line.innerHTML = html`${tier
+      ? html`Your <strong>${RH.money(amt)}</strong> gift to <strong>${p.sentenceName || p.name}</strong>: ${tier.impact}.`
+      : html`Your <strong>${RH.money(amt)}</strong> is real, visible support for <strong>${p.name}</strong>.`}${shirtLine}`;
+  } else if (p && shirts) {
+    line.innerHTML = html`<strong>${RH.money(shirts * SHIRT.credit)}</strong> of your shirt order goes to <strong>${p.sentenceName || p.name}</strong>, and counts for your Rocket.${shirtLine}`;
   } else {
     line.textContent =
       'Your gift joins hundreds of families powering the Rally.';
   }
 
+  const sid = RH.param('sid') || '';
+
+  /* What this donor's Rockets have raised, all gifts counted, not just
+     this one. The session id in the URL is the family's own key, so the
+     page keeps working when they come back to it days later and the
+     number has moved. Totals only: no donor names, ever. */
+  const rocketPanel = RH.qs('#rocket-panel');
+  if (sid && rocketPanel) {
+    fetch(`/api/my-rockets?sid=${encodeURIComponent(sid)}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!data || !data.rockets || !data.rockets.length) return;
+        const goal = Number(data.goal) || 0;
+        RH.qs('#rocket-head').textContent =
+          data.rockets.length > 1 ? 'Your Rockets so far' : 'Your Rocket so far';
+        RH.qs('#rocket-totals').innerHTML = html`${data.rockets.map((r) => {
+          const left = goal - r.raised;
+          /* Who to thank. Names only, and only the donors who asked to
+             be listed; an anonymous gift counts in the total and is
+             never named, and no line carries an amount. */
+          const names = r.donors || [];
+          const anon = Number(r.anonGifts) || 0;
+          const anonLine = anon > 0
+            ? `${names.length ? 'and ' : ''}${anon} anonymous gift${anon === 1 ? '' : 's'}`
+            : '';
+          return html`
+          <li>
+            <span class="who">${r.name || 'Your Rocket'}</span>
+            <span class="amount">${RH.money(r.raised)}</span>
+            <small class="meta">${r.gifts} gift${r.gifts === 1 ? '' : 's'}${r.teacher ? ` · ${r.teacher}` : ''}${
+            goal > 0 ? (left > 0 ? ` · ${RH.money(left)} to go` : ' · goal reached') : ''}</small>
+            ${names.length || anonLine ? html`
+            <small class="thanks-list">
+              <span class="thanks-lead">With thanks to</span>
+              ${names.map((n) => html`<span class="thanks-name">${n}</span>`)}
+              ${anonLine ? html`<span class="thanks-anon">${anonLine}</span>` : ''}
+            </small>` : ''}
+          </li>`;
+        })}`;
+        rocketPanel.hidden = false;
+      })
+      .catch(() => { /* the panel simply stays hidden */ });
+  }
+
   /* Partner arrivals add their logo right here, tied to the paid
      Stripe session (the sid Stripe fills into the success URL). */
-  const sid = RH.param('sid') || '';
   const logoPanel = RH.qs('#logo-panel');
   // Only a tier that earns a logo is shown the uploader.
   if (partnerTier && partnerTier.logo && /^cs_[A-Za-z0-9_]+$/.test(sid) && logoPanel) {

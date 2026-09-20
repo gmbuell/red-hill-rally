@@ -5,7 +5,7 @@ const enc = new TextEncoder();
 
 /* Returns the session object ({id, url, ...}) or null on any Stripe
    error (already logged; the caller turns null into a friendly 502). */
-export async function createCheckoutSession(env, { amountCents, productName, feeCents, feeName, successUrl, cancelUrl, description, metadata }) {
+export async function createCheckoutSession(env, { lineItems, successUrl, cancelUrl, description, metadata }) {
   const params = new URLSearchParams();
   params.set('mode', 'payment');
   params.set('submit_type', 'donate');
@@ -27,18 +27,14 @@ export async function createCheckoutSession(env, { amountCents, productName, fee
   // donor's full billing address — both come back in the webhook's
   // customer_details for the PTA's records.
   params.set('billing_address_collection', 'required');
-  params.set('line_items[0][quantity]', '1');
-  params.set('line_items[0][price_data][currency]', 'usd');
-  params.set('line_items[0][price_data][unit_amount]', String(amountCents));
-  params.set('line_items[0][price_data][product_data][name]', productName);
-  // The donor's opt-in fee cover rides as its own line item, so the
-  // receipt itemizes the gift and the extra separately.
-  if (feeCents > 0) {
-    params.set('line_items[1][quantity]', '1');
-    params.set('line_items[1][price_data][currency]', 'usd');
-    params.set('line_items[1][price_data][unit_amount]', String(feeCents));
-    params.set('line_items[1][price_data][product_data][name]', feeName);
-  }
+  // The gift, the shirts, and the donor's opt-in fee cover each ride
+  // as their own line item, so the receipt itemizes them.
+  lineItems.forEach(({ name, cents, quantity = 1 }, i) => {
+    params.set(`line_items[${i}][quantity]`, String(quantity));
+    params.set(`line_items[${i}][price_data][currency]`, 'usd');
+    params.set(`line_items[${i}][price_data][unit_amount]`, String(cents));
+    params.set(`line_items[${i}][price_data][product_data][name]`, name);
+  });
   for (const [key, value] of Object.entries(metadata)) {
     params.set(`metadata[${key}]`, value);
   }

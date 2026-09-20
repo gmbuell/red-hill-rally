@@ -11,16 +11,71 @@ const ORG = {
   ein: '33-0973857',
 };
 
+/* What one Rocket is asked to raise, framed on family materials as
+   "ask four people for $25". The thank-you page measures a Rocket's
+   running total against it. */
+const STUDENT_GOAL = 100;
+
 /* Gift limits, enforced by the API and mirrored by the donate form. */
 const MAX_NAME = 80;      // characters, donor and student names
 const MAX_AMOUNT = 50000; // dollars, per gift
 const MAX_STUDENTS = 4;   // Rockets credited per gift, and per family link
+const MAX_SHIRTS = 10;    // shirts per checkout
+
+/* The Rally shirt, an add-on under each Rocket on the donate form. A
+   family pays `price`; `credit` of it counts as fundraising for that
+   Rocket and their classroom (the rest is the shirt), and `value` is
+   the good-faith fair-market value the receipt states, the part of
+   the payment a donor may not deduct (IRS Pub 1771). */
+const SHIRT = {
+  price: 20,
+  credit: 10,
+  value: 10,
+  /* Ordering closes when the order goes to the printer. A shirt bought
+     after this can't be printed and handed out before Rally day, so
+     the site stops taking them rather than sell a family a shirt that
+     never arrives. `deadline` is Pacific and `deadlineLabel` is the
+     same moment in words; move the two together. */
+  deadline: '2026-09-25 19:00',
+  deadlineLabel: 'Friday, September 25 at 7pm',
+  sizes: [
+    { id: 'YXS', label: 'Youth XS' },
+    { id: 'YS', label: 'Youth S' },
+    { id: 'YM', label: 'Youth M' },
+    { id: 'YL', label: 'Youth L' },
+    { id: 'YXL', label: 'Youth XL' },
+    { id: 'AS', label: 'Adult S' },
+    { id: 'AM', label: 'Adult M' },
+    { id: 'AL', label: 'Adult L' },
+    { id: 'AXL', label: 'Adult XL' },
+    { id: 'A2XL', label: 'Adult 2XL' },
+  ],
+};
+const shirtSizeById = (id) => SHIRT.sizes.find((z) => z.id === id) || null;
+
+/* The school's clock. Wherever the site or the printer's sheet names a
+   moment it is Pacific, never UTC: an order at 6pm reads as tomorrow
+   in UTC, which would close ordering a day early for somebody and
+   file that shirt in the wrong batch. `YYYY-MM-DD HH:MM` sorts as a
+   string, so a plain comparison answers both questions. */
+const PACIFIC_FMT = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'America/Los_Angeles',
+  year: 'numeric', month: '2-digit', day: '2-digit',
+  hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+});
+const pacificAt = (date) => PACIFIC_FMT.format(date).replace(',', '');
+
+/* Are shirts still on sale? The deadline minute itself is still open:
+   a family clicking Continue at 7:00 gets their shirt. Every page that
+   offers a shirt asks this, and so does the checkout, so a page left
+   open through the deadline can't slip an order past it. */
+const shirtsOpen = (now = new Date()) => pacificAt(now) <= SHIRT.deadline;
 
 /* Optional donor-paid fee cover, shared by the worker (authoritative)
    and the donate form (display). The gross-up finds the extra cents so
-   the PTA nets the full gift after Stripe's 2.9% + 30¢:
-   total = (gift + 30¢) / (1 − 2.9%). */
-const FEE_RATE = 0.029;
+   the PTA nets the full gift after Stripe's nonprofit rate,
+   2.2% + 30¢: total = (gift + 30¢) / (1 − 2.2%). */
+const FEE_RATE = 0.022;
 const FEE_FLAT_CENTS = 30;
 const feeCoverCents = (amountCents) =>
   Math.round((amountCents + FEE_FLAT_CENTS) / (1 - FEE_RATE)) - amountCents;
@@ -34,7 +89,7 @@ const PRIORITIES = [
     id: 'people',
     name: 'Essential Support Staff',
     goal: 90000,
-    blurb: 'Red Hill’s PTA funds what district budgets don’t: a school counselor for every child navigating a hard moment, a dedicated PE teacher, and Tier II academic support that catches struggling readers and mathematicians early. About $90,000 a year — the quiet backbone of the whole school.',
+    blurb: 'PTA funding helps provide the people and support our district budget doesn’t fully cover, including counseling, PE and academic intervention.',
     circle: { min: 500, label: 'Counselor Circle' },
     tiers: [
       { amount: 25, impact: 'Joins hundreds of families powering the annual fund' },
@@ -47,7 +102,7 @@ const PRIORITIES = [
     id: 'stem',
     name: 'The STEM Lab',
     goal: 25000,
-    blurb: 'New this year: a hands-on STEM enrichment lab in our library run by All Things Science — circuits, chemistry, coding, and engineering challenges for every class, TK through 5th. The kind of science one teacher with thirty kids can’t stage alone, made routine. The program costs $25,000 a year and scales directly with support: your gift literally buys lab time for all 510 Rockets.',
+    blurb: 'A hands-on STEM enrichment lab where every student explores science, engineering, coding and more through grade-level activities.',
     circle: { min: 500, label: 'Lab Sponsor' },
     tiers: [
       { amount: 25, impact: 'Materials for a classroom’s experiment day' },
@@ -60,7 +115,7 @@ const PRIORITIES = [
     id: 'sports',
     name: 'Play With Purpose',
     goal: 15000,
-    blurb: 'Recess is a third of a kid’s social day, and the hardest part for many. Beyond Athletics coaches now turn lunch recess into organized games where everyone plays, sportsmanship is taught, and energy gets burned — teachers see it instantly in calmer, more focused afternoons.',
+    blurb: 'Beyond Athletics coaches turn lunch recess into organized games that build confidence, sportsmanship and positive play.',
     circle: { min: 500, label: 'Season Sponsor' },
     tiers: [
       { amount: 25, impact: 'Equipment: balls, cones, pinnies' },
@@ -73,7 +128,7 @@ const PRIORITIES = [
     id: 'garden',
     name: 'The Red Hill Garden',
     goal: 15000,
-    blurb: 'The garden is Red Hill’s outdoor classroom — planting, patience, nutrition, and the joy of eating something you grew. This year we’re funding repairs, supplies, improvements, and a curriculum refresh ($15,000 budgeted; every donated dollar and seedling reduces that cost).',
+    blurb: 'Our outdoor classroom brings learning to life through planting, harvesting and a new grade-level-specific curriculum.',
     circle: { min: 500, label: 'Garden Bed Sponsor' },
     tiers: [
       { amount: 25, impact: 'Soil, seeds, and tools' },
@@ -86,7 +141,7 @@ const PRIORITIES = [
     id: 'arts',
     name: 'Arts at Red Hill',
     goal: 20000,
-    blurb: 'Every Rocket gets visual art instruction, classical music education, enrichment assemblies, and access to a thriving performing-arts program — more than $20,000 a year of arts, nearly all of it PTA-funded and almost none of it, until now, ever presented to donors as something they could choose to support.',
+    blurb: 'PTA funding brings visual art, music, enrichment assemblies and performing arts experiences to Red Hill students.',
     circle: { min: 500, label: 'Season Patron' },
     tiers: [
       { amount: 25, impact: 'Art supplies for a classroom’s Art Masters unit' },
@@ -99,7 +154,7 @@ const PRIORITIES = [
     id: 'safety',
     name: 'A Safer, Brighter Campus',
     goal: 40000,
-    blurb: 'Most Red Hill classrooms have broken blinds. The fix is security window tinting in every classroom — letting staff block visibility into rooms when needed — plus improvements to the multi-purpose room our whole community uses. Total one-time cost: $40,000.',
+    blurb: 'PTA-funded campus improvements include classroom window tinting and upgrades to shared spaces used by our entire school community.',
     circle: { min: 500, label: 'Wing Sponsor' },
     tiers: [
       { amount: 25, impact: 'Joins hundreds of families powering the goal' },
@@ -109,6 +164,26 @@ const PRIORITIES = [
     ],
   },
 ];
+
+/* The seventh way to give: one gift divided evenly across all six.
+   Deliberately not a member of PRIORITIES — the home cards, the goal
+   share math and the per-priority tallies are all keyed to the six —
+   but `priorityById` answers for it, so the donate wizard, checkout,
+   the thank-you page and the honor roll treat it like any other
+   choice. `sentenceName` is the form that reads correctly inside a
+   sentence, where "your gift to Support It All" would not. */
+const SUPPORT_ALL = {
+  id: 'all',
+  name: 'Support It All',
+  sentenceName: 'all six fundraising priorities',
+  blurb: 'Can’t pick just one? Neither can we. Your gift spreads evenly across all six.',
+  tiers: [
+    { amount: 25, impact: 'A share into every one of the six' },
+    { amount: 100, impact: 'Every program on the list feels this' },
+    { amount: 250, impact: 'A real lift for all six at once' },
+    { amount: 500, plus: true, impact: 'Backs the whole Rally, top to bottom' },
+  ],
+};
 
 /* The campaign goal is the number on the ticker and the thermometer
    outside school: what the Rally itself is trying to raise this fall.
@@ -131,26 +206,37 @@ const priorityTarget = (p) =>
    size and sets the participation denominator in the classroom race. */
 const CLASSROOMS = [
   { id: 'hesseltine', teacher: 'Mrs. Hesseltine', grade: 'TK', students: 20 },
-  { id: 'wass', teacher: 'Mrs. Wass', grade: 'TK', students: 20 },
+  { id: 'wass', teacher: 'Mrs. Wass', grade: 'TK', students: 19 },
   { id: 'montgomery', teacher: 'Mrs. Montgomery', grade: 'TK', students: 20 },
   { id: 'michel', teacher: 'Mrs. Michel', grade: 'K', students: 27 },
-  { id: 'convery', teacher: 'Ms. Convery', grade: 'K', students: 29 },
-  { id: 'marshall', teacher: 'Ms. Marshall', grade: 'K', students: 24 },
+  { id: 'convery', teacher: 'Ms. Convery', grade: 'K', students: 27 },
+  { id: 'marshall', teacher: 'Ms. Marshall', grade: 'K', students: 25 },
   { id: 'knott', teacher: 'Mrs. Knott', grade: '1st', students: 26 },
   { id: 'ludes', teacher: 'Mrs. Ludes', grade: '1st', students: 26 },
   { id: 'miller', teacher: 'Ms. Miller', grade: '1st', students: 26 },
   { id: 'sharp', teacher: 'Mrs. Sharp', grade: '1st/2nd', students: 26 },
   { id: 'bryan', teacher: 'Mrs. Bryan', grade: '2nd', students: 26 },
-  { id: 'bowers', teacher: 'Mrs. Bowers', grade: '2nd', students: 25 },
-  { id: 'zweber', teacher: 'Mr. Zweber', grade: '3rd', students: 32 },
+  { id: 'bowers', teacher: 'Mrs. Bowers', grade: '2nd', students: 26 },
+  { id: 'zweber', teacher: 'Mr. Zweber', grade: '3rd', students: 31 },
   { id: 'harrison', teacher: 'Mrs. Harrison', grade: '3rd', students: 31 },
   { id: 'sianez', teacher: 'Mrs. Sianez', grade: '4th', students: 32 },
-  { id: 'herman', teacher: 'Mrs. Herman', grade: '4th', students: 32 },
+  { id: 'herman', teacher: 'Mrs. Herman', grade: '4th', students: 33 },
   { id: 'crain', teacher: 'Mrs. Crain', grade: '5th', students: 29 },
   { id: 'knutson', teacher: 'Mr. Knutson', grade: '5th', students: 29 },
-  { id: 'bishop', teacher: 'Mr. Bishop', grade: 'SDC', students: 13 },
-  { id: 'smith', teacher: 'Mrs. Smith', grade: 'SDC', students: 11 },
+  /* `offBoard` keeps a room off the public classroom race and nothing
+     else. Its gifts count in the campaign total, its children count in
+     the school-wide participation figure, its teacher gets the Thursday
+     email, and it appears in every Mission Control sheet — which is
+     where the PTA awards classroom prizes from, so a room carrying it
+     can still earn them. Only the public per-class ranking is held
+     back, and it is the PTA's call which rooms want that. */
+  { id: 'bishop', teacher: 'Mr. Bishop', grade: 'SDC', students: 14 },
+  { id: 'smith', teacher: 'Mrs. Smith', grade: 'SDC', students: 12, offBoard: true },
 ];
+
+/* The rooms the Rally Board ranks. Everything else in the site reads
+   CLASSROOMS. */
+const boardClassrooms = () => CLASSROOMS.filter((c) => !c.offBoard);
 
 /* Business partnership ladder. Each tier includes every benefit of
    the tiers above it in this list. `logo` is whether the tier earns a logo on
@@ -195,16 +281,29 @@ const ANNUAL_LEVELS = [
    text only, per the partnership terms. Web logos live in
    site/img/partners/; print-quality originals stay out of the repo
    (assets/partner-logos/, gitignored). */
+/* `label` is a display badge for a partner being recognised without a
+   rung on the ladder: it names what they are and claims no dollar
+   figure, and any real tier outranks it. */
 const PARTNERS = [
   { name: 'Earthco Landscape Services', logo: 'earthco-landscape.webp', annual: 'apollo', presenting: true },
   { name: 'The O’Dell Group Real Estate', logo: 'odell-group.webp', annual: 'apollo' },
   { name: 'AOQ Sports', logo: 'aoq-sports.webp', annual: 'orbit' },
   { name: 'Galaxy Automotive & Tire', logo: 'galaxy-automotive.webp', annual: 'orbit' },
   { name: 'Felton Ninja Academy', logo: 'felton-ninja-academy.webp', annual: 'orbit' },
+  { name: 'Tustin Aesthetic Dentistry', logo: 'tustin-aesthetic-dentistry.webp', annual: 'orbit' },
+  // Thanked by name, no level recorded: recognition the PTA is giving
+  // now, not a ledger. A tier here would claim a dollar figure nobody
+  // has settled, and one arriving through checkout still outranks it.
+  { name: 'The Lost Bean', logo: 'the-lost-bean.webp', label: 'Rally Partner' },
+  { name: 'Black Gold Pump & Supply' },
+  { name: 'CH Design & Renovation' },
+  { name: 'Sakura Smiles Pediatric Dentistry' },
+  { name: 'OC Mom Trainer' },
 ];
 
 /* Lookup helpers shared by the worker and every page script. */
-const priorityById = (id) => PRIORITIES.find((p) => p.id === id) || null;
+const priorityById = (id) =>
+  (id === SUPPORT_ALL.id ? SUPPORT_ALL : PRIORITIES.find((p) => p.id === id) || null);
 const classroomById = (id) => CLASSROOMS.find((c) => c.id === id) || null;
 const partnerTierById = (id) => PARTNER_TIERS.find((t) => t.id === id) || null;
 const annualLevelById = (id) => ANNUAL_LEVELS.find((l) => l.id === id) || null;
@@ -219,10 +318,11 @@ const gradeName = (g) => GRADE_NAMES[g] || `${g} grade`;
    never defines `module`. */
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
-    ORG, PRIORITIES, CAMPAIGN, CLASSROOMS, PARTNER_TIERS, PARTNERS,
+    ORG, PRIORITIES, SUPPORT_ALL, CAMPAIGN, CLASSROOMS, PARTNER_TIERS, PARTNERS,
     ANNUAL_LEVELS,
-    MAX_NAME, MAX_AMOUNT, MAX_STUDENTS, feeCoverCents,
-    priorityById, classroomById, partnerTierById, annualLevelById, gradeName,
+    MAX_NAME, MAX_AMOUNT, MAX_STUDENTS, MAX_SHIRTS, SHIRT, STUDENT_GOAL, feeCoverCents,
+    priorityById, classroomById, boardClassrooms, partnerTierById, annualLevelById, gradeName, shirtSizeById,
+    pacificAt, shirtsOpen,
     priorityTarget, presentingPartner,
   };
 }

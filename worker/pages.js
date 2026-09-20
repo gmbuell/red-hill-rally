@@ -5,7 +5,7 @@
    failure renders the zero state, never an error page. */
 
 import { campaignStats, boardStats } from './store.js';
-import { header, footer, homeSlots, donateSlots, boardSlots, partnersSlots, linkSlots } from './views.js';
+import { header, footer, homeSlots, donateSlots, boardSlots, partnersSlots, linkSlots, shirtSlots } from './views.js';
 
 /* The pages with something to render beyond the chrome: a D1 read
    (`live`) and a slot builder. A page in site/ with neither needs no
@@ -16,11 +16,17 @@ export const PAGES = {
   '/rally-board': { live: boardStats, slots: boardSlots },
   '/partners': { live: campaignStats, slots: partnersSlots },
   '/student-link': { slots: linkSlots },
+  '/shirt': { slots: shirtSlots },
 };
 
-const fill = (fragment) => ({
-  element(el) { el.setInnerContent(String(fragment), { html: true }); },
-});
+/* A slot fills its element, or — when the builder hands back `null` —
+   takes the element out of the page. Removal is how a state that no
+   longer applies (the shirt form past its deadline, the closed notice
+   before it) never reaches the browser to be styled around or
+   submitted from. */
+const fill = (fragment) => (fragment === null
+  ? { element(el) { el.remove(); } }
+  : { element(el) { el.setInnerContent(String(fragment), { html: true }); } });
 
 export async function renderPage(request, env) {
   const path = new URL(request.url).pathname;

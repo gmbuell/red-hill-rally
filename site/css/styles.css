@@ -345,7 +345,16 @@ select:focus-visible,
   color: var(--navy);
   font-weight: 700;
 }
-.hero .presented strong { font-weight: 800; }
+/* The partner's own name carries the brand red. --red-ink, not --red:
+   the true brand red is 4.26:1 on this ground, under the floor for
+   text this size. */
+.hero .presented strong { font-weight: 800; color: var(--red-ink); }
+.hero .partner-cta {
+  margin: 0.5rem auto 0;
+  font-size: 1rem;
+  line-height: 1.5;
+  font-weight: 700;
+}
 .hero .assurance {
   display: block;
   margin: 0.7rem auto 0;
@@ -353,7 +362,6 @@ select:focus-visible,
   color: var(--grey);
   font-weight: 700;
 }
-.hero .sparkle { position: absolute; }
 
 /* the flight-trail campaign meter */
 .trajectory { max-width: 46rem; margin: 1.6rem auto 0; }
@@ -452,6 +460,52 @@ select:focus-visible,
   .parent-callout { grid-template-columns: 1fr; text-align: center; }
   .parent-callout .qr-demo { margin: 0 auto; }
   .parent-callout p { margin: 0 auto; }
+}
+
+/* The seventh way to give, sitting under the six cards at the width of
+   a callout rather than as a card, so it reads as the way out of
+   choosing rather than a seventh thing to choose between. */
+.support-all { margin-top: 1.2rem; }
+.support-all .fine-print { margin: 0.4rem 0 0; }
+
+/* The shirt-only entry point, under the student-link callout it
+   mirrors. */
+.shirt-callout { margin-top: 1.2rem; }
+
+/* Same callout on the Rally Board, minus the icon: the board is a
+   dense page of numbers and a third graphic would fight the trails. */
+.board-callout {
+  grid-template-columns: 1fr auto;
+  margin: 2.5rem 0 0;
+}
+@media (max-width: 52rem) {
+  .board-callout { grid-template-columns: 1fr; }
+  .board-callout .btn { justify-self: center; }
+}
+
+/* The shirt page is one screen, so its blocks need the air the donate
+   wizard gets from its steps. */
+/* Front and back, side by side — they stay side by side on a phone
+   rather than stacking, since seeing both at once is the point. */
+.shirt-shots {
+  display: flex;
+  justify-content: center;
+  gap: 0.6rem;
+  margin-bottom: 1.4rem;
+}
+.shirt-shots img { width: 50%; max-width: 260px; height: auto; }
+#shirt-form .hint { margin-bottom: 1.6rem; }
+#shirt-form #add-rocket { margin-bottom: 2rem; }
+#shirt-form .summary-box { margin: 1.6rem 0; }
+
+/* Home page partner thanks, under the parents block. */
+.home-partner-thanks { text-align: center; }
+.home-partner-thanks .script { display: block; margin-bottom: 0.6rem; }
+.home-partner-thanks p {
+  max-width: 44rem;
+  margin: 0 auto 1.1rem;
+  font-size: 1rem;
+  line-height: 1.5;
 }
 
 /* ---------- donate flow ---------- */
@@ -556,6 +610,9 @@ select:focus-visible,
   cursor: pointer;
 }
 .option-card:hover { border-color: var(--navy); }
+/* The seventh choice sits below the six with a little air, so it reads
+   as "or" rather than as a seventh program. */
+.support-all-option { margin-top: 0.7rem; }
 .option-card input { accent-color: var(--navy); width: 1.15rem; height: 1.15rem; margin: 0; }
 .option-card:has(input:checked) { border-color: var(--navy); background: var(--paper); }
 .option-card .icon { width: 46px; height: 36px; grid-row: span 2; }
@@ -779,6 +836,47 @@ select:focus-visible,
   max-width: 36rem;
   margin-bottom: 2rem;
 }
+/* Sits outside the wizard, since someone paying by check never starts
+   it. The memo-line ask is the load-bearing part: nothing on a check
+   says whose Rocket it belongs to. */
+.check-note {
+  margin: 2.2rem auto 0;
+  padding-top: 1.4rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.14);
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--grey);
+}
+.check-note strong { color: var(--navy); }
+
+/* Where the shirt form was, once ordering has closed. It carries the
+   page on its own, so it reads as a statement rather than fine print:
+   a family arriving late should see the answer, not hunt for it. */
+.closed-note {
+  margin: 2.4rem auto 0;
+  padding: 1.4rem 1.6rem;
+  border-radius: 12px;
+  background: var(--sky);
+  font-size: 1.05rem;
+  line-height: 1.55;
+  color: var(--navy);
+}
+.closed-note strong { color: var(--red-ink); }
+
+/* A deck under the race heading, not a second lede: regular weight and
+   grey, so it explains the percentages without competing with them. */
+/* Sits directly under the two headline figures and explains why there
+   are two, so it hangs off the totals rather than the race below. */
+.totals-note {
+  max-width: 38rem;
+  margin: -2rem 0 3rem;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--grey);
+}
+/* One figure, so it gets the room four used to share. The brand red is
+   under the contrast floor for small text but not for display type at
+   this size, which is where the true red belongs anyway. */
 .board-totals {
   display: flex;
   flex-wrap: wrap;
@@ -788,17 +886,31 @@ select:focus-visible,
 .board-totals .num {
   font-family: var(--display);
   font-weight: 400;
-  font-size: 2rem;
-  line-height: 1.1;
-  color: var(--navy);
+  font-size: clamp(3.4rem, 12vw, 5.5rem);
+  line-height: 1;
+  color: var(--red);
   display: block;
+}
+.board-totals .label {
+  font-size: 1rem;
+  letter-spacing: 0.16em;
+  color: var(--navy);
+}
+/* The share is the headline; the count under it says how many children
+   that share is, so nobody has to do the arithmetic. */
+.board-totals .sub {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  color: var(--grey);
 }
 
 
 .race { list-style: none; margin: 0; padding: 0; }
 .race li {
   display: grid;
-  grid-template-columns: 2.2rem 15rem 1fr auto;
+  grid-template-columns: 2.2rem 15rem 1fr auto auto;
   gap: 0.2rem 1.2rem;
   align-items: center;
   padding: 0.55rem 0;
@@ -818,11 +930,83 @@ select:focus-visible,
   font-weight: 800;
   color: var(--navy);
   white-space: nowrap;
+  text-align: right;
 }
-.race .pct .families { display: block; font-weight: 700; font-size: 0.8125rem; color: var(--grey); }
+/* Each number says what it is, the way the grade names itself under
+   the teacher — two figures side by side otherwise guess at you. */
+.race .pct small, .race .raised small {
+  display: block;
+  font-weight: 700;
+  font-size: 0.8125rem;
+  color: var(--grey);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+/* Dollars ride beside the percentage, quieter than it: the list is
+   ranked on participation, and the money is the other prize. */
+.race .raised {
+  color: var(--grey);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-align: right;
+  min-width: 5.5rem;
+}
+/* The two prizes read as one row of cards on a wide screen and stack
+   on a phone. They are deliberately side by side: the whole point is
+   that the dollars race and the participation prizes are different
+   races, which is hard to see when one sits under the other. */
+.race-prizes {
+  display: grid;
+  gap: 0.9rem;
+  grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+  margin: 0 0 1.5rem;
+}
+/* What the order means, directly above the order. A family scanning
+   for their teacher reads the first row within a second of arriving,
+   so this cannot sit below the list. */
+.race-rank {
+  max-width: 40rem;
+  margin: 0 0 1rem;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--grey);
+}
+.race-rank strong { color: var(--navy); }
+.race-prizes .shoe-note {
+  margin: 0;
+  padding: 0.85rem 1rem;
+  background: var(--sky);
+  border-radius: 0.6rem;
+}
+.shoe-note {
+  margin: 0 0 1.5rem;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--grey);
+}
+/* The label only has to say which race this is; it is read once and
+   then ignored, so it stays quiet — heavy caps at full ink made two
+   cards of shouting and buried the answer underneath them. */
+.shoe-note .label {
+  display: block;
+  margin-bottom: 0.15rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--grey);
+}
+/* The answer — the class in front, the count of classes — is what a
+   family came to the card for, so it takes the brand red. `--red-ink`,
+   not `--red`: this is small text on the panel ground. */
+.shoe-note strong { color: var(--red-ink); }
+/* On a phone the two labelled figures won't fit beside the teacher's
+   name, so the name takes its own line and the numbers sit under it
+   with the trail beneath them. */
 @media (max-width: 48rem) {
-  .race li { grid-template-columns: 1.6rem 1fr auto; }
-  .race .trail { grid-column: 2 / 4; grid-row: 2; }
+  .race li { grid-template-columns: 1.6rem auto 1fr; row-gap: 0.5rem; }
+  .race .room { grid-column: 2 / 4; grid-row: 1; }
+  .race .pct { grid-column: 2; grid-row: 2; text-align: left; }
+  .race .raised { grid-column: 3; grid-row: 2; text-align: left; min-width: 0; }
+  .race .trail { grid-column: 2 / 4; grid-row: 3; }
 }
 
 .board-section-head {
@@ -1062,6 +1246,11 @@ select:focus-visible,
 }
 .student-row + .student-row { border-top: 1px solid rgba(0, 0, 0, 0.12); padding-top: 1.1rem; }
 .student-row .remove-student { margin-top: 2.2rem; font-size: 0.85rem; color: var(--grey); }
+/* The shirt picker sits under the two fields at half width; every
+   chosen size adds a select above the empty one. */
+.student-row .shirts, #link-chip-holder .shirts { grid-column: 1 / -1; max-width: 20rem; }
+.shirts .field { margin-bottom: 0.7rem; }
+.shirts .fine-print { margin: 0 0 1.2rem; }
 #add-student, #add-sibling { display: flex; width: max-content; }
 #add-sibling { margin-bottom: 1.3rem; }
 @media (max-width: 640px) {
@@ -1077,7 +1266,9 @@ select:focus-visible,
   gap: 0.8rem;
   margin: 1.8rem 0 0.8rem;
 }
-.tier-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
+/* Wraps so a long amount (a range, on Why We Rally) drops under the
+   name instead of crushing it. */
+.tier-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 1rem; }
 .tier-card {
   background: var(--sky);
   padding: 1.3rem 1.4rem 1.2rem;
@@ -1235,3 +1426,187 @@ select:focus-visible,
   .prize-list li { flex-direction: column; gap: 0.4rem; }
   .prize-key { width: auto; }
 }
+
+/* ---------- mission control (/admin) ---------- */
+
+.key-form { max-width: 24rem; margin-bottom: 3rem; }
+.key-form .field { margin-bottom: 1rem; }
+.admin-totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.2rem 3.5rem;
+  background: var(--navy);
+  color: var(--white);
+  padding: 1.6rem 1.8rem;
+  margin-bottom: 0.8rem;
+}
+.admin-totals .num {
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 2.6rem;
+  line-height: 1;
+  display: block;
+}
+.admin-totals .label { color: rgba(255, 255, 255, 0.86); }
+.admin-asof { color: var(--grey); margin-bottom: 1rem; }
+.admin-asof .linklike { color: var(--navy); font-weight: 700; }
+.sheet { margin-top: 3rem; }
+.sheet-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 1rem 2rem;
+  border-top: 2px solid var(--navy);
+  padding-top: 1.4rem;
+  margin-bottom: 1rem;
+}
+.sheet-head h2 { margin: 0 0 0.4rem; }
+.sheet-head p { max-width: 36rem; margin: 0; }
+.sheet-scroll { overflow-x: auto; }
+.sheet table { border-collapse: collapse; width: 100%; }
+.sheet th, .sheet td {
+  text-align: left;
+  padding: 0.55rem 0.9rem 0.55rem 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.18);
+  white-space: nowrap;
+  line-height: 1.5;
+}
+.sheet th { border-bottom: 2px solid var(--navy); padding-top: 0; }
+.sheet th button {
+  font: inherit;
+  font-weight: 800;
+  color: var(--navy);
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+}
+.sheet th button:hover, .sheet th[aria-sort] button { text-decoration-color: var(--red); }
+.sheet th[aria-sort="descending"] button::after { content: ' \25BE'; color: var(--red); }
+.sheet th[aria-sort="ascending"] button::after { content: ' \25B4'; color: var(--red); }
+.sheet .num { text-align: right; font-variant-numeric: tabular-nums; }
+.sheet td.num { font-weight: 700; }
+.sheet td.empty { color: var(--grey); white-space: normal; }
+
+/* Recording a check: the same fields as the donate form, laid out to
+   be filled from a check in hand rather than stepped through. */
+.offline-form { margin-bottom: 2.4rem; }
+.offline-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 0 1.6rem;
+  margin-bottom: 0.6rem;
+}
+/* The shirt batch window: two dates and a reset, on one line where
+   there is room. The size table beside it is narrow on purpose — it is
+   a count to read off, not a sheet to scan. */
+.batch-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.6rem 1.6rem;
+  margin-bottom: 0.8rem;
+}
+.batch-row .field { margin: 0; }
+.batch-count {
+  margin: 0 0 1rem;
+  font-weight: 700;
+  color: var(--navy);
+}
+#shirt-sizes { max-width: 22rem; margin-bottom: 1.6rem; }
+#shirt-sizes .sizes-total td { font-weight: 800; color: var(--navy); }
+
+.offline-form .form-error, .offline-done { text-align: left; }
+.offline-done {
+  font-weight: 700;
+  color: var(--navy);
+  margin: 0.6rem 0 0;
+}
+#offline-table td { white-space: normal; }
+
+/* The donor's own Rockets on the thank-you page: a running total they
+   can come back to, not a receipt. */
+.rocket-panel { margin-bottom: 1.5rem; }
+.rocket-totals { list-style: none; margin: 0 0 0.8rem; padding: 0; }
+.rocket-totals li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0 1rem;
+  padding: 0.7rem 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.14);
+}
+.rocket-totals li:last-child { border-bottom: 0; }
+.rocket-totals .who { font-weight: 800; color: var(--navy); }
+.rocket-totals .amount {
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 1.9rem;
+  line-height: 1;
+  color: var(--red);
+  grid-row: span 2;
+  align-self: center;
+}
+.rocket-totals .meta { color: var(--grey); }
+/* Who to thank, under the running total. Names only, and only the ones
+   already on the honor roll — this is a thank-you list, not a receipt,
+   so no line here carries an amount. */
+.rocket-totals .thanks-list {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.1rem 0.5rem;
+  margin-top: 0.5rem;
+  color: var(--navy);
+}
+.rocket-totals .thanks-lead {
+  width: 100%;
+  font-weight: 800;
+  font-size: 0.8125rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--grey);
+}
+.rocket-totals .thanks-anon { color: var(--grey); }
+/* Dots between names only. The anonymous line already begins with
+   "and", so a dot in front of it reads as a fourth name. */
+.rocket-totals .thanks-name + .thanks-name::before {
+  content: '·';
+  margin-right: 0.5rem;
+  color: var(--grey);
+}
+/* On a phone most names take a line of their own anyway, and a
+   separator that wraps to the front of one reads as a bullet nobody
+   asked for. Stack them properly instead. */
+@media (max-width: 30rem) {
+  .rocket-totals .thanks-list { display: block; }
+  .rocket-totals .thanks-list > span { display: block; }
+  .rocket-totals .thanks-name + .thanks-name::before { content: none; }
+}
+
+/* The Thursday digest: an address list edited as plain text, and the
+   sample-send beside it. */
+.digest-state { color: var(--grey); margin: 0 0 1.2rem; }
+#digest-list {
+  width: 100%;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  padding: 0.7rem 0.8rem;
+  border: 2px solid var(--navy);
+  border-radius: 0;
+  background: var(--white);
+  color: var(--navy);
+  resize: vertical;
+}
+.field.invalid #digest-list { border-color: var(--red-ink); }
+.digest-test {
+  border-top: 1px solid rgba(0, 0, 0, 0.14);
+  padding-top: 1.4rem;
+  margin-bottom: 2rem;
+  max-width: 26rem;
+}
+#digest-table td { white-space: normal; }
