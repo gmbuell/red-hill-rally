@@ -1,5 +1,5 @@
 import { env, SELF, createExecutionContext, reset } from 'cloudflare:test';
-import { afterEach, describe, it, expect } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 import worker from '../worker/index.js';
 import { recordDonation } from '../worker/store.js';
 import { header, footer } from '../worker/views.js';
@@ -165,6 +165,22 @@ describe('rendered pages', () => {
     // The price and the credit are stated once, in data.js.
     expect(text).toContain(`<strong>$${data.SHIRT.price}</strong>`);
     expect(text).toContain(`<strong>$${data.SHIRT.credit}</strong>`);
+  });
+
+  it('takes the shirt form off the page after the ordering deadline', async () => {
+    try {
+      vi.setSystemTime(new Date('2026-09-26T02:01:00Z')); // 7:01pm Pacific
+      const { text } = await page('/shirt');
+      // Gone from the served HTML, not hidden in it: no form to post,
+      // no size picker to fill, nothing for a script to re-enable.
+      expect(text).not.toContain('id="shirt-form"');
+      expect(text).not.toContain('id="shirt-name-0"');
+      expect(text).toContain(data.SHIRT.deadlineLabel);
+      // And the home page stops sending families to it.
+      expect((await page('/')).text).not.toContain('shirt-callout');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('answers unknown paths with the branded 404 and the chrome', async () => {

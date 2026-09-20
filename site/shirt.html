@@ -18,7 +18,7 @@
   <div class="flow-header wrap-narrow">
     <h1>Get a Rally Shirt</h1>
     <span class="script">One school. One shirt.</span>
-    <small class="assurance">Shirts come to your Rocket at school before Rally day</small>
+    <small class="assurance" id="shirt-assurance">Shirts come to your Rocket at school before Rally day</small>
   </div>
 
   <form id="shirt-form" class="wrap-narrow" novalidate>
@@ -60,7 +60,9 @@
     <small class="fine-print pay-note">Secure payment by Stripe. A shirt is merchandise, not a donation, so this part isn&rsquo;t tax-deductible &mdash; your receipt says so.</small>
   </form>
 
-  <p class="check-note wrap-narrow">Want to give as well? <a href="/donate">Make a donation</a> &mdash; you can add shirts there too, in the same order.</p>
+  <p class="closed-note wrap-narrow" id="shirt-closed"></p>
+
+  <p class="check-note wrap-narrow" id="shirt-also">Want to give as well? <a href="/donate">Make a donation</a> &mdash; you can add shirts there too, in the same order.</p>
 </main>
 
 <footer class="site-footer on-navy"></footer>

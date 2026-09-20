@@ -22,12 +22,17 @@
   const nextBtn = RH.qs('#next-btn');
   const errorEl = RH.qs('#checkout-error');
 
-  /* Step 2's rows: classroom first, name optional, shirts under each. */
+  /* Step 2's rows: classroom first, name optional, and shirts under
+     each until the order goes to the printer. Past the deadline the
+     size pickers simply aren't drawn, here or under a linked Rocket,
+     so the wizard is a gift form and nothing on it can be ordered. */
+  const shirtsForSale = shirtsOpen();
+
   const rows = RH.studentRows({
     rowsEl: RH.qs('#student-rows'),
     addBtn: RH.qs('#add-student'),
     prefix: 'rocket',
-    shirts: true,
+    shirts: shirtsForSale,
     classError: 'Please pick a classroom for this Rocket.',
   });
 
@@ -116,7 +121,7 @@
         <span class="meta">${RH.roomLabels(state.link.students).join(' \u00a0·\u00a0 ')}</span>
       </div>
       <small class="fine-print">Not who you meant to support? <button type="button" class="linklike" id="clear-link">Remove</button></small>
-      ${state.link.students.map((st, i) => RH.shirtPickerMarkup('linked', i, state.linkShirts[i] || [], st.n))}`;
+      ${shirtsForSale ? state.link.students.map((st, i) => RH.shirtPickerMarkup('linked', i, state.linkShirts[i] || [], st.n)) : ''}`;
     holder.querySelectorAll('.shirts').forEach((el, i) => RH.setShirts(el, state.linkShirts[i] || []));
     RH.qs('#clear-link').addEventListener('click', () => {
       dropLink();

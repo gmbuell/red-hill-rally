@@ -8,6 +8,10 @@
   const { html } = RH;
 
   const form = RH.qs('#shirt-form');
+  // Past the deadline the worker drops the form and leaves the closed
+  // notice in its place; there is nothing here to wire up.
+  if (!form) return;
+
   const buyBtn = RH.qs('#buy-btn');
   const errorEl = RH.qs('#checkout-error');
   const nameField = RH.qs('#donor-name-field');

@@ -397,6 +397,28 @@ describe('checkout', () => {
     expect(await bad({ students: [{ c: ROOM_A, n: 'Mia', s: Array(data.MAX_SHIRTS + 1).fill(SIZE_A) }] })).toBe(400);
   });
 
+  it('refuses a shirt once ordering has closed, and takes the gift anyway', async () => {
+    // A tab left open through Friday evening still has size pickers in
+    // it. The charge is the last place to say no: money taken for a
+    // shirt that misses the printer is a shirt that never arrives.
+    const shirtOrder = { ...validCheckout, students: [{ c: ROOM_A, n: 'Mia Rodriguez', s: [SIZE_A] }] };
+    try {
+      vi.setSystemTime(new Date('2026-09-26T02:01:00Z')); // 7:01pm Pacific
+      const late = await post('/api/checkout', shirtOrder);
+      expect(late.status).toBe(400);
+      expect((await late.json()).error).toContain(data.SHIRT.deadlineLabel);
+      // The gift underneath it is still welcome.
+      stubStripe();
+      expect((await checkoutDirect({ ...validCheckout, students: [{ c: ROOM_A, n: 'Mia Rodriguez' }] })).status).toBe(200);
+      // And a minute earlier the same order goes through.
+      vi.setSystemTime(new Date('2026-09-26T02:00:00Z'));
+      stubStripe();
+      expect((await checkoutDirect(shirtOrder)).status).toBe(200);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('takes shirt sizes for a family link’s Rockets in link order', async () => {
     const { code } = await (await post('/api/link', {
       students: [{ n: 'Leo Park', c: ROOM_B }, { n: 'Ana Park', c: ROOM_C }],

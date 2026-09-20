@@ -849,6 +849,20 @@ select:focus-visible,
 }
 .check-note strong { color: var(--navy); }
 
+/* Where the shirt form was, once ordering has closed. It carries the
+   page on its own, so it reads as a statement rather than fine print:
+   a family arriving late should see the answer, not hunt for it. */
+.closed-note {
+  margin: 2.4rem auto 0;
+  padding: 1.4rem 1.6rem;
+  border-radius: 12px;
+  background: var(--sky);
+  font-size: 1.05rem;
+  line-height: 1.55;
+  color: var(--navy);
+}
+.closed-note strong { color: var(--red-ink); }
+
 /* A deck under the race heading, not a second lede: regular weight and
    grey, so it explains the percentages without competing with them. */
 /* Sits directly under the two headline figures and explains why there

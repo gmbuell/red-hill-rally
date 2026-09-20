@@ -31,6 +31,13 @@ const SHIRT = {
   price: 20,
   credit: 10,
   value: 10,
+  /* Ordering closes when the order goes to the printer. A shirt bought
+     after this can't be printed and handed out before Rally day, so
+     the site stops taking them rather than sell a family a shirt that
+     never arrives. `deadline` is Pacific and `deadlineLabel` is the
+     same moment in words; move the two together. */
+  deadline: '2026-09-25 19:00',
+  deadlineLabel: 'Friday, September 25 at 7pm',
   sizes: [
     { id: 'YXS', label: 'Youth XS' },
     { id: 'YS', label: 'Youth S' },
@@ -45,6 +52,24 @@ const SHIRT = {
   ],
 };
 const shirtSizeById = (id) => SHIRT.sizes.find((z) => z.id === id) || null;
+
+/* The school's clock. Wherever the site or the printer's sheet names a
+   moment it is Pacific, never UTC: an order at 6pm reads as tomorrow
+   in UTC, which would close ordering a day early for somebody and
+   file that shirt in the wrong batch. `YYYY-MM-DD HH:MM` sorts as a
+   string, so a plain comparison answers both questions. */
+const PACIFIC_FMT = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'America/Los_Angeles',
+  year: 'numeric', month: '2-digit', day: '2-digit',
+  hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+});
+const pacificAt = (date) => PACIFIC_FMT.format(date).replace(',', '');
+
+/* Are shirts still on sale? The deadline minute itself is still open:
+   a family clicking Continue at 7:00 gets their shirt. Every page that
+   offers a shirt asks this, and so does the checkout, so a page left
+   open through the deadline can't slip an order past it. */
+const shirtsOpen = (now = new Date()) => pacificAt(now) <= SHIRT.deadline;
 
 /* Optional donor-paid fee cover, shared by the worker (authoritative)
    and the donate form (display). The gross-up finds the extra cents so
@@ -297,6 +322,7 @@ if (typeof module !== 'undefined' && module.exports) {
     ANNUAL_LEVELS,
     MAX_NAME, MAX_AMOUNT, MAX_STUDENTS, MAX_SHIRTS, SHIRT, STUDENT_GOAL, feeCoverCents,
     priorityById, classroomById, boardClassrooms, partnerTierById, annualLevelById, gradeName, shirtSizeById,
+    pacificAt, shirtsOpen,
     priorityTarget, presentingPartner,
   };
 }

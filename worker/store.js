@@ -10,7 +10,7 @@
 import data from '../site/js/data.js';
 import { shirtsFromMetadata } from './students.js';
 
-const { CAMPAIGN, CLASSROOMS, PRIORITIES, SUPPORT_ALL, SHIRT, priorityById, classroomById, shirtSizeById, MAX_STUDENTS } = data;
+const { CAMPAIGN, CLASSROOMS, PRIORITIES, SUPPORT_ALL, SHIRT, priorityById, classroomById, shirtSizeById, pacificAt, MAX_STUDENTS } = data;
 
 /* A session's Rockets: the `students` JSON our checkout stamps into
    metadata (a partnership carries none). */
@@ -326,15 +326,11 @@ const creditsStmt = (db) => db.prepare(`
 /* The school's own clock, not UTC. Shirts go to the printer in
    batches, and the cutoff is a moment: an order placed at 6pm Pacific
    reads as tomorrow in UTC, which would drop that child's shirt into
-   the next box or out of both. "YYYY-MM-DD HH:MM" sorts as a string,
-   which is what the window comparison below relies on. */
-const ORDER_TZ = 'America/Los_Angeles';
-const ORDER_FMT = new Intl.DateTimeFormat('en-CA', {
-  timeZone: ORDER_TZ, year: 'numeric', month: '2-digit', day: '2-digit',
-  hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
-});
-const orderedAt = (createdSec) =>
-  ORDER_FMT.format(new Date(createdSec * 1000)).replace(',', '');
+   the next box or out of both. `pacificAt` in data.js is the one place
+   that decides, shared with the ordering deadline, and its
+   "YYYY-MM-DD HH:MM" sorts as a string — which is what the window
+   comparison below relies on. */
+const orderedAt = (createdSec) => pacificAt(new Date(createdSec * 1000));
 
 /* A window end as the PTA typed it → something comparable to the
    above. A bare day means the whole day, so `to` runs to its last

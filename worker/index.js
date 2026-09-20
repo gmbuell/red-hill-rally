@@ -19,7 +19,7 @@ import data from '../site/js/data.js';
 import ui from '../site/js/ui.js';
 
 const { moneyCents } = ui;
-const { ORG, MAX_NAME, MAX_AMOUNT, SHIRT, STUDENT_GOAL, feeCoverCents, priorityById, partnerTierById, classroomById, CLASSROOMS } = data;
+const { ORG, MAX_NAME, MAX_AMOUNT, SHIRT, STUDENT_GOAL, feeCoverCents, priorityById, partnerTierById, classroomById, CLASSROOMS, shirtsOpen } = data;
 
 /* The charge description prints on every Stripe receipt, making it the
    donor's IRS written acknowledgment (Pub 1771): org name, and either
@@ -143,6 +143,13 @@ async function handleCheckout(request, env, url) {
   if (norm.error) return json({ error: norm.error }, 400);
   const students = norm.students;
   const shirts = students.reduce((n, st) => n + (st.s ? st.s.length : 0), 0);
+  // The pages stop offering shirts at the deadline, but a form left
+  // open in a tab through Friday evening would still post sizes. The
+  // charge is the last chance to refuse one; taking the money for a
+  // shirt that can't be printed is the failure worth preventing.
+  if (shirts && !shirtsOpen()) {
+    return json({ error: `Shirt ordering closed ${SHIRT.deadlineLabel}. A gift still counts for your Rocket — please refresh the page.` }, 400);
+  }
   if (!amount && !shirts) {
     return json({ error: 'Please choose a gift amount, or add a Rally shirt.' }, 400);
   }

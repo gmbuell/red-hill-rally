@@ -1,7 +1,7 @@
 import { env } from 'cloudflare:test';
-import { describe, it, expect } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 import data from '../site/js/data.js';
-import { homeSlots, partnersSlots, boardSlots } from '../worker/views.js';
+import { homeSlots, partnersSlots, boardSlots, donateSlots, shirtSlots } from '../worker/views.js';
 import { PAGES } from '../worker/pages.js';
 
 const [P_MAIN] = data.PRIORITIES;
@@ -259,10 +259,74 @@ describe('page views', () => {
   it('has an element in the HTML for every slot a page renders into', async () => {
     // HTMLRewriter ignores a selector nothing matches, so a renamed id
     // would ship an empty element with no error anywhere but here.
-    for (const [path, { slots }] of Object.entries(PAGES)) {
-      if (!slots) continue;
-      const text = await (await env.ASSETS.fetch(`https://rally.test${path}`)).text();
-      for (const id of Object.keys(slots(null))) expect(text, `${path} #${id}`).toContain(`id="${id}"`);
+    // Both sides of the shirt deadline, because each renders ids the
+    // other doesn't.
+    for (const at of [BEFORE, AFTER]) {
+      vi.setSystemTime(at);
+      for (const [path, { slots }] of Object.entries(PAGES)) {
+        if (!slots) continue;
+        const text = await (await env.ASSETS.fetch(`https://rally.test${path}`)).text();
+        for (const id of Object.keys(slots(null))) expect(text, `${path} #${id}`).toContain(`id="${id}"`);
+      }
     }
+    vi.useRealTimers();
+  });
+});
+
+/* The shirt order goes to the printer at a stated moment, and after it
+   a shirt bought on the site could not be printed and handed out
+   before Rally day. So the deadline is a fact in data.js that the
+   pages read, not a sentence typed into three of them. */
+const DEADLINE = data.SHIRT.deadline;
+// 7pm Pacific on the deadline day is 02:00 UTC the next morning.
+const AT = new Date('2026-09-26T02:00:00Z');
+const BEFORE = new Date('2026-09-26T01:59:00Z');
+const AFTER = new Date('2026-09-26T02:01:00Z');
+
+describe('the shirt ordering deadline', () => {
+  afterEach(() => vi.useRealTimers());
+
+  it('stays open through the deadline minute and shuts the one after', () => {
+    expect(DEADLINE).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/);
+    expect(data.shirtsOpen(BEFORE)).toBe(true);
+    // The stated minute is still ordering time: a family clicking
+    // Continue at 7:00 on the dot gets their shirt.
+    expect(data.shirtsOpen(AT)).toBe(true);
+    expect(data.shirtsOpen(AFTER)).toBe(false);
+  });
+
+  it('reads the clock in Pacific, so an afternoon order is not closed by UTC', () => {
+    // 1pm Pacific on deadline day — but 20:00 on a UTC clock, which is
+    // already past 19:00. Comparing UTC would shut the shirt page six
+    // hours early, on the busiest afternoon it has.
+    const fridayAfternoon = new Date('2026-09-25T20:00:00Z');
+    expect(data.pacificAt(fridayAfternoon)).toBe('2026-09-25 13:00');
+    expect(data.shirtsOpen(fridayAfternoon)).toBe(true);
+  });
+
+  it('names the deadline on the shirt page, the donate form and the home callout', () => {
+    vi.setSystemTime(BEFORE);
+    const { deadlineLabel } = data.SHIRT;
+    expect(String(shirtSlots()['shirt-assurance'])).toContain(deadlineLabel);
+    expect(String(donateSlots()['rocket-hint'])).toContain(deadlineLabel);
+    expect(String(homeSlots(null)['shirt-callout-note'])).toContain(deadlineLabel);
+  });
+
+  it('takes the order form off the shirt page once ordering has closed', () => {
+    vi.setSystemTime(AFTER);
+    const slots = shirtSlots();
+    // null is the signal pages.js removes the element on — the form
+    // must not merely be styled shut, or a stale tab could post it.
+    expect(slots['shirt-form']).toBeNull();
+    expect(slots['shirt-rows']).toBeUndefined();
+    expect(String(slots['shirt-closed'])).toContain(data.SHIRT.deadlineLabel);
+    expect(String(slots['shirt-also'])).toContain('/donate');
+  });
+
+  it('stops offering shirts on the donate form and the home page once closed', () => {
+    vi.setSystemTime(AFTER);
+    expect(String(donateSlots()['rocket-hint'])).not.toContain('shirt');
+    expect(homeSlots(null)['shirt-callout']).toBeNull();
+    expect(homeSlots(null)['shirt-callout-note']).toBeUndefined();
   });
 });

@@ -23,7 +23,7 @@ two-sentence pointer; this file is the operating manual.
 | `npm install` | wrangler, vitest + workers pool, lighthouse |
 | `npx wrangler d1 migrations apply red-hill-rally --local` | once per clone: local D1 schema |
 | `npm run dev` | `wrangler dev` on http://localhost:8787 |
-| `npm test` | vitest (187 tests, ~4 s) |
+| `npm test` | vitest (194 tests, ~4 s) |
 | `npm run audit` | Lighthouse on every page but `/admin` (noindex), mobile + desktop (needs Chrome); defaults to the live site (`npm run audit -- --url http://localhost:8787` for local). `--runs 3 --min 98` reproduces the CI gate, `--form mobile` limits it to one form factor |
 | `npm run wcag` | WCAG 2.2 checks on every page, mobile + desktop (needs Chrome): text contrast, non-text contrast, focus rings, target size, body leading ≥ 1.5, body text ≥ 16px and labels ≥ 13px. Defaults to the live site (`npm run wcag -- --url http://localhost:8787` for local, `--page donate --form mobile` to narrow). Each cell shows how many elements the check examined |
 | `npm run deploy` | **Ships to production**: the worker and every file under `site/`. The `predeploy` step runs the tests, then applies pending D1 migrations to the remote database, so schema and code ship together. Every push to `main` runs this through Cloudflare Workers Builds (dashboard → the worker → Settings → Build), so merging a PR deploys it |
@@ -162,7 +162,9 @@ secrets; the maintainer reviews and ships PRs.
   and every stat counts `amount_cents` (the gift plus each shirt's
   `credit`), never `fee_cents` or the rest of a shirt's price.
 - A shirt needs a named Rocket, and a shirt alone is a complete order:
-  `amount` may be 0 when the order holds a shirt.
+  `amount` may be 0 when the order holds a shirt. Past
+  `SHIRT.deadline` the checkout refuses shirts outright — the pages
+  stop offering them, and this is the backstop for a stale tab.
 - The webhook records only sessions carrying this site's metadata
   (`priority` or `kind=partner`) with `payment_status=paid`; inserts
   are idempotent on the session id.
@@ -435,6 +437,20 @@ flip to live, in this order:
   checkout with no gift on top. A shirt bought there credits
   `SUPPORT_ALL`, since the buyer never picked a priority. The home
   page and the footer link it; the top nav deliberately doesn't.
+  - *Ordering closes* at `SHIRT.deadline` (Pacific, `YYYY-MM-DD HH:MM`,
+    the minute itself still open) with `SHIRT.deadlineLabel` as the
+    same moment in words. To move the cutoff, change those two lines
+    and redeploy. Until it passes, the shirt page, the donate form's
+    step 2 and the home callout each print the label; after it, the
+    shirt form and every size picker are gone from the served HTML —
+    not hidden in it — the home callout is dropped, and `/api/checkout`
+    refuses an order carrying shirts, so a tab left open through Friday
+    evening can't buy a shirt that misses the printer. A slot builder
+    returning `null` is how `pages.js` removes an element.
+  - `pacificAt` and `shirtsOpen` in `data.js` decide both this and the
+    printer sheet's clock. Never compare UTC: 1pm Pacific on deadline
+    day is already past 7pm in UTC, which would shut ordering six hours
+    early, and `test/views.spec.js` pins that case.
 - **Goals, copy, tiers, roster, partners** — edit `site/js/data.js`
   (page copy lives in the HTML files); redeploy. The campaign goal is
   the ticker figure; a priority's goal is its annual program cost and

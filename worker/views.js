@@ -7,7 +7,7 @@
 import data from '../site/js/data.js';
 import ui from '../site/js/ui.js';
 
-const { ORG, PRIORITIES, CAMPAIGN, SHIRT, CLASSROOMS, boardClassrooms, PARTNER_TIERS, PARTNERS, ANNUAL_LEVELS, SUPPORT_ALL, priorityById, partnerTierById, annualLevelById, gradeName, priorityTarget, presentingPartner } = data;
+const { ORG, PRIORITIES, CAMPAIGN, SHIRT, CLASSROOMS, boardClassrooms, PARTNER_TIERS, PARTNERS, ANNUAL_LEVELS, SUPPORT_ALL, priorityById, partnerTierById, annualLevelById, gradeName, priorityTarget, presentingPartner, shirtsOpen } = data;
 const { html, raw, money, nameList, studentRowsMarkup, LINK_ROWS, SHIRT_ROWS, dartUp } = ui;
 
 /* ---- motifs (from the brand guide's Spirit Kit) -------------------- */
@@ -274,6 +274,12 @@ export const homeSlots = (live) => {
   const per = (live && live.priorities) || {};
   const presenter = presentingPartner();
   return {
+    // The shirt callout carries the deadline while there is one to
+    // make, and the whole card goes once there isn't: a button to a
+    // closed order form is worse than no button.
+    ...(shirtsOpen()
+      ? { 'shirt-callout-note': html`Order a Rally shirt on its own &mdash; half of every shirt still counts toward your Rocket and their classroom. Ordering closes <strong>${SHIRT.deadlineLabel}</strong>.` }
+      : { 'shirt-callout': null }),
     trajectory: trajectorySVG(raised / CAMPAIGN.goal),
     presented: presenter
       ? html`<p class="presented">The 2026 Rocket Rally is generously presented by our Annual Partner <strong>${presenter.name}</strong></p>`
@@ -300,8 +306,13 @@ export const homeSlots = (live) => {
   };
 };
 
-/* Donate, step 1: one radio card per priority. */
+/* Donate, step 1: one radio card per priority. Step 2 mentions the
+   shirt add-on, so it carries the deadline and then stops mentioning
+   shirts at all once they can't be ordered. */
 export const donateSlots = () => ({
+  'rocket-hint': shirtsOpen()
+    ? html`Every gift counts for your Rocket and their class &mdash; and a Rally shirt does too, through <strong>${SHIRT.deadlineLabel}</strong>.`
+    : html`Every gift counts for your Rocket and their class.`,
   'priority-options': html`${PRIORITIES.map((p) => html`
       <label class="option-card with-icon">
         <input type="radio" name="priority" value="${p.id}">
@@ -475,8 +486,20 @@ export const linkSlots = () => ({
 });
 
 /* Shirt page: the first (empty) Rocket row with its size picker, and
-   the price line — both figures come from data.js, never the HTML. */
-export const shirtSlots = () => ({
+   the price line — both figures come from data.js, never the HTML.
+
+   Past the deadline the form goes rather than greys out, and the page
+   says what happened and points at the thing a family can still do.
+   `null` removes the element, so whichever of the two is wrong for the
+   moment never reaches the browser at all. */
+export const shirtSlots = () => (shirtsOpen() ? {
+  'shirt-assurance': html`Order by <strong>${SHIRT.deadlineLabel}</strong> &mdash; shirts come to your Rocket at school before Rally day`,
   'shirt-lede': html`Rally shirts are <strong>${money(SHIRT.price)}</strong>, and <strong>${money(SHIRT.credit)}</strong> of every one counts toward your Rocket and their classroom, the same as a gift. The rest buys the shirt.`,
   'shirt-rows': studentRowsMarkup([{ c: '', n: '', s: [] }], SHIRT_ROWS),
+  'shirt-closed': null,
+} : {
+  'shirt-assurance': html`Ordering closed ${SHIRT.deadlineLabel}`,
+  'shirt-form': null,
+  'shirt-closed': html`Shirt ordering closed <strong>${SHIRT.deadlineLabel}</strong>, so the order could reach the printer in time for Rally day. Shirts are on their way to the Rockets who ordered one.`,
+  'shirt-also': html`You can still give: <a href="/donate">make a donation</a> &mdash; every gift counts for your Rocket and their class.`,
 });

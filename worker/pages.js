@@ -19,9 +19,14 @@ export const PAGES = {
   '/shirt': { slots: shirtSlots },
 };
 
-const fill = (fragment) => ({
-  element(el) { el.setInnerContent(String(fragment), { html: true }); },
-});
+/* A slot fills its element, or — when the builder hands back `null` —
+   takes the element out of the page. Removal is how a state that no
+   longer applies (the shirt form past its deadline, the closed notice
+   before it) never reaches the browser to be styled around or
+   submitted from. */
+const fill = (fragment) => (fragment === null
+  ? { element(el) { el.remove(); } }
+  : { element(el) { el.setInnerContent(String(fragment), { html: true }); } });
 
 export async function renderPage(request, env) {
   const path = new URL(request.url).pathname;
