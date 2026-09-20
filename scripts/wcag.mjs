@@ -198,8 +198,18 @@ function focusRing() {
   const el = document.activeElement;
   if (!el || el === document.body) return { done: true };
   window.wcagSeen ||= new WeakSet();
-  if (window.wcagSeen.has(el)) return { done: true };
+  window.wcagFirst ??= el;
+  window.wcagCount ||= 0;
+  // A native multi-part control (date/time inputs) reports the same
+  // activeElement across several Tab presses, one per internal segment,
+  // before focus actually leaves it. Only a genuine wrap back to the
+  // ring's starting element, after at least one other element, means
+  // the walk has cycled; anything else revisited is a segment, not a loop.
+  if (window.wcagSeen.has(el)) {
+    return (el === window.wcagFirst && window.wcagCount > 1) ? { done: true } : {};
+  }
   window.wcagSeen.add(el);
+  window.wcagCount += 1;
   const cs = getComputedStyle(el);
   const name = describe(el);
   // The browser's own ring is exempt from the author's contrast duty.
