@@ -12,7 +12,7 @@ import { recordDonation, campaignStats, boardStats, studentsReport, shirtsReport
   teacherEmails, setTeacherEmails, weekKey, claimDigest, finishDigest, releaseDigest, digestHistory,
   renameRocket, NO_NAME, giftRockets, giftsForEmail, claimLinkRequest,
   recordPartnerCredit, deletePartnerCredit, partnerCredits } from './store.js';
-import { buildDigests } from './digest.js';
+import { buildDigests, recapSheets } from './digest.js';
 import { sendEmail, mailConfigured } from './mail.js';
 import { renderPage } from './pages.js';
 import data from '../site/js/data.js';
@@ -620,6 +620,24 @@ async function handleReport(request, url, env, name) {
     Object.keys(REPORTS).forEach((key, i) => { body[key] = reports[i]; });
     return json(body, 200, { 'cache-control': 'no-store' });
   }
+  /* The printable recaps: the same standing the Thursday email would
+     send, as a handout, one classroom per page. The PTA downloads it
+     and sends or prints the classes it wants, which is what happens on
+     any week the automatic send isn't the right tool. */
+  if (name === 'recaps') {
+    const now = Date.now();
+    const digests = await buildDigests(env.DB, now);
+    const asOf = new Date(now).toLocaleDateString('en-US', {
+      month: 'long', day: 'numeric', timeZone: 'America/Los_Angeles',
+    });
+    return new Response(recapSheets(digests, asOf), {
+      headers: {
+        'content-type': 'text/html; charset=utf-8',
+        'content-disposition': 'attachment; filename="rocket-rally-class-recaps.html"',
+        'cache-control': 'no-store',
+      },
+    });
+  }
   /* The shirts sheet takes a batch window. shirtsReport parses and
      bounds it — a bare day, a day and a time, or nothing — so the
      route just hands the raw strings over. */
@@ -724,8 +742,9 @@ export default {
         case 'GET /api/students.csv':
         case 'GET /api/shirts.csv':
         case 'GET /api/classrooms.csv':
+        case 'GET /api/recaps.html':
         case 'GET /api/admin.json':
-          return await handleReport(request, url, env, url.pathname.slice(5).replace(/\.(csv|json)$/, ''));
+          return await handleReport(request, url, env, url.pathname.slice(5).replace(/\.(csv|json|html)$/, ''));
         default: return json({ error: 'not found' }, 404);
       }
     } catch (err) {

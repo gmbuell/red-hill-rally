@@ -23,7 +23,7 @@ two-sentence pointer; this file is the operating manual.
 | `npm install` | wrangler, vitest + workers pool, lighthouse |
 | `npx wrangler d1 migrations apply red-hill-rally --local` | once per clone: local D1 schema |
 | `npm run dev` | `wrangler dev` on http://localhost:8787 |
-| `npm test` | vitest (194 tests, ~4 s) |
+| `npm test` | vitest (201 tests, ~4 s) |
 | `npm run audit` | Lighthouse on every page but `/admin` (noindex), mobile + desktop (needs Chrome); defaults to the live site (`npm run audit -- --url http://localhost:8787` for local). `--runs 3 --min 98` reproduces the CI gate, `--form mobile` limits it to one form factor |
 | `npm run wcag` | WCAG 2.2 checks on every page, mobile + desktop (needs Chrome): text contrast, non-text contrast, focus rings, target size, body leading ≥ 1.5, body text ≥ 16px and labels ≥ 13px. Defaults to the live site (`npm run wcag -- --url http://localhost:8787` for local, `--page donate --form mobile` to narrow). Each cell shows how many elements the check examined |
 | `npm run deploy` | **Ships to production**: the worker and every file under `site/`. The `predeploy` step runs the tests, then applies pending D1 migrations to the remote database, so schema and code ship together. Every push to `main` runs this through Cloudflare Workers Builds (dashboard → the worker → Settings → Build), so merging a PR deploys it |
@@ -57,10 +57,11 @@ secrets; the maintainer reviews and ships PRs.
   the same guard (the `html` tag, money and name formatting, student
   rows, the dart motif) plus browser-only form plumbing. Only the core
   is exported.
-- `worker/digest.js` — the Thursday classroom email's text, built from
-  `classroomTotals` and the student sheet; `worker/mail.js` is the
-  provider call (Resend over plain fetch, no SDK), off whenever its
-  secrets are missing.
+- `worker/digest.js` — one classroom's standing (`digestFacts`) from
+  `classroomTotals` and the student sheet, rendered two ways: the
+  Thursday email's text and the printable recap sheets the PTA sends by
+  hand. `worker/mail.js` is the provider call (Resend over plain fetch,
+  no SDK), off whenever its secrets are missing.
 - `worker/index.js` — router for `/api/*`, `/l/<code>`, `/logo/<id>`,
   and every page. `pages.js` renders a page: it fetches the static
   HTML from the assets binding and streams it through HTMLRewriter,
@@ -299,7 +300,9 @@ flip to live, in this order:
     https://rocketrally.org/api/students.csv > students.csv
   ```
 
-  and likewise `classrooms.csv` and `shirts.csv`. `…?key=<ADMIN_KEY>`
+  and likewise `classrooms.csv`, `shirts.csv` and `recaps.html` (the
+  printable class recaps, under the Thursday email below).
+  `…?key=<ADMIN_KEY>`
   also works in a browser but leaves the key in history and request
   logs. Partnerships and donor details are left out of all three;
   read donor contact details in the Stripe dashboard, and find
@@ -394,6 +397,26 @@ flip to live, in this order:
     mailed, so a retried cron is a no-op. A failed send releases its
     row so the next run retries that class. Mission Control shows when
     each class last got one.
+  - *Sending them by hand* is "Download class recaps" in the same
+    panel: `/api/recaps.html` behind the admin key, every roster
+    classroom as a printable page, one per sheet, which the PTA prints,
+    saves as a PDF or attaches itself. It is the tool for a week the
+    cron shouldn't own — the send is off, a holiday week, a push that
+    wants a paper copy in a teacher's box.
+    - Both the email and the sheet render `digestFacts`, which decides
+      participation, dollars, the prize tier and the Rockets-to-go
+      **once**. Adding a figure to one means adding it to the facts, or
+      a teacher's paper copy and their inbox start disagreeing —
+      `test/api.spec.js` pins the two against each other and pins the
+      80/100% thresholds directly.
+    - The sheet opens with the PTA's ask (the prize ladder, $1 counts,
+      buy a shirt so the class matches, and the offer to buy a shirt
+      for a child who needs one at `rocketrally@redhillpta.org`). The
+      shirt half of that disappears once `SHIRT.deadline` passes,
+      because by then it asks for something nobody can do.
+    - It names students, like the email does, so it is per-teacher
+      material: the download holds **every** class, and sending the
+      whole file to one teacher hands them the school.
   - *Setup, once*: a Resend account, `rocketrally.org` verified as a
     sending domain, then `npx wrangler secret put RESEND_API_KEY`,
     `MAIL_FROM` (the verified sender) and `MAIL_REPLY_TO` (a PTA inbox

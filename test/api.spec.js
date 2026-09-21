@@ -4,6 +4,7 @@ import worker from '../worker/index.js';
 import data from '../site/js/data.js';
 import { recordDonation, campaignStats, boardStats } from '../worker/store.js';
 import { sendWeeklyDigests } from '../worker/index.js';
+import { buildDigests, digestFacts, recapSheets } from '../worker/digest.js';
 import { paidSession, paidPartnership, PII } from './fixtures.js';
 
 /* Fixture config derives from data.js, so the edits contributors make
@@ -1536,6 +1537,122 @@ describe('the Thursday teacher digest', () => {
     await sendWeeklyDigests(env, Date.UTC(2026, 8, 11, 0, 0)); // unconfigured
     const body = await (await SELF.fetch('https://rally.test/api/admin.json', { headers: KEY })).json();
     expect(body.digest.history).toHaveLength(0);
+  });
+});
+
+/* ---- the printable class recaps ---- */
+
+describe('the printable class recaps', () => {
+  const KEY = { authorization: 'Bearer test-admin-key' };
+  const roomA = data.classroomById(ROOM_A);
+
+  const giftFor = (id, room, name, cents = 10000) => deliverWebhook(sessionEvent({
+    id, amount_total: cents, metadata: { students: JSON.stringify([{ c: room, n: name }]) },
+  }));
+
+  const recaps = async (headers = KEY) =>
+    SELF.fetch('https://rally.test/api/recaps.html', { headers });
+
+  /* One classroom's slice of the document, so a test about room A
+     can't pass on something printed for room B. */
+  const sheetFor = async (teacher) => {
+    const text = await (await recaps()).text();
+    return text.split('<section class="recap">').find((s) => s.includes(`<h1>${teacher}<`));
+  };
+
+  it('stays behind the admin key', async () => {
+    expect((await recaps({})).status).toBe(401);
+  });
+
+  it('downloads one page per classroom, every class on the roster', async () => {
+    const res = await recaps();
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toContain('text/html');
+    expect(res.headers.get('content-disposition')).toContain('rocket-rally-class-recaps.html');
+    // Never cached: the PTA downloads this to send today's numbers.
+    expect(res.headers.get('cache-control')).toBe('no-store');
+    const text = await res.text();
+    expect(text.split('<section class="recap">')).toHaveLength(data.CLASSROOMS.length + 1);
+    // Including the rooms with nothing yet — those are the ones the
+    // nudge is for.
+    for (const room of data.CLASSROOMS) expect(text).toContain(`<h1>${room.teacher}<`);
+    // And it breaks per class, or it prints as one long ribbon.
+    expect(text).toContain('page-break-after: always');
+  });
+
+  it('prints the same standing the teacher’s email would have sent', async () => {
+    await giftFor('cs_rc1', ROOM_A, 'Mia Rodriguez', 5000);
+    await giftFor('cs_rc2', ROOM_A, 'Leo Park', 2500);
+    const sheet = await sheetFor(roomA.teacher);
+    const pct = Math.round((2 / roomA.students) * 100);
+    expect(sheet).toContain(`<strong>${pct}%</strong>`);
+    expect(sheet).toContain(`2 of ${roomA.students} Rockets have a gift`);
+    expect(sheet).toContain('<strong>$75</strong>');
+    expect(sheet).toContain('Mia Rodriguez');
+    expect(sheet).toContain('Leo Park');
+    // The email is built from the same facts, so the figures a teacher
+    // reads on paper and in their inbox cannot drift apart.
+    const digests = await buildDigests(env.DB, Date.parse('2026-09-21T12:00:00Z'));
+    const mailed = digests.find((d) => d.classroom === ROOM_A).body;
+    expect(mailed).toContain(`Participation: ${pct}% — 2 of ${roomA.students} Rockets have a gift`);
+    expect(mailed).toContain('Raised so far: $75');
+  });
+
+  it('keeps each class’s students on their own page', async () => {
+    await giftFor('cs_rc3', ROOM_A, 'Mia Rodriguez', 5000);
+    await giftFor('cs_rc4', ROOM_B, 'Dev Patel', 5000);
+    const a = await sheetFor(roomA.teacher);
+    expect(a).toContain('Mia Rodriguez');
+    // A teacher's page names their own Rockets and nobody else's.
+    expect(a).not.toContain('Dev Patel');
+  });
+
+  it('escapes a student name instead of running it', async () => {
+    await giftFor('cs_rc5', ROOM_A, '<script>alert(1)</script>', 5000);
+    const sheet = await sheetFor(roomA.teacher);
+    expect(sheet).toContain('&lt;script&gt;');
+    expect(sheet).not.toContain('<script>alert(1)</script>');
+  });
+
+  /* The prize thresholds, decided once in digestFacts and rendered
+     twice. Driven directly so every band is covered without seeding
+     sixteen gifts, and so a change to the ladder fails here rather
+     than shipping a paper copy that contradicts /prizes. */
+  it('names the next prize by the same thresholds the email uses', () => {
+    const room = { id: 'x', teacher: 'Ms. Test', grade: '1st', students: 20 };
+    const facts = (rockets) => digestFacts(room, { rockets, cents: 1000 }, [], null, 'May 1');
+    expect(facts(15).tier).toBe('under80');      // 75%
+    expect(facts(15).need).toBe(1);              // one more reaches 16 of 20
+    expect(facts(16).tier).toBe('at80');         // exactly 80% earns it
+    expect(facts(16).need).toBe(4);              // four more reaches 100%
+    expect(facts(20).tier).toBe('at100');
+    expect(facts(20).need).toBe(0);
+
+    const sheets = (rockets) => recapSheets([{ facts: facts(rockets) }], 'May 1');
+    expect(sheets(15)).toContain('to reach 80% and earn');
+    expect(sheets(16)).toContain('you&rsquo;ve earned');
+    expect(sheets(16)).toContain('reaches 100%');
+    expect(sheets(20)).toContain('at <strong>100%</strong>');
+  });
+
+  it('asks for the shirt while there is still time to order one', async () => {
+    try {
+      vi.setSystemTime(new Date('2026-09-26T01:00:00Z')); // 6pm Pacific, still open
+      let sheet = await sheetFor(roomA.teacher);
+      expect(sheet).toContain(data.SHIRT.deadlineLabel);
+      // The offer that needs a reply, and the address to reply to.
+      expect(sheet).toContain('rocketrally@redhillpta.org');
+
+      // Past the deadline the shirt ask would be asking for something
+      // nobody can do, so it goes; the participation ask stays.
+      vi.setSystemTime(new Date('2026-09-26T02:01:00Z'));
+      sheet = await sheetFor(roomA.teacher);
+      expect(sheet).not.toContain(data.SHIRT.deadlineLabel);
+      expect(sheet).not.toContain('rocketrally@redhillpta.org');
+      expect(sheet).toContain('counts toward participation');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 
