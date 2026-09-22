@@ -164,6 +164,18 @@ describe('rendered pages', () => {
     // so it stays on the page: any amount, and a share of your own class.
     expect(text).toContain('any amount');
     expect(text).toContain('a class of 18 and a class of 32');
+
+    /* The lunch is the one Rocket prize counted in gifts rather than
+       dollars, and the page and the thank-you nudge have to agree on
+       the number — a family told "2 more gifts" by one and "7 more" by
+       the other would rightly write in. */
+    expect(text).toContain(`<h3>${data.LUNCH.gifts} gifts</h3>`);
+    expect(text).toContain('Ms. Malpass and Mr. Strong');
+    // It has no cap, and saying so is the point of it.
+    expect(text).toMatch(/no cap/i);
+    expect(text).toContain(`every Rocket who reaches ${data.LUNCH.gifts} comes`);
+
+
   });
 
   /* The weekly send is off (no cron in wrangler.jsonc). Mission

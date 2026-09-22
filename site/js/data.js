@@ -16,6 +16,18 @@ const ORG = {
    running total against it. */
 const STUDENT_GOAL = 100;
 
+/* The other Rocket prize, and the only one counted in gifts rather
+   than dollars: ten separate gifts of any size earns the lunch. It
+   rewards asking widely instead of asking big, so a child who asks ten
+   people for $1 earns it exactly like a child whose grandparents write
+   one large check. No cap — everyone who gets there goes. /prizes
+   states the same number in its own words and a test holds the two
+   together. */
+const LUNCH = {
+  gifts: 10,
+  name: 'lunch with Ms. Malpass and Mr. Strong',
+};
+
 /* Gift limits, enforced by the API and mirrored by the donate form. */
 const MAX_NAME = 80;      // characters, donor and student names
 const MAX_AMOUNT = 50000; // dollars, per gift
@@ -347,7 +359,7 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     ORG, PRIORITIES, SUPPORT_ALL, CAMPAIGN, CLASSROOMS, PARTNER_TIERS, PARTNERS,
     ANNUAL_LEVELS,
-    MAX_NAME, MAX_AMOUNT, MAX_STUDENTS, MAX_SHIRTS, SHIRT, STUDENT_GOAL, feeCoverCents,
+    MAX_NAME, MAX_AMOUNT, MAX_STUDENTS, MAX_SHIRTS, SHIRT, STUDENT_GOAL, LUNCH, feeCoverCents,
     ANNUAL_COST,
     priorityById, classroomById, boardClassrooms, partnerTierById, annualLevelById, gradeName, shirtSizeById,
     pacificAt, shirtsOpen,

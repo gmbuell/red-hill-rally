@@ -55,12 +55,20 @@
           const anonLine = anon > 0
             ? `${names.length ? 'and ' : ''}${anon} anonymous gift${anon === 1 ? '' : 's'}`
             : '';
+          /* The lunch is counted in gifts, not dollars, so it is the
+             one prize a family can act on by asking one more person.
+             Saying how many are left turns the count above it from a
+             fact into something to do. */
+          const toLunch = LUNCH.gifts - r.gifts;
+          const lunchLine = toLunch > 0
+            ? ` · ${toLunch} more gift${toLunch === 1 ? '' : 's'} to the lunch`
+            : ' · lunch earned';
           return html`
           <li>
             <span class="who">${r.name || 'Your Rocket'}</span>
             <span class="amount">${RH.money(r.raised)}</span>
             <small class="meta">${r.gifts} gift${r.gifts === 1 ? '' : 's'}${r.teacher ? ` · ${r.teacher}` : ''}${
-            goal > 0 ? (left > 0 ? ` · ${RH.money(left)} to go` : ' · goal reached') : ''}</small>
+            goal > 0 ? (left > 0 ? ` · ${RH.money(left)} to go` : ' · goal reached') : ''}${lunchLine}</small>
             ${names.length || anonLine ? html`
             <small class="thanks-list">
               <span class="thanks-lead">With thanks to</span>
