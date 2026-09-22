@@ -498,7 +498,7 @@ export const boardSlots = (live) => {
        stops splitting a family's attention two ways and points at the
        one thing still open, with the date it closes. */
     'totals-note': met
-      ? html`We passed our ${money(CAMPAIGN.goal)} goal. The <a href="/why-we-rally">six</a> programs and priorities supported by the Red Hill PTA cost about <a href="/why-we-rally">${money(ANNUAL_COST)} each year</a>, so every gift from now until ${CAMPAIGN.closeDayLabel} helps fund them. Any gift counts the same toward participation: $1 moves it exactly as far as $100. Giving closes <strong>${CAMPAIGN.closeLabel}</strong>.`
+      ? html`We passed our ${money(CAMPAIGN.goal)} goal. The <a href="/why-we-rally">six</a> programs and priorities supported by the Red Hill PTA cost about <a href="/why-we-rally">${money(ANNUAL_COST)} each year</a>, so every gift helps fund them. Giving closes <strong>${CAMPAIGN.closeLabel}</strong>.`
       : html`We&rsquo;re rewarding two things: total dollars raised and participation. The ask is $100 a Rocket, but for participation any gift counts the same, whether it&rsquo;s $1 or $100. This is a school-wide effort.`,
     race: html`${race}`,
     /* Two races, and only one of them has a loser. Saying so under the
