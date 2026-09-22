@@ -154,6 +154,10 @@ const PRIORITIES = [
     id: 'safety',
     name: 'A Safer, Brighter Campus',
     goal: 40000,
+    // A one-time investment in the campus, not a program that has to
+    // be funded again next year — /why-we-rally says so on the card,
+    // and `ANNUAL_COST` leaves it out for the same reason.
+    oneTime: true,
     blurb: 'PTA-funded campus improvements include classroom window tinting and upgrades to shared spaces used by our entire school community.',
     circle: { min: 500, label: 'Wing Sponsor' },
     tiers: [
@@ -193,6 +197,15 @@ const SUPPORT_ALL = {
    target the Rally is not chasing. */
 const CAMPAIGN = {
   goal: 50000,
+  /* When giving closes and the classroom race locks. Once the dollar
+     goal is met this is the only deadline left worth naming, so it is
+     a fact here rather than a date typed into three pages. Pacific,
+     like every other moment on this site; move the two together. */
+  close: '2026-10-06 19:00',
+  closeLabel: 'Tuesday, October 6 at 7pm',
+  // The same day inside a sentence, where the weekday and the hour
+  // would be a mouthful. Both labels are the one moment above.
+  closeDayLabel: 'October 6th',
 };
 
 /* A priority's share of the campaign goal, in proportion to its
@@ -201,6 +214,15 @@ const CAMPAIGN = {
    reaches its goal. */
 const priorityTarget = (p) =>
   CAMPAIGN.goal * p.goal / PRIORITIES.reduce((s, q) => s + q.goal, 0);
+
+/* What a year of these programs costs, which is the honest answer to
+   "why keep giving after the goal": the Rally is one push toward this
+   list, never the whole of it, and /why-we-rally prints the same
+   figures card by card. The one-time campus work is left out — folding
+   a capital project into a yearly figure would overstate the gap. Read
+   from the priorities so a revised program cost can't leave a stale
+   total sitting in the copy. */
+const ANNUAL_COST = PRIORITIES.filter((p) => !p.oneTime).reduce((s, p) => s + p.goal, 0);
 
 /* The classroom roster, keyed by teacher. `students` is the class
    size and sets the participation denominator in the classroom race. */
@@ -321,6 +343,7 @@ if (typeof module !== 'undefined' && module.exports) {
     ORG, PRIORITIES, SUPPORT_ALL, CAMPAIGN, CLASSROOMS, PARTNER_TIERS, PARTNERS,
     ANNUAL_LEVELS,
     MAX_NAME, MAX_AMOUNT, MAX_STUDENTS, MAX_SHIRTS, SHIRT, STUDENT_GOAL, feeCoverCents,
+    ANNUAL_COST,
     priorityById, classroomById, boardClassrooms, partnerTierById, annualLevelById, gradeName, shirtSizeById,
     pacificAt, shirtsOpen,
     priorityTarget, presentingPartner,

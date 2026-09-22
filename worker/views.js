@@ -7,7 +7,7 @@
 import data from '../site/js/data.js';
 import ui from '../site/js/ui.js';
 
-const { ORG, PRIORITIES, CAMPAIGN, SHIRT, CLASSROOMS, boardClassrooms, PARTNER_TIERS, PARTNERS, ANNUAL_LEVELS, SUPPORT_ALL, priorityById, partnerTierById, annualLevelById, gradeName, priorityTarget, presentingPartner, shirtsOpen } = data;
+const { ORG, PRIORITIES, CAMPAIGN, ANNUAL_COST, SHIRT, CLASSROOMS, boardClassrooms, PARTNER_TIERS, PARTNERS, ANNUAL_LEVELS, SUPPORT_ALL, priorityById, partnerTierById, annualLevelById, gradeName, priorityTarget, presentingPartner, shirtsOpen } = data;
 const { html, raw, money, nameList, studentRowsMarkup, LINK_ROWS, SHIRT_ROWS, dartUp } = ui;
 
 /* ---- motifs (from the brand guide's Spirit Kit) -------------------- */
@@ -267,12 +267,40 @@ export const footer = () => html`
 
 /* ---- pages ------------------------------------------------------------ */
 
+/* Every child in the school, including the rooms the classroom race
+   leaves out: they are Rockets, and a figure calling itself
+   school-wide while quietly dropping 26 of them would be a lie.
+   Rockets are capped per class the way the rows are, so the school
+   can't read over 100%. Home and the Rally Board both call this, so
+   the two pages cannot print different percentages for one school. */
+export const schoolParticipation = (perClass) => {
+  const rooms = perClass || {};   // a failed read hands us null, not undefined
+  let seats = 0;
+  let flying = 0;
+  for (const c of CLASSROOMS) {
+    const { rockets = 0 } = rooms[c.id] || {};
+    seats += c.students;
+    flying += Math.min(rockets, c.students);
+  }
+  return { seats, flying, pct: seats > 0 ? Math.round((flying / seats) * 100) : 0 };
+};
+
 /* Home: the campaign meter, its raised/goal figures, and the six
    priority cards. */
 export const homeSlots = (live) => {
   const raised = live ? live.campaign.raised : 0;
   const per = (live && live.priorities) || {};
   const presenter = presentingPartner();
+
+  /* Past the goal the hero has to change what it asks for. The dollar
+     figure is met and stays met — no second number is invented to
+     chase, which would tell the families who already gave that the
+     finish line moves. Instead the goal becomes something achieved and
+     the live ask becomes the one race still open: every Rocket in the
+     air before giving closes. Dollars keep counting either way, and
+     every gift after the goal still funds the same six programs. */
+  const met = raised >= CAMPAIGN.goal;
+  const school = schoolParticipation(live && live.classrooms);
   return {
     // The shirt callout carries the deadline while there is one to
     // make, and the whole card goes once there isn't: a button to a
@@ -284,8 +312,19 @@ export const homeSlots = (live) => {
     presented: presenter
       ? html`<p class="presented">The 2026 Rocket Rally is generously presented by our Annual Partner <strong>${presenter.name}</strong></p>`
       : '',
+    /* Why keep giving with the goal met: the list costs more than the
+       Rally was ever asking for, which /why-we-rally has said card by
+       card all along. A gap to close is a reason; a bigger goal would
+       have been a moved finish line. */
+    'goal-met': met
+      ? html`<p class="goal-met"><strong>We did it!</strong> The Red Hill community passed our ${money(CAMPAIGN.goal)} goal. The <a href="/why-we-rally">six</a> programs and priorities supported by the Red Hill PTA cost about <a href="/why-we-rally">${money(ANNUAL_COST)} each year</a>. Every gift from now until ${CAMPAIGN.closeDayLabel} helps fund them, and every class is still racing to 100% participation until giving closes.</p>`
+      : null,
     'stat-raised': html`${money(raised)}`,
-    'stat-goal': html`${money(CAMPAIGN.goal)}`,
+    // Second figure: the goal while it is still ahead, and once it is
+    // behind us, the race that isn't finished.
+    'stat-goal': met ? html`${school.pct}%` : html`${money(CAMPAIGN.goal)}`,
+    'goal-label': met ? html`of Rockets have participated` : html`Our goal`,
+    'goal-sub': met ? html`${school.flying} of ${school.seats} students` : null,
     // The year-round partners, named on the home page. Reads the same
     // roster the wall does, so a new Annual Partner appears in both.
     'partner-names': html`${BUSINESS_LIST.format(PARTNERS.filter((p) => p.annual).map((p) => p.name))}`,
@@ -364,16 +403,14 @@ export const boardSlots = (live) => {
      capped per class the way the rows are, so the school can't read
      over 100%. Deliberately not a gift or partner count: those invited
      arithmetic nobody should be doing, and read as bad news early. */
-  /* Every child in the school, including the rooms the race leaves out:
-     they are Rockets, and a figure that called itself school-wide while
-     quietly dropping 26 of them would be a lie. */
-  const schoolWide = CLASSROOMS.map(measure);
-  const seats = schoolWide.reduce((n, c) => n + c.students, 0);
-  const flying = schoolWide.reduce((n, c) => n + Math.min(c.rockets, c.students), 0);
+  const school = schoolParticipation(perClass);
+  const met = raised >= CAMPAIGN.goal;
   const totals = [
-    [money(raised), 'raised of ' + money(CAMPAIGN.goal), ''],
-    [`${seats > 0 ? Math.round((flying / seats) * 100) : 0}%`, 'of Rockets have participated',
-     `${flying} of ${seats} students`],
+    // Once the goal is behind us the label says so rather than counting
+    // toward a number already reached. No new target takes its place.
+    [money(raised), met ? 'raised, past our ' + money(CAMPAIGN.goal) + ' goal' : 'raised of ' + money(CAMPAIGN.goal), ''],
+    [`${school.pct}%`, 'of Rockets have participated',
+     `${school.flying} of ${school.seats} students`],
   /* The count is a div, not a span: pages and stylesheet are separate
      caches, so a phone can hold yesterday's CSS against today's markup
      for a while after a deploy. A span in that window runs straight on
@@ -417,10 +454,10 @@ export const boardSlots = (live) => {
   const at100 = ranked.filter((c) => c.shown >= 100).length;
   const classes = (n) => `${n} class${n === 1 ? '' : 'es'}`;
   const partLine = !at80
-    ? html`Every class can earn funds for classroom supplies and needs. Reach 80% participation to earn $150 and 100% participation to earn $250.`
+    ? html`Every class can earn funds for classroom supplies and needs. Reach 80% participation to earn $150 and 100% participation to earn $250. Every class that gets there wins, however many do.`
     : html`<strong>${classes(at80)}</strong> at 80% or more &middot; ${at100
       ? html`<strong>${at100}</strong> at 100%`
-      : html`<strong>none</strong> at 100% yet`}`;
+      : html`<strong>none</strong> at 100% yet`}<div class="every">Every class that gets there wins: $150 at 80%, $250 at 100%, however many classes make it.</div>`;
   const partNote = html`<small class="label">Classroom participation</small> ${partLine}`;
 
   /* Named gifts newest first; anonymous gifts are tallied in one
@@ -456,7 +493,18 @@ export const boardSlots = (live) => {
 
   return {
     'board-totals': html`${totals}`,
+    /* The note under the figures explains what the Rally rewards. With
+       the dollar goal met there is one race left to explain, so it
+       stops splitting a family's attention two ways and points at the
+       one thing still open, with the date it closes. */
+    'totals-note': met
+      ? html`We passed our ${money(CAMPAIGN.goal)} goal. The <a href="/why-we-rally">six</a> programs and priorities supported by the Red Hill PTA cost about <a href="/why-we-rally">${money(ANNUAL_COST)} each year</a>, so every gift from now until ${CAMPAIGN.closeDayLabel} helps fund them. Any gift counts the same toward participation: $1 moves it exactly as far as $100. Giving closes <strong>${CAMPAIGN.closeLabel}</strong>.`
+      : html`We&rsquo;re rewarding two things: total dollars raised and participation. The ask is $100 a Rocket, but for participation any gift counts the same, whether it&rsquo;s $1 or $100. This is a school-wide effort.`,
     race: html`${race}`,
+    /* Two races, and only one of them has a loser. Saying so under the
+       list is the difference between a class at 84% reading the board
+       as "we won $150" and reading it as "we're fifth". */
+    'race-rank': html`<strong>Ordered by participation</strong>, the share of each class with at least one gift, with ties broken by dollars raised. The order is only how the list is sorted. A class lower down loses nothing: every class that reaches a participation prize wins it, however many get there. Only the Golden Shoe has a single winner.`,
     'shoe-note': goldenShoe,
     'prize-note': partNote,
     'honor-roll': roll,

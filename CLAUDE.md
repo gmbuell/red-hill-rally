@@ -23,7 +23,7 @@ two-sentence pointer; this file is the operating manual.
 | `npm install` | wrangler, vitest + workers pool, lighthouse |
 | `npx wrangler d1 migrations apply red-hill-rally --local` | once per clone: local D1 schema |
 | `npm run dev` | `wrangler dev` on http://localhost:8787 |
-| `npm test` | vitest (203 tests, ~4 s) |
+| `npm test` | vitest (212 tests, ~4 s) |
 | `npm run audit` | Lighthouse on every page but `/admin` (noindex), mobile + desktop (needs Chrome); defaults to the live site (`npm run audit -- --url http://localhost:8787` for local). `--runs 3 --min 98` reproduces the CI gate, `--form mobile` limits it to one form factor |
 | `npm run wcag` | WCAG 2.2 checks on every page, mobile + desktop (needs Chrome): text contrast, non-text contrast, focus rings, target size, body leading ≥ 1.5, body text ≥ 16px and labels ≥ 13px. Defaults to the live site (`npm run wcag -- --url http://localhost:8787` for local, `--page donate --form mobile` to narrow). Each cell shows how many elements the check examined |
 | `npm run deploy` | **Ships to production**: the worker and every file under `site/`. The `predeploy` step runs the tests, then applies pending D1 migrations to the remote database, so schema and code ship together. Every push to `main` runs this through Cloudflare Workers Builds (dashboard → the worker → Settings → Build), so merging a PR deploys it |
@@ -171,6 +171,15 @@ secrets; the maintainer reviews and ships PRs.
   are idempotent on the session id.
 - Partner rows count in campaign dollars but not the family-gift tally
   or the classroom race.
+- **The two classroom races are not the same shape, and the board has
+  to say so.** The Golden Shoe has one winner, decided on dollars. The
+  participation prizes are thresholds: every class that reaches 80%
+  earns $150 and every class at 100% earns $250, *however many get
+  there*. So the participation note carries that sentence in both its
+  states, and the line under the list says the order is only a sort —
+  a class at 84% has already won and must never read the board as
+  though it were losing to the room above it. `test/views.spec.js`
+  pins both.
 
 ## Gotchas
 
@@ -494,6 +503,34 @@ flip to live, in this order:
   the ticker figure; a priority's goal is its annual program cost and
   only shapes copy and the card trails. An Annual Partner carries
   `annual`, and `presenting: true` names the one the home hero credits.
+  - *Once `raised` reaches `CAMPAIGN.goal`* the home hero and the board
+    change what they ask for, with **no second dollar target**: the
+    goal stays met and celebrated, and the live ask becomes the one
+    race still open. The families who already gave are never told the
+    finish line moved, so don't add a stretch number without saying so
+    out loud on the page.
+    - Home swaps its second figure from the goal to the school-wide
+      participation share (with the count under it) and prints the
+      goal-met line; dollars keep climbing in the first figure. The
+      board's first label becomes "raised, past our $50,000 goal" and
+      the note under the figures drops to the one race left, with the
+      closing date.
+    - The reason to keep giving is the gap, not a bigger goal:
+      `ANNUAL_COST` in `data.js` is what a year of the programs costs,
+      summed from the priorities with `oneTime` ones left out (the
+      campus work is capital, and folding it in would overstate the
+      gap). /why-we-rally prints the same figures card by card, so the
+      copy links there rather than asserting a number on its own.
+    - `schoolParticipation` in `views.js` is the one place that figure
+      is computed, and **both pages call it** — home reads it from
+      `campaignStats.classrooms`, which exists for this. It counts
+      every roster classroom, including `offBoard` rooms (they are
+      Rockets too) and caps each class at its own size, so the school
+      can never read over 100%. `test/views.spec.js` holds home and the
+      board to the same number.
+  - *`CAMPAIGN.close` / `closeLabel`* is when giving closes and the
+    classroom race locks — the only deadline left once the goal is met.
+    Same Pacific pattern as `SHIRT.deadline`; move the two together.
 - **Partner logos** — businesses upload a logo on the thank-you page
   right after paying; images **auto-publish** to /partners and the
   Rally Board (a PDF converts in the partner's browser, print original

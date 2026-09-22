@@ -1,8 +1,11 @@
 import { env } from 'cloudflare:test';
 import { afterEach, describe, it, expect, vi } from 'vitest';
 import data from '../site/js/data.js';
-import { homeSlots, partnersSlots, boardSlots, donateSlots, shirtSlots } from '../worker/views.js';
+import { homeSlots, partnersSlots, boardSlots, donateSlots, shirtSlots, schoolParticipation } from '../worker/views.js';
 import { PAGES } from '../worker/pages.js';
+import ui from '../site/js/ui.js';
+
+const { money } = ui;
 
 const [P_MAIN] = data.PRIORITIES;
 
@@ -10,6 +13,119 @@ const [P_MAIN] = data.PRIORITIES;
 const dartX = (card) => Number(card.match(/translate\(([\d.]+),16\) rotate\(90\)/)[1]);
 const cardFor = (live, p) => String(homeSlots(live)['priority-grid']).split('<article')
   .find((c) => c.includes(`<h3>${p.name}</h3>`));
+
+/* Passing the goal is the one state the hero has to change its mind
+   about: the figure it was counting toward is now history, and the ask
+   moves to the race that is still open. No second dollar target is
+   invented — the families who already gave are not told the finish
+   line moved. */
+describe('once the dollar goal is met', () => {
+  const [RA, RB] = data.CLASSROOMS;
+  const seats = data.CLASSROOMS.reduce((n, c) => n + c.students, 0);
+  const live = (raised, classrooms = {}) => ({
+    campaign: { raised, gifts: 1 }, priorities: {}, classrooms,
+  });
+
+  it('counts every child in the school, and no class over its own size', () => {
+    const rooms = {
+      [RA.id]: { rockets: RA.students + 5, raised: 100 },  // more gifts than kids
+      [RB.id]: { rockets: 2, raised: 50 },
+    };
+    const { flying, seats: total, pct } = schoolParticipation(rooms);
+    expect(total).toBe(seats);
+    // The overfull class counts its own size, never more.
+    expect(flying).toBe(RA.students + 2);
+    expect(pct).toBe(Math.round((flying / seats) * 100));
+  });
+
+  it('survives a failed read rather than blanking the hero', () => {
+    expect(schoolParticipation(null).pct).toBe(0);
+    expect(String(homeSlots(null)['stat-raised'])).toContain('$0');
+  });
+
+  it('keeps counting toward the goal until it is reached', () => {
+    const under = homeSlots(live(data.CAMPAIGN.goal - 1));
+    expect(under['goal-met']).toBeNull();
+    expect(String(under['stat-goal'])).toBe(String(money(data.CAMPAIGN.goal)));
+    expect(String(under['goal-label'])).toBe('Our goal');
+    expect(under['goal-sub']).toBeNull();
+  });
+
+  it('turns the second figure into the race still open', () => {
+    const rooms = { [RA.id]: { rockets: RA.students, raised: 5000 } };
+    const met = homeSlots(live(data.CAMPAIGN.goal, rooms));
+    const school = schoolParticipation(rooms);
+    expect(String(met['stat-goal'])).toBe(`${school.pct}%`);
+    expect(String(met['goal-label'])).toContain('participated');
+    expect(String(met['goal-sub'])).toBe(`${school.flying} of ${school.seats} students`);
+    // The dollars keep climbing; they are not frozen at the goal.
+    expect(String(homeSlots(live(data.CAMPAIGN.goal + 2500, rooms))['stat-raised']))
+      .toBe(String(money(data.CAMPAIGN.goal + 2500)));
+  });
+
+  it('says the goal is met and gives the gap as the reason to keep going', () => {
+    const banner = String(homeSlots(live(data.CAMPAIGN.goal))['goal-met']);
+    expect(banner).toContain(String(money(data.CAMPAIGN.goal)));
+    expect(banner).toContain(data.CAMPAIGN.closeDayLabel);
+    // The year's cost is the ask now, and both halves of the claim are
+    // links to the page that itemises it, rather than a number with
+    // nothing behind it.
+    expect(banner).toContain(String(money(data.ANNUAL_COST)));
+    expect(banner.match(/href="\/why-we-rally"/g) || []).toHaveLength(2);
+    // Nothing that reads as a fresh target to chase.
+    expect(banner).not.toMatch(/stretch|new goal|next goal/i);
+  });
+
+  it('leaves the one-time campus work out of the year\'s cost', () => {
+    // A capital project folded into a yearly figure would overstate
+    // the gap the copy asks families to help close.
+    const every = data.PRIORITIES.reduce((s, p) => s + p.goal, 0);
+    const once = data.PRIORITIES.filter((p) => p.oneTime).reduce((s, p) => s + p.goal, 0);
+    expect(once).toBeGreaterThan(0);
+    expect(data.ANNUAL_COST).toBe(every - once);
+    expect(data.ANNUAL_COST).toBeGreaterThan(data.CAMPAIGN.goal);
+  });
+
+  it("retires the goal from the board's label and points at participation", () => {
+    const under = boardSlots(live(data.CAMPAIGN.goal - 1));
+    expect(String(under['board-totals'])).toContain(`raised of ${money(data.CAMPAIGN.goal)}`);
+    expect(String(under['totals-note'])).toContain('two things');
+
+    const met = boardSlots(live(data.CAMPAIGN.goal));
+    expect(String(met['board-totals'])).toContain(`past our ${money(data.CAMPAIGN.goal)} goal`);
+    expect(String(met['board-totals'])).not.toContain(`raised of ${money(data.CAMPAIGN.goal)}`);
+    const note = String(met['totals-note']);
+    expect(note).toContain(String(money(data.ANNUAL_COST)));
+    expect(note).toContain(data.CAMPAIGN.closeLabel);
+  });
+
+  /* The participation prizes are thresholds, not places. A class at
+     84% has already won $150, and a board that only ranks them teaches
+     the opposite. */
+  it('says every class that gets there wins, however many do', () => {
+    const rooms = {};
+    // One class over 80%, one nowhere near, so the counts are non-zero.
+    rooms[RA.id] = { rockets: RA.students, raised: 900 };
+    rooms[RB.id] = { rockets: 1, raised: 25 };
+    for (const slots of [boardSlots(live(1000, rooms)), boardSlots(live(1000))]) {
+      const prize = String(slots['prize-note']);
+      expect(prize).toMatch(/every class that gets there wins/i);
+      expect(prize).toMatch(/however many/i);
+    }
+    // And the line under the list says the order is not the contest.
+    const rank = String(boardSlots(live(1000, rooms))['race-rank']);
+    expect(rank).toContain('only how the list is sorted');
+    expect(rank).toMatch(/loses nothing/i);
+    expect(rank).toContain('Golden Shoe has a single winner');
+  });
+
+  it('shows one school one way: home and the board agree on the share', () => {
+    const rooms = { [RA.id]: { rockets: 3, raised: 300 }, [RB.id]: { rockets: 5, raised: 500 } };
+    const pct = schoolParticipation(rooms).pct;
+    expect(String(homeSlots(live(data.CAMPAIGN.goal, rooms))['stat-goal'])).toBe(`${pct}%`);
+    expect(String(boardSlots(live(data.CAMPAIGN.goal, rooms))['board-totals'])).toContain(`${pct}%`);
+  });
+});
 
 describe('page views', () => {
   it('splits the campaign goal across the priorities by annual cost', () => {

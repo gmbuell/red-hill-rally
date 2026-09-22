@@ -459,7 +459,12 @@ describe('webhook and campaign stats', () => {
     expect(stats.priorities[P_MAIN.id]).toBe(100);
     // The home payload carries no donor rows — those live on /api/board.
     expect(stats.donors).toBeUndefined();
-    expect(stats.classrooms).toBeUndefined();
+    // It does carry the classroom counts, because the hero shows the
+    // school-wide participation share once the dollar goal is met. Same
+    // shape, same numbers, and no student names — exactly what
+    // /api/board already serves the public board.
+    expect(stats.classrooms[ROOM_A]).toEqual({ rockets: 1, raised: 100 });
+    for (const probe of PII) expect(campaignText).not.toContain(probe);
 
     const boardRes = await SELF.fetch('https://rally.test/api/board');
     expect(boardRes.status).toBe(200);

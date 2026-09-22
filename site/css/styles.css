@@ -388,6 +388,41 @@ select:focus-visible,
 }
 
 
+/* The count under the hero's second figure, once that figure is the
+   participation share rather than the goal. Matches the board's, so
+   the same two numbers read the same way on both pages. */
+.trajectory-stats .sub {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  color: var(--grey);
+}
+
+/* The reassurance under the participation counts: quieter than the
+   figures, but not fine print — it is the line that stops a class
+   reading the list as a leaderboard. */
+.shoe-note .every {
+  margin-top: 0.35rem;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  color: var(--grey);
+}
+
+/* Goal met. Loud enough to be the news, quiet enough that the next ask
+   under it still reads as the ask. */
+.goal-met {
+  max-width: 40rem;
+  margin: 1.4rem auto 0;
+  padding: 0.9rem 1.2rem;
+  border-radius: 12px;
+  background: var(--sky);
+  font-size: 1.05rem;
+  line-height: 1.55;
+  color: var(--navy);
+}
+.goal-met strong { color: var(--red-ink); }
+
 /* ---------- flight trail (shared progress vocabulary) ---------- */
 
 .trail { display: block; width: 100%; height: auto; }
@@ -869,7 +904,10 @@ select:focus-visible,
    are two, so it hangs off the totals rather than the race below. */
 .totals-note {
   max-width: 38rem;
-  margin: -2rem 0 3rem;
+  /* Clear of the second figure's own count line, which is grey at a
+     near size: too tight and the note reads as a third line of that
+     tile rather than a paragraph about both. */
+  margin: -1rem 0 3rem;
   font-size: 1rem;
   line-height: 1.5;
   color: var(--grey);

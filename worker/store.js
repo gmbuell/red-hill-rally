@@ -231,10 +231,14 @@ export async function offlineGifts(db) {
 }
 
 export async function campaignStats(db) {
-  const [totals, byPriority, partnerRows] = await db.batch([
+  const [totals, byPriority, partnerRows, credits] = await db.batch([
     totalsStmt(db),
     db.prepare("SELECT priority, SUM(amount_cents) AS cents FROM donations WHERE priority != '' GROUP BY priority"),
     partnersStmt(db),
+    // The home page needs the school-wide participation figure too,
+    // and it has to come from the tally the board reads or the two
+    // pages print different percentages for the same school.
+    creditsStmt(db),
   ]);
   const priorities = {};
   let sharedCents = 0;
@@ -255,7 +259,14 @@ export async function campaignStats(db) {
       priorities[p.id] = (priorities[p.id] || 0) + each + (extra-- > 0 ? 1 : 0);
     }
   }
-  return { campaign: campaignShape(totals), priorities, partners: partnerShape(partnerRows) };
+  const classrooms = {};
+  for (const [id, line] of Object.entries(perClassroom(tally(credits.results)))) {
+    classrooms[id] = { rockets: line.rockets, raised: Math.round(line.cents / 100) };
+  }
+  return {
+    campaign: campaignShape(totals), priorities, classrooms,
+    partners: partnerShape(partnerRows),
+  };
 }
 
 /* Rally Board payload: campaign progress plus the classroom race and
