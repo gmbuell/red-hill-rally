@@ -371,9 +371,13 @@
       .map((c) => `${c.teacher}, ${emails[c.id]}`).join('\n');
 
     const withAddress = CLASSROOMS.filter((c) => emails[c.id]).length;
+    /* The weekly send is off (no cron in wrangler.jsonc), so this says
+       what is true today rather than naming a send that isn't coming.
+       The address list still matters for the sample, and for the day
+       the weekly send is switched back on. */
     RH.qs('#digest-state').textContent = !digest || !digest.ready
-      ? 'Email isn’t switched on for this site yet, so nothing will send.'
-      : `${withAddress} of ${CLASSROOMS.length} classes have an address. The next send is Thursday at 5pm.`;
+      ? 'Email isn’t switched on for this site, so nothing sends from here — use the recaps below.'
+      : `Nothing sends automatically. ${withAddress} of ${CLASSROOMS.length} classes have an address on file.`;
 
     const last = {};
     history.forEach((row) => { if (!last[row.classroom]) last[row.classroom] = row; });

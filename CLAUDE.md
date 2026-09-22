@@ -23,7 +23,7 @@ two-sentence pointer; this file is the operating manual.
 | `npm install` | wrangler, vitest + workers pool, lighthouse |
 | `npx wrangler d1 migrations apply red-hill-rally --local` | once per clone: local D1 schema |
 | `npm run dev` | `wrangler dev` on http://localhost:8787 |
-| `npm test` | vitest (212 tests, ~4 s) |
+| `npm test` | vitest (214 tests, ~4 s) |
 | `npm run audit` | Lighthouse on every page but `/admin` (noindex), mobile + desktop (needs Chrome); defaults to the live site (`npm run audit -- --url http://localhost:8787` for local). `--runs 3 --min 98` reproduces the CI gate, `--form mobile` limits it to one form factor |
 | `npm run wcag` | WCAG 2.2 checks on every page, mobile + desktop (needs Chrome): text contrast, non-text contrast, focus rings, target size, body leading ≥ 1.5, body text ≥ 16px and labels ≥ 13px. Defaults to the live site (`npm run wcag -- --url http://localhost:8787` for local, `--page donate --form mobile` to narrow). Each cell shows how many elements the check examined |
 | `npm run deploy` | **Ships to production**: the worker and every file under `site/`. The `predeploy` step runs the tests, then applies pending D1 migrations to the remote database, so schema and code ship together. Every push to `main` runs this through Cloudflare Workers Builds (dashboard → the worker → Settings → Build), so merging a PR deploys it |
@@ -392,13 +392,21 @@ flip to live, in this order:
   so two children sharing a first name in different rooms can't be
   merged. A credit whose donor left the name blank can be given a name
   the same way.
-- **Thursday emails to teachers** — a cron on the worker mails each
-  classroom teacher their own class every Thursday at 5pm Pacific:
+- **Teacher recaps** — each classroom teacher's own class:
   participation, dollars, their Rockets by name, and how many more
-  Rockets to the next prize. It reads the same `classroomTotals` the
-  board and the classroom sheet do.
-  - *Addresses* are typed into Mission Control ("Thursday emails to
-    teachers"), one class per line, and stored in D1 — never in this
+  Rockets to the next prize, from the same `classroomTotals` the board
+  and the classroom sheet read.
+  - **Nothing sends on a schedule.** `triggers.crons` is empty in
+    `wrangler.jsonc` by decision: the PTA sends recaps by hand on the
+    weeks it wants them, because a weekly send reaches every teacher
+    whether or not there is news, and mail going out unattended is what
+    a school hears about. The `scheduled` export and `sendWeeklyDigests`
+    are kept whole and tested, so switching the weekly send back on is
+    putting the cron back — and putting the Mission Control copy back
+    with it, which `test/pages.spec.js` currently holds to the opposite
+    promise.
+  - *Addresses* are typed into Mission Control ("Teacher recaps"),
+    one class per line, and stored in D1 — never in this
     repo, which is public. Saving replaces the whole list, so deleting
     a line takes that class off the send. The paste matches the roster
     on surname, so "Miss Convery" and "Ms. Convery" are one teacher.

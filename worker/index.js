@@ -659,6 +659,9 @@ export default {
   /* Thursday, 5pm Pacific (the cron in wrangler.jsonc is UTC). A
      scheduled event can be retried, which is why the send claims each
      classroom's week before mailing it. */
+  /* Nothing schedules this: `triggers.crons` is empty on purpose, and
+     the PTA sends teacher recaps by hand. Kept whole and tested so the
+     weekly send is a one-line config change away, not a rebuild. */
   async scheduled(event, env, ctx) {
     ctx.waitUntil(sendWeeklyDigests(env, event.scheduledTime || Date.now()));
   },

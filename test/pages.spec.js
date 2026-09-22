@@ -103,6 +103,20 @@ describe('rendered pages', () => {
     expect(text).toContain('a class of 18 and a class of 32');
   });
 
+  /* The weekly send is off (no cron in wrangler.jsonc). Mission
+     Control must not go on promising one — a PTA that reads "the next
+     send is Thursday at 5pm" stops sending recaps by hand, and the
+     teachers simply hear nothing. Turning the cron back on means
+     putting this copy back too. */
+  it('does not promise teachers an automatic send', async () => {
+    const { text } = await page('/admin');
+    expect(text).toContain('Nothing sends on its own');
+    expect(text).not.toMatch(/every thursday at 5pm/i);
+    expect(text).not.toMatch(/the next send is/i);
+    // The way it happens now is right there in the panel.
+    expect(text).toContain('data-download="recaps"');
+  });
+
   it('puts annual partners above rally partners on the wall, biggest first', async () => {
     const { text } = await page('/partners');
     const [top] = data.ANNUAL_LEVELS;

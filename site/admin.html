@@ -192,24 +192,18 @@
     <section class="sheet" aria-labelledby="digest-head">
       <div class="sheet-head">
         <div>
-          <h2 id="digest-head">Thursday emails to teachers</h2>
-          <p>Every Thursday at 5pm each teacher gets their own class: participation, dollars, their Rockets, and how far to the next prize. Only classes with an address below are sent one.</p>
+          <h2 id="digest-head">Teacher recaps</h2>
+          <p>Each teacher&rsquo;s own class: participation, dollars, their Rockets, and how far to the next prize. <strong>Nothing sends on its own.</strong> Open the recaps below and send the ones you want, when you want them.</p>
         </div>
       </div>
 
       <p class="digest-state" id="digest-state" role="status"></p>
 
-      <form id="digest-form" class="offline-form" novalidate>
-        <div class="field">
-          <label for="digest-list">Teacher addresses</label>
-          <textarea id="digest-list" rows="8" spellcheck="false" autocomplete="off"></textarea>
-          <p class="error" id="digest-error">Every line needs a classroom from the list and one email address.</p>
-        </div>
-        <small class="fine-print">One class per line, teacher first: <code>Mrs. Harrison, sharrison@tustin.k12.ca.us</code>. Saving replaces the whole list, so a class you delete stops getting emails.</small>
-        <button type="submit" class="btn" id="digest-save">Save the list</button>
-        <p class="form-error" id="digest-fail" role="alert" hidden></p>
-        <p class="offline-done" id="digest-done" role="status" hidden></p>
-      </form>
+      <div class="digest-test">
+        <p>Open every class as a printable recap, one class per page. Print or save the ones you want and send them yourself.</p>
+        <button type="button" class="btn secondary small" data-download="recaps">Open class recaps</button>
+        <small class="fine-print">Opens in a new tab. Pick one class up top and print it to save that teacher&rsquo;s page as a PDF, named for them. It names the students in each class, so a page goes to that class&rsquo;s teacher and nobody else.</small>
+      </div>
 
       <div class="digest-test">
         <div class="field">
@@ -220,11 +214,17 @@
         <small class="fine-print">Sends one class&rsquo;s email to you only. No teacher is contacted.</small>
       </div>
 
-      <div class="digest-test">
-        <p>Rather send them yourself? Open every class as a printable recap, one class per page, with the same numbers this email uses.</p>
-        <button type="button" class="btn secondary small" data-download="recaps">Open class recaps</button>
-        <small class="fine-print">Opens in a new tab. Pick one class up top and print it to save that teacher&rsquo;s page as a PDF, named for them. It names the students in each class, so a page goes to that class&rsquo;s teacher and nobody else.</small>
-      </div>
+      <form id="digest-form" class="offline-form" novalidate>
+        <div class="field">
+          <label for="digest-list">Teacher addresses</label>
+          <textarea id="digest-list" rows="8" spellcheck="false" autocomplete="off"></textarea>
+          <p class="error" id="digest-error">Every line needs a classroom from the list and one email address.</p>
+        </div>
+        <small class="fine-print">One class per line, teacher first: <code>Mrs. Harrison, sharrison@tustin.k12.ca.us</code>. Used by the sample below, and by the weekly send if it is ever switched back on. Saving replaces the whole list.</small>
+        <button type="submit" class="btn" id="digest-save">Save the list</button>
+        <p class="form-error" id="digest-fail" role="alert" hidden></p>
+        <p class="offline-done" id="digest-done" role="status" hidden></p>
+      </form>
 
       <div class="sheet-scroll"><table id="digest-table"></table></div>
     </section>

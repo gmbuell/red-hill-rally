@@ -38,14 +38,21 @@
 
   "observability": { "enabled": true, "head_sampling_rate": 1 },
 
-  // The Thursday classroom digest. Cron runs on UTC, so Friday 00:00
-  // UTC is Thursday 5pm Pacific while daylight time is in effect; once
-  // it ends in November this lands at 4pm, which is fine for a fall
-  // campaign but is the line to change if that ever matters. Cloudflare's
-  // weekday field runs 1=Sunday..7=Saturday (not the usual 0=Sunday), so
+  // No cron: the PTA sends teacher recaps by hand, from Mission
+  // Control, on the weeks it wants them. An automatic Thursday send
+  // reaches every teacher whether or not there is anything worth
+  // saying, and mail going out on a schedule nobody is watching is the
+  // thing a school hears about. `scheduled` in worker/index.js still
+  // works and is still tested; nothing calls it while this is empty.
+  //
+  // To turn the weekly send back on, put the cron back:
+  //   "triggers": { "crons": ["0 0 * * 6"] }
+  // Cron runs on UTC, so Friday 00:00 UTC is Thursday 5pm Pacific while
+  // daylight time is in effect and 4pm once it ends. Cloudflare's
+  // weekday field runs 1=Sunday..7=Saturday, not the usual 0=Sunday, so
   // Friday is 6, not 5 — 5 is Thursday and fired the digest a day early
   // for a week before anyone noticed.
-  "triggers": { "crons": ["0 0 * * 6"] },
+  "triggers": { "crons": [] },
 
   // Secrets (wrangler secret put): ADMIN_KEY, STRIPE_SECRET_KEY,
   // STRIPE_WEBHOOK_SECRET, and for the digest RESEND_API_KEY,
