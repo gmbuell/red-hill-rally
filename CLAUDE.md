@@ -512,9 +512,16 @@ flip to live, in this order:
     - Home swaps its second figure from the goal to the school-wide
       participation share (with the count under it) and prints the
       goal-met line; dollars keep climbing in the first figure. The
-      board's first label becomes "raised, past our $50,000 goal" and
-      the note under the figures drops to the one race left, with the
-      closing date.
+      board heads with the total, "raised", and the overage worked out
+      (`$2,775 past our $50,000 goal` — landing exactly on it says
+      "met" rather than "$0 past"), and the note under the figures
+      drops to the one race left, with the closing date.
+    - The hero meter changes shape too: `trajectoryDone` extends the
+      arc past the star, flies the rocket on out of frame, and labels
+      the star it passed `GOAL MET / $50,000`, so the rocket being
+      beyond the star reads as arithmetic rather than a bug. It is the
+      only text inside that graphic, which stays `aria-hidden` — the
+      figures beside it carry the same numbers for a screen reader.
     - The reason to keep giving is the gap, not a bigger goal:
       `ANNUAL_COST` in `data.js` is what a year of the programs costs,
       summed from the priorities with `oneTime` ones left out (the

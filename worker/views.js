@@ -128,7 +128,36 @@ const trajPointAt = (frac) => {
   };
 };
 
+/* Past the goal the arc keeps going. The rocket flies on out of the
+   frame, and the star it passed stops being the destination and
+   becomes a milestone, labelled so nobody has to guess why the rocket
+   is beyond it. The label is the only text in a decorative graphic, so
+   the figures beside the meter still carry the whole story for a
+   screen reader — the svg stays aria-hidden. */
+const TRAJ_PAST = `${TRAJ_D} C 672 22 694 4 714 -24`;
+
+const trajectoryDone = () => html`
+  <svg viewBox="0 -62 800 330" aria-hidden="true">
+    <path class="t-done" d="${TRAJ_PAST}" fill="none"
+      stroke="#000000" stroke-width="4.5" stroke-linecap="round"
+      stroke-dasharray="0 12"/>
+    <g class="t-star" transform="translate(640,34)">
+      <g transform="translate(-13,-13) scale(1.1)">
+        <path d="${STAR}" fill="#E31E24" stroke="#000000" stroke-width="1.4"/>
+      </g>
+    </g>
+    <line x1="640" y1="52" x2="640" y2="74" stroke="#5A6472" stroke-width="2.5"/>
+    <text x="640" y="100" text-anchor="middle" font-family="Montserrat, sans-serif"
+      font-size="22" font-weight="800" letter-spacing="2.4" fill="#5A6472">GOAL MET</text>
+    <text x="640" y="130" text-anchor="middle" font-family="Montserrat, sans-serif"
+      font-size="30" font-weight="800" fill="#0C2340">${money(CAMPAIGN.goal)}</text>
+    <g class="t-rocket" transform="translate(714,-24) rotate(48) scale(0.95) translate(-32,-33)">
+      ${redRocketUp}
+    </g>
+  </svg>`;
+
 const trajectorySVG = (pct) => {
+  if (pct >= 1) return trajectoryDone();
   const pt = trajPointAt(Math.max(0.02, Math.min(pct, 1)));
   return html`
   <svg viewBox="0 0 680 190" aria-hidden="true">
@@ -405,10 +434,19 @@ export const boardSlots = (live) => {
      arithmetic nobody should be doing, and read as bad news early. */
   const school = schoolParticipation(perClass);
   const met = raised >= CAMPAIGN.goal;
+  /* Once the goal is behind us the headline stops counting toward a
+     number already reached and says how far past it we are — the
+     arithmetic done here, because "$52,775 raised of $50,000" makes a
+     family do subtraction to find the good news. The exact-landing
+     case says met rather than "$0 past". No new target takes its
+     place. */
+  const over = raised - CAMPAIGN.goal;
   const totals = [
-    // Once the goal is behind us the label says so rather than counting
-    // toward a number already reached. No new target takes its place.
-    [money(raised), met ? 'raised, past our ' + money(CAMPAIGN.goal) + ' goal' : 'raised of ' + money(CAMPAIGN.goal), ''],
+    met
+      ? [money(raised), 'raised', over > 0
+        ? `${money(over)} past our ${money(CAMPAIGN.goal)} goal`
+        : `our ${money(CAMPAIGN.goal)} goal, met`]
+      : [money(raised), 'raised of ' + money(CAMPAIGN.goal), ''],
     [`${school.pct}%`, 'of Rockets have participated',
      `${school.flying} of ${school.seats} students`],
   /* The count is a div, not a span: pages and stylesheet are separate

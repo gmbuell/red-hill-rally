@@ -91,8 +91,15 @@ describe('once the dollar goal is met', () => {
     expect(String(under['board-totals'])).toContain(`raised of ${money(data.CAMPAIGN.goal)}`);
     expect(String(under['totals-note'])).toContain('two things');
 
-    const met = boardSlots(live(data.CAMPAIGN.goal));
-    expect(String(met['board-totals'])).toContain(`past our ${money(data.CAMPAIGN.goal)} goal`);
+    // Landing exactly on the goal says so, rather than "$0 past".
+    const exact = boardSlots(live(data.CAMPAIGN.goal));
+    expect(String(exact['board-totals'])).toContain(`our ${money(data.CAMPAIGN.goal)} goal, met`);
+
+    // Over it, the board does the subtraction so a family doesn't
+    // have to.
+    const met = boardSlots(live(data.CAMPAIGN.goal + 2775));
+    expect(String(met['board-totals'])).toContain(String(money(data.CAMPAIGN.goal + 2775)));
+    expect(String(met['board-totals'])).toContain(`${money(2775)} past our ${money(data.CAMPAIGN.goal)} goal`);
     expect(String(met['board-totals'])).not.toContain(`raised of ${money(data.CAMPAIGN.goal)}`);
     const note = String(met['totals-note']);
     expect(note).toContain(String(money(data.ANNUAL_COST)));
