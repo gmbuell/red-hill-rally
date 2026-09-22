@@ -663,7 +663,7 @@ export default {
     ctx.waitUntil(sendWeeklyDigests(env, event.scheduledTime || Date.now()));
   },
 
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     // One canonical host, so shared links and search results agree.
     if (url.hostname === 'www.rocketrally.org') {
@@ -710,7 +710,7 @@ export default {
       // Everything else is a page: the static HTML with the shared
       // chrome and live slots streamed in (the branded 404 included).
       try {
-        return await renderPage(request, env);
+        return await renderPage(request, env, ctx);
       } catch (err) {
         console.error(JSON.stringify({
           event: 'api_error', route: `GET ${url.pathname}`, message: err && err.message,

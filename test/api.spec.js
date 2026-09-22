@@ -1852,6 +1852,14 @@ describe('a donor checking their Rocket', () => {
     }));
     const body = await mine('cs_t4');
     expect(body.rockets.map((r) => r.name)).toEqual(['Audrey Webber', 'Sammy Webber']);
+    expect(body.rockets.map((r) => r.raised)).toEqual([50, 50]);
+
+    // Looked up from a gift naming Audrey alone, her total still carries
+    // her half of the two-Rocket gift, not the whole of it: the lookup
+    // reads that gift whole even though Sammy's room is not in question.
+    await giftFor('cs_t4b', ROOM_A, 'Audrey Webber', 2500);
+    const audrey = (await mine('cs_t4b')).rockets[0];
+    expect(audrey).toMatchObject({ raised: 75, gifts: 2 });
   });
 
   it('tells a stranger nothing', async () => {

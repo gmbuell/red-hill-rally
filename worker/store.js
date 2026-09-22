@@ -329,10 +329,20 @@ const roomOrder = (seen) => {
 /* Every Rocket credit with its gift: joined so a gift deleted by hand
    (refund, the go-live wipe) takes its classroom credits with it.
    Partnerships carry no credits and stay out. */
-const creditsStmt = (db) => db.prepare(`
+const creditsStmt = (db, only = '1') => db.prepare(`
   SELECT s.donation_id, s.classroom, s.student_name, s.shirts, d.amount_cents, d.created
   FROM donation_students s JOIN donations d ON d.id = s.donation_id
+  WHERE ${only}
   ORDER BY d.created, d.id, s.position`);
+
+/* The gifts that touch these classrooms, whole: a gift naming Rockets
+   in two rooms splits its dollars by how many it named, so the tally
+   needs every credit of that gift, not just the one in this room. */
+const touching = (classrooms) => [
+  `s.donation_id IN (SELECT donation_id FROM donation_students
+     WHERE classroom IN (${classrooms.map(() => '?').join(', ')}))`,
+  classrooms,
+];
 
 /* The school's own clock, not UTC. Shirts go to the printer in
    batches, and the cutoff is a moment: an order placed at 6pm Pacific
@@ -611,10 +621,10 @@ export async function renameRocket(db, classroom, from, to) {
    Partnerships are a business's gift to the school, not a child's. A
    partner's participation credit (`pc_`) is no gift at all, so it is
    left out rather than counted toward anonGifts. */
-const donorsStmt = (db) => db.prepare(`
+const donorsStmt = (db, only = '1') => db.prepare(`
   SELECT s.classroom, s.student_name, d.donor_name, d.visibility
   FROM donation_students s JOIN donations d ON d.id = s.donation_id
-  WHERE d.partner_tier = '' AND d.id NOT LIKE 'pc\\_%' ESCAPE '\\'
+  WHERE ${only} AND d.partner_tier = '' AND d.id NOT LIKE 'pc\\_%' ESCAPE '\\'
   ORDER BY d.created DESC, d.id DESC, s.position`);
 
 const donorsByRocket = (rows) => {
@@ -640,8 +650,15 @@ export async function giftRockets(db, donationId) {
      WHERE donation_id = ?1 ORDER BY position`).bind(donationId).all();
   if (!mine.length) return null;
 
-  const rooms = tally((await creditsStmt(db).all()).results);
-  const donors = donorsByRocket((await donorsStmt(db).all()).results);
+  // A gift names at most four Rockets, so this reads a few classrooms
+  // rather than the school.
+  const [only, args] = touching([...new Set(mine.map((r) => r.classroom))]);
+  const [credits, thanked] = await db.batch([
+    creditsStmt(db, only).bind(...args),
+    donorsStmt(db, only).bind(...args),
+  ]);
+  const rooms = tally(credits.results);
+  const donors = donorsByRocket(thanked.results);
   const seen = new Set();
   const rockets = [];
   for (const row of mine) {

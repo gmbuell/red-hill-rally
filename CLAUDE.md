@@ -234,9 +234,14 @@ secrets; the maintainer reviews and ships PRs.
   category scores `noindex` as a fault).
 - Every navigation runs the worker: `run_worker_first` is `/*` minus
   the static folders. A new static folder under `site/` must be added
-  to the exclusions in `wrangler.jsonc`. A stats failure renders the
+  to the exclusions in `wrangler.jsonc`. A page that reads D1 (home,
+  the board, partners) is served from the Cache API for the same 60
+  seconds the browser keeps it, keyed on the path alone, so a crawl
+  costs one D1 read a minute per location; D1 reads are the free tier's
+  tightest budget, and `migrations/0011` gives each public query a
+  covering index for the same reason. A stats failure renders the
   zero state (logged as `api_error`, sent `no-store`), never an error
-  page.
+  page, and never enters the cache.
 - Internal URLs are extensionless (`/donate`, not `/donate.html`).
 - The word lists in `worker/links.js` print on kids' handouts; any
   addition must be elementary-school-safe in every adjective+animal

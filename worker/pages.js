@@ -28,9 +28,19 @@ const fill = (fragment) => (fragment === null
   ? { element(el) { el.remove(); } }
   : { element(el) { el.setInnerContent(String(fragment), { html: true }); } });
 
-export async function renderPage(request, env) {
-  const path = new URL(request.url).pathname;
+export async function renderPage(request, env, ctx) {
+  const url = new URL(request.url);
+  const path = url.pathname;
   const page = PAGES[path] || {};
+  // A page that reads D1 is served from this location's cache for the
+  // sixty seconds the browser is told to keep it, so a crawl or a
+  // rally-night crowd costs one read a minute here instead of one per
+  // view. The key is the path alone: a query string changes nothing
+  // on these pages. The zero state is `no-store` below, so it never
+  // enters the cache.
+  const cacheKey = page.live && request.method === 'GET' ? new Request(url.origin + path) : null;
+  const cached = cacheKey && await caches.default.match(cacheKey);
+  if (cached) return cached;
   // The D1 read runs alongside the asset round trip rather than after
   // it. A failed read is logged and renders the zero state.
   const stats = page.live && request.method === 'GET'
@@ -70,5 +80,11 @@ export async function renderPage(request, env) {
     .on('.site-header', fill(header(path)))
     .on('.site-footer', fill(footer()));
   for (const [id, fragment] of Object.entries(slots)) rewriter.on(`#${id}`, fill(fragment));
-  return rewriter.transform(new Response(asset.body, { status: asset.status, headers }));
+  const response = rewriter.transform(new Response(asset.body, { status: asset.status, headers }));
+  if (cacheKey && asset.status === 200 && !failed) {
+    // A cache that will not take the page is the next visitor's read,
+    // never this one's error.
+    ctx.waitUntil(caches.default.put(cacheKey, response.clone()).catch(() => {}));
+  }
+  return response;
 }

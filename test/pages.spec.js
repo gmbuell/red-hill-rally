@@ -1,4 +1,4 @@
-import { env, SELF, createExecutionContext, reset } from 'cloudflare:test';
+import { env, SELF, createExecutionContext, waitOnExecutionContext, reset } from 'cloudflare:test';
 import { afterEach, describe, it, expect, vi } from 'vitest';
 import worker from '../worker/index.js';
 import { recordDonation } from '../worker/store.js';
@@ -236,6 +236,21 @@ describe('rendered pages', () => {
     expect(res.status).toBe(200);
     expect(await res.text()).toContain('raised of');
     expect(order.indexOf('db')).toBeLessThan(order.indexOf('asset done'));
+  });
+
+  it('serves a live page from the edge cache for the minute the browser keeps it', async () => {
+    await gift({ id: 'cs_first', amount_total: 10000 });
+    const ctx = createExecutionContext();
+    const first = await worker.fetch(new Request('https://rally.test/rally-board'), env, ctx);
+    const before = await first.text();
+    await waitOnExecutionContext(ctx);
+    expect(before).toContain('$100');
+
+    await gift({ id: 'cs_second', amount_total: 20000 });
+    const { text: again } = await page('/rally-board');
+    expect(again).toBe(before);
+    // A page with nothing live on it is never stored.
+    expect(await caches.default.match('https://rally.test/prizes')).toBeUndefined();
   });
 
   it('carries the preload hint and a short cache life, and drops the asset etag', async () => {
