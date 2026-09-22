@@ -340,7 +340,7 @@
     load();
   });
 
-  /* ---- the Thursday emails ---- */
+  /* ---- the teacher recaps ---- */
 
   /* The address list is edited as plain text — 20 lines a PTA volunteer
      can paste from the office directory — and matched to the roster on
@@ -425,7 +425,7 @@
       failEl.hidden = false;
       return;
     }
-    doneEl.textContent = `Saved. ${res.saved} class${res.saved === 1 ? '' : 'es'} will get an email Thursday.`;
+    doneEl.textContent = `Saved. ${res.saved} class${res.saved === 1 ? '' : 'es'} ${res.saved === 1 ? 'has' : 'have'} an address on file. Nothing sends on its own.`;
     doneEl.hidden = false;
     load();
   });
