@@ -238,7 +238,7 @@ describe('rendered pages', () => {
     expect(order.indexOf('db')).toBeLessThan(order.indexOf('asset done'));
   });
 
-  it('serves a live page from the edge cache for the minute the browser keeps it', async () => {
+  it('serves a live page from the edge cache for the five minutes the browser keeps it', async () => {
     await gift({ id: 'cs_first', amount_total: 10000 });
     const ctx = createExecutionContext();
     const first = await worker.fetch(new Request('https://rally.test/rally-board'), env, ctx);
@@ -257,7 +257,7 @@ describe('rendered pages', () => {
     for (const path of PAGE_PATHS) {
       const { res } = await page(path);
       expect(res.headers.get('link'), path).toContain('</css/styles.css>; rel=preload');
-      expect(res.headers.get('cache-control'), path).toBe('public, max-age=60');
+      expect(res.headers.get('cache-control'), path).toBe('public, max-age=300');
       expect(res.headers.get('etag'), path).toBeNull();
       expect(res.headers.get('x-frame-options'), path).toBe('DENY');
     }

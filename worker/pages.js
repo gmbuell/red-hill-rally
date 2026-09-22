@@ -33,9 +33,9 @@ export async function renderPage(request, env, ctx) {
   const path = url.pathname;
   const page = PAGES[path] || {};
   // A page that reads D1 is served from this location's cache for the
-  // sixty seconds the browser is told to keep it, so a crawl or a
-  // rally-night crowd costs one read a minute here instead of one per
-  // view. The key is the path alone: a query string changes nothing
+  // five minutes the browser is told to keep it, so a crawl or a
+  // rally-night crowd costs one read per five minutes here instead of
+  // one per view. The key is the path alone: a query string changes nothing
   // on these pages. The zero state is `no-store` below, so it never
   // enters the cache.
   const cacheKey = page.live && request.method === 'GET' ? new Request(url.origin + path) : null;
@@ -61,14 +61,14 @@ export async function renderPage(request, env, ctx) {
   const slots = asset.status === 200 && page.slots ? page.slots(live) : {};
 
   // The body changes, so the asset's validator and length no longer
-  // apply; the security headers still do. Sixty seconds
-  // matches the API cache the pages used to read. The zero state a
+  // apply; the security headers still do. Five minutes matches the
+  // API cache. The zero state a
   // failed read produces must not be cached: the next visit tries D1
   // again.
   const headers = new Headers(asset.headers);
   headers.delete('etag');
   headers.delete('content-length');
-  headers.set('cache-control', failed ? 'no-store' : 'public, max-age=60');
+  headers.set('cache-control', failed ? 'no-store' : 'public, max-age=300');
   // Early Hints: the browser fetches the stylesheet during server
   // think-time. Only pages carry the hint; Chrome acts on it from any
   // response, and from a script or font response it re-preloads a

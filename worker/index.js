@@ -724,9 +724,9 @@ export default {
     try {
       switch (route) {
         case 'GET /api/campaign':
-          return json(await campaignStats(env.DB), 200, { 'cache-control': 'public, max-age=60' });
+          return json(await campaignStats(env.DB), 200, { 'cache-control': 'public, max-age=300' });
         case 'GET /api/board':
-          return json(await boardStats(env.DB), 200, { 'cache-control': 'public, max-age=60' });
+          return json(await boardStats(env.DB), 200, { 'cache-control': 'public, max-age=300' });
         case 'POST /api/link': return await handleLinkCreate(request, env);
         case 'POST /api/link/verify': return await handleLinkVerify(request, env);
         case 'POST /api/checkout': return await handleCheckout(request, env, url);

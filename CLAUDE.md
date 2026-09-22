@@ -235,11 +235,13 @@ secrets; the maintainer reviews and ships PRs.
 - Every navigation runs the worker: `run_worker_first` is `/*` minus
   the static folders. A new static folder under `site/` must be added
   to the exclusions in `wrangler.jsonc`. A page that reads D1 (home,
-  the board, partners) is served from the Cache API for the same 60
-  seconds the browser keeps it, keyed on the path alone, so a crawl
-  costs one D1 read a minute per location; D1 reads are the free tier's
-  tightest budget, and `migrations/0011` gives each public query a
-  covering index for the same reason. A stats failure renders the
+  the board, partners) is served from the Cache API for the same five
+  minutes the browser keeps it, keyed on the path alone, so a crawl
+  costs one D1 read per five minutes per location; D1 reads are the
+  free tier's tightest budget, and `migrations/0011` gives each public
+  query a covering index for the same reason. The zone's Browser Cache
+  TTL stays on Respect Existing Headers: a fixed value there rewrites
+  the header on every cached page. A stats failure renders the
   zero state (logged as `api_error`, sent `no-store`), never an error
   page, and never enters the cache.
 - Internal URLs are extensionless (`/donate`, not `/donate.html`).
