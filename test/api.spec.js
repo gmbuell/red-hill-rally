@@ -1557,27 +1557,45 @@ describe('the printable class recaps', () => {
      can't pass on something printed for room B. */
   const sheetFor = async (teacher) => {
     const text = await (await recaps()).text();
-    return text.split('<section class="recap">').find((s) => s.includes(`<h1>${teacher}<`));
+    return text.split('<section class="recap"').find((s) => s.includes(`<h1>${teacher}<`));
   };
 
   it('stays behind the admin key', async () => {
     expect((await recaps({})).status).toBe(401);
   });
 
-  it('downloads one page per classroom, every class on the roster', async () => {
+  it('opens one page per classroom, every class on the roster', async () => {
     const res = await recaps();
     expect(res.status).toBe(200);
     expect(res.headers.get('content-type')).toContain('text/html');
-    expect(res.headers.get('content-disposition')).toContain('rocket-rally-class-recaps.html');
-    // Never cached: the PTA downloads this to send today's numbers.
+    // Opened in a tab, not saved: printing is what makes the PDF, and
+    // an attachment puts the downloads folder in the way first.
+    expect(res.headers.get('content-disposition')).toBeNull();
+    // Never cached: this is today's numbers.
     expect(res.headers.get('cache-control')).toBe('no-store');
     const text = await res.text();
-    expect(text.split('<section class="recap">')).toHaveLength(data.CLASSROOMS.length + 1);
+    expect(text.split('<section class="recap"')).toHaveLength(data.CLASSROOMS.length + 1);
     // Including the rooms with nothing yet — those are the ones the
     // nudge is for.
     for (const room of data.CLASSROOMS) expect(text).toContain(`<h1>${room.teacher}<`);
     // And it breaks per class, or it prints as one long ribbon.
     expect(text).toContain('page-break-after: always');
+  });
+
+  it('can be narrowed to one teacher, so a PDF is their page alone', async () => {
+    const text = await (await recaps()).text();
+    // Every class is pickable by id, and each page knows whose it is.
+    for (const room of data.CLASSROOMS) {
+      expect(text).toContain(`data-class="${room.id}"`);
+      expect(text).toContain(`<option value="${room.id}">${room.teacher}</option>`);
+    }
+    expect(text).toContain(`data-teacher="${roomA.teacher}"`);
+    // Picking one hides the others rather than reordering anything, and
+    // drops the kept page's break so the PDF has no blank second sheet.
+    expect(text).toContain('body[data-only] .recap { display: none; }');
+    expect(text).toContain('body[data-only] .recap.picked { page-break-after: auto');
+    // The chooser is for the screen; paper must never carry it.
+    expect(text).toContain('@media print { .bar { display: none; } }');
   });
 
   it('prints the same standing the teacher’s email would have sent', async () => {
@@ -1633,6 +1651,28 @@ describe('the printable class recaps', () => {
     expect(sheets(16)).toContain('you&rsquo;ve earned');
     expect(sheets(16)).toContain('reaches 100%');
     expect(sheets(20)).toContain('at <strong>100%</strong>');
+  });
+
+  /* A recap that runs to two sheets isn't the one page a teacher is
+     handed, and the Rocket list is the only part that grows all
+     campaign. Columns are what keep it on the page, so the thresholds
+     are pinned here — layout itself can't be measured from a test. */
+  it('columns a long Rocket list so a full class still fits one page', () => {
+    const room = { id: 'x', teacher: 'Ms. Test', grade: '4th', students: 33 };
+    const listOf = (n) => Array.from({ length: n },
+      (_, i) => ['4th', room.teacher, `Rocket Number ${i + 1}`, 2, 50]);
+    const sheetWith = (n) => recapSheets([{
+      facts: digestFacts(room, { rockets: n, cents: 5000 * n }, listOf(n), null, 'May 1'),
+    }], 'May 1');
+
+    expect(sheetWith(6)).toContain('class="rockets "');        // short: one column
+    expect(sheetWith(12)).toContain('class="rockets long"');   // two
+    expect(sheetWith(33)).toContain('class="rockets xlong"');  // a full class: three
+    // At three columns the row has to stay one line, so the gift count
+    // is dropped there — two lines per Rocket is what overflowed.
+    expect(sheetWith(33)).toContain('.rockets.xlong .amt small { display: none; }');
+    // Print keeps its own tighter type; the screen copy stays roomy.
+    expect(sheetWith(6)).toContain('body { font-size: 15px; }');
   });
 
   it('asks for the shirt while there is still time to order one', async () => {

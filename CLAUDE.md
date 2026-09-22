@@ -23,7 +23,7 @@ two-sentence pointer; this file is the operating manual.
 | `npm install` | wrangler, vitest + workers pool, lighthouse |
 | `npx wrangler d1 migrations apply red-hill-rally --local` | once per clone: local D1 schema |
 | `npm run dev` | `wrangler dev` on http://localhost:8787 |
-| `npm test` | vitest (201 tests, ~4 s) |
+| `npm test` | vitest (203 tests, ~4 s) |
 | `npm run audit` | Lighthouse on every page but `/admin` (noindex), mobile + desktop (needs Chrome); defaults to the live site (`npm run audit -- --url http://localhost:8787` for local). `--runs 3 --min 98` reproduces the CI gate, `--form mobile` limits it to one form factor |
 | `npm run wcag` | WCAG 2.2 checks on every page, mobile + desktop (needs Chrome): text contrast, non-text contrast, focus rings, target size, body leading ≥ 1.5, body text ≥ 16px and labels ≥ 13px. Defaults to the live site (`npm run wcag -- --url http://localhost:8787` for local, `--page donate --form mobile` to narrow). Each cell shows how many elements the check examined |
 | `npm run deploy` | **Ships to production**: the worker and every file under `site/`. The `predeploy` step runs the tests, then applies pending D1 migrations to the remote database, so schema and code ship together. Every push to `main` runs this through Cloudflare Workers Builds (dashboard → the worker → Settings → Build), so merging a PR deploys it |
@@ -397,12 +397,27 @@ flip to live, in this order:
     mailed, so a retried cron is a no-op. A failed send releases its
     row so the next run retries that class. Mission Control shows when
     each class last got one.
-  - *Sending them by hand* is "Download class recaps" in the same
-    panel: `/api/recaps.html` behind the admin key, every roster
-    classroom as a printable page, one per sheet, which the PTA prints,
-    saves as a PDF or attaches itself. It is the tool for a week the
-    cron shouldn't own — the send is off, a holiday week, a push that
-    wants a paper copy in a teacher's box.
+  - *Sending them by hand* is "Open class recaps" in the same panel:
+    `/api/recaps.html` behind the admin key, every roster classroom as
+    a printable page, one per sheet. It is the tool for a week the cron
+    shouldn't own — the send is off, a holiday week, a push that wants a
+    paper copy in a teacher's box.
+    - It **opens in a tab**, served inline rather than as an
+      attachment, because printing is what turns it into a PDF and the
+      downloads folder was a detour on the way there. Mission Control
+      fetches it with the key and opens the blob, so the key never
+      rides in a URL; a blocked popup falls back to saving the file.
+    - A screen-only bar picks one class, which hides the rest and
+      renames the document, so printing yields that teacher's page
+      alone and the browser's Save-as-PDF names the file after them —
+      what actually gets emailed. The bar is `display: none` in print.
+    - **One class must fit one sheet.** The Rocket list is the only
+      part that grows all campaign, so it runs in two columns past 8
+      Rockets and three past 24, and at three the per-Rocket gift count
+      is dropped — narrow rows wrapped to two lines each, which is what
+      pushed a full class onto a second page. Print also sets its own
+      tighter type. Adding anything to the sheet means re-checking a
+      33-Rocket class at 100%: print it to PDF and count the pages.
     - Both the email and the sheet render `digestFacts`, which decides
       participation, dollars, the prize tier and the Rockets-to-go
       **once**. Adding a figure to one means adding it to the facts, or

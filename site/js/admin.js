@@ -507,18 +507,27 @@
     btn.disabled = true;
     try {
       // The sheets are CSV; the class recaps are a printable page.
-      const ext = name === 'recaps' ? 'html' : 'csv';
+      const recaps = name === 'recaps';
       const { from, to } = name === 'shirts' ? shirtWindow() : {};
       const q = new URLSearchParams(Object.entries({ from, to }).filter(([, v]) => v));
-      const res = await authed(`/api/${name}.${ext}${q.toString() ? `?${q}` : ''}`);
+      const res = await authed(`/api/${name}.${recaps ? 'html' : 'csv'}${q.toString() ? `?${q}` : ''}`);
       if (!res.ok) throw new Error(String(res.status));
       const url = URL.createObjectURL(await res.blob());
-      const file = name === 'recaps' ? 'rocket-rally-class-recaps.html' : `rocket-rally-${name}.csv`;
-      const a = Object.assign(document.createElement('a'), { href: url, download: file });
-      a.click();
-      URL.revokeObjectURL(url);
+      /* The recaps become PDFs by being printed, so they open in a tab
+         rather than landing in the downloads folder. A blocked popup
+         falls back to saving the file, which still prints once opened.
+         The key never travels in a URL either way. */
+      if (recaps && window.open(url, '_blank')) {
+        // Firefox needs the blob alive while the new tab loads it.
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
+      } else {
+        const file = recaps ? 'rocket-rally-class-recaps.html' : `rocket-rally-${name}.csv`;
+        const a = Object.assign(document.createElement('a'), { href: url, download: file });
+        a.click();
+        URL.revokeObjectURL(url);
+      }
     } catch {
-      fail(`${name === 'recaps' ? 'The class recaps' : `${name}.csv`} didn’t download — please try again.`);
+      fail(`${name === 'recaps' ? 'The class recaps' : `${name}.csv`} didn’t open — please try again.`);
     }
     btn.disabled = false;
   });

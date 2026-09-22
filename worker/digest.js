@@ -144,7 +144,7 @@ export async function buildDigests(db, nowMs) {
 const dollars = (raised) => '$' + Math.round(Number(raised)).toLocaleString('en-US');
 
 const sheet = ({ room, asOf, rockets, cents, pct, tier, need, rows, leader }) => html`
-  <section class="recap">
+  <section class="recap" data-class="${room.id}" data-teacher="${room.teacher}">
     <header>
       <p class="eyebrow">Rocket Rally &middot; as of ${asOf}</p>
       <h1>${room.teacher}<span>${gradeName(room.grade)}</span></h1>
@@ -176,7 +176,7 @@ const sheet = ({ room, asOf, rockets, cents, pct, tier, need, rows, leader }) =>
         : html`<strong>${need} more Rocket${need === 1 ? '' : 's'}</strong> to reach 80% and earn ${PRIZES.at80}.`}</p>
     ${rows.length ? html`
       <h2>Your Rockets so far</h2>
-      <ul class="rockets">
+      <ul class="rockets ${rows.length > 24 ? 'xlong' : rows.length > 8 ? 'long' : ''}">
         ${rows.map(([, , student, gifts, raised]) => html`
           <li><span class="who">${student}</span><span class="amt">${dollars(raised)} <small>(${Number(gifts)} gift${Number(gifts) === 1 ? '' : 's'})</small></span></li>`)}
       </ul>`
@@ -207,7 +207,40 @@ export const recapSheets = (digests, asOf) => `<!doctype html>
   @media print {
     .recap { page-break-after: always; break-after: page; padding: 0.4in 0 0; border-top: 0; }
     .recap:last-child { page-break-after: auto; break-after: auto; }
+    /* Paper is a fixed height and the page has to fit it with room to
+       spare: a class that grows all campaign must not be the one whose
+       recap quietly becomes two sheets. Screen keeps the roomier type. */
+    body { font-size: 15px; }
+    .note p { margin-bottom: 0.45rem; }
+    .figure { padding: 0.75rem 0.9rem; }
+    .figure strong { font-size: 1.85rem; }
+    .next { margin-bottom: 1rem; padding: 0.7rem 0.9rem; }
+    .rockets { margin-bottom: 1rem; }
+    .empty, .leader { margin-bottom: 1rem; }
   }
+  /* Picking one class hides the rest, so Save as PDF produces that
+     teacher's page and nothing else — the thing actually sent to a
+     teacher. The kept page then ends the document, so its page break
+     has to go too or the PDF carries a blank second sheet. */
+  body[data-only] .recap { display: none; }
+  body[data-only] .recap.picked { display: block; }
+  @media print {
+    body[data-only] .recap.picked { page-break-after: auto; break-after: auto; }
+  }
+  /* The bar is for the person at the screen, never for paper. */
+  .bar {
+    position: sticky; top: 0; z-index: 2;
+    display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center;
+    padding: 0.8rem 1rem; background: var(--navy); color: #fff;
+  }
+  .bar p { margin: 0 0.4rem 0 0; font-size: 0.95rem; }
+  .bar select, .bar button {
+    font: inherit; font-size: 0.95rem; padding: 0.45rem 0.7rem;
+    border-radius: 8px; border: 1px solid #fff; background: #fff; color: var(--navy);
+  }
+  .bar button { cursor: pointer; font-weight: 700; }
+  .bar button.ghost { background: transparent; color: #fff; }
+  @media print { .bar { display: none; } }
   .eyebrow { margin: 0 0 0.2rem; font-size: 0.85rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--grey); }
   h1 { margin: 0 0 1.2rem; font-size: 1.9rem; line-height: 1.15; }
   h1 span { display: block; font-size: 0.95rem; font-weight: 400; color: var(--grey); letter-spacing: 0.04em; text-transform: uppercase; }
@@ -223,12 +256,73 @@ export const recapSheets = (digests, asOf) => `<!doctype html>
   .next strong, .leader strong { color: var(--red); }
   h2 { margin: 0 0 0.5rem; font-size: 1rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--grey); }
   .rockets { margin: 0 0 1.2rem; padding: 0; list-style: none; }
-  .rockets li { display: flex; justify-content: space-between; gap: 1rem; padding: 0.3rem 0; border-bottom: 1px solid #EDEFF2; }
+  /* A full class of 30 names down one column runs past the bottom of
+     the sheet, and a recap that crosses two pages isn't the one page a
+     teacher is handed. Longer lists run in columns instead, and a name
+     never splits across them. Three columns is for the end of the
+     campaign, when a class at 100% lists every kid it has. */
+  .rockets.long { column-count: 2; column-gap: 1.8rem; }
+  /* At three columns a row is narrow enough that "$100 (3 gifts)"
+     wraps under the name and every entry costs two lines, which is
+     what pushed a full class onto a second sheet. The gift count is
+     the part a teacher needs least, so it goes and the row stays one
+     line. The dollars, which they do read, stay. */
+  .rockets.xlong { column-count: 3; column-gap: 1.2rem; font-size: 0.85rem; }
+  .rockets.xlong li { padding: 0.15rem 0; border-bottom: 0; }
+  .rockets.xlong .amt small { display: none; }
+  .rockets li { display: flex; justify-content: space-between; gap: 1rem; padding: 0.3rem 0; border-bottom: 1px solid #EDEFF2; break-inside: avoid; }
   .rockets small { color: var(--grey); }
   .empty, .leader { margin: 0 0 1.2rem; }
   .foot { margin: 0; font-size: 0.9rem; color: var(--grey); }
 </style>
+<div class="bar">
+  <p>Save one class as a PDF, or print the set:</p>
+  <select id="pick" aria-label="Classroom">
+    <option value="">Every class</option>
+    ${digests.map((d) => `<option value="${d.classroom}">${d.teacher}</option>`).join('\n    ')}
+  </select>
+  <button type="button" id="go">Print / Save as PDF</button>
+  <button type="button" class="ghost" id="all">Show every class</button>
+</div>
 ${digests.map((d) => sheet(d.facts)).join('\n')}
+<script>
+  /* Printing is how this becomes a PDF, and a teacher gets one page,
+     not the whole school. Picking a class hides the others and renames
+     the document, because the browser's Save-as-PDF takes its filename
+     from the title — so the file lands as that teacher's name instead
+     of "rocket-rally-class-recaps". */
+  (function () {
+    var whole = document.title;
+    var pick = document.getElementById('pick');
+    var show = function () {
+      var id = pick.value;
+      var one = null;
+      var all = document.querySelectorAll('.recap');
+      for (var i = 0; i < all.length; i++) {
+        var on = !!id && all[i].getAttribute('data-class') === id;
+        all[i].classList.toggle('picked', on);
+        if (on) one = all[i];
+      }
+      if (id && one) {
+        document.body.setAttribute('data-only', id);
+        document.title = 'Rocket Rally - ' + one.getAttribute('data-teacher');
+      } else {
+        document.body.removeAttribute('data-only');
+        document.title = whole;
+      }
+      return one;
+    };
+    pick.addEventListener('change', show);
+    document.getElementById('go').addEventListener('click', function () {
+      show();
+      window.print();
+    });
+    document.getElementById('all').addEventListener('click', function () {
+      pick.value = '';
+      show();
+    });
+  }());
+</script>
 </html>
 `;
 

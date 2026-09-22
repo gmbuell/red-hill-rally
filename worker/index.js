@@ -630,10 +630,13 @@ async function handleReport(request, url, env, name) {
     const asOf = new Date(now).toLocaleDateString('en-US', {
       month: 'long', day: 'numeric', timeZone: 'America/Los_Angeles',
     });
+    // Served to be looked at, not saved: Mission Control opens it in a
+    // tab, where printing turns it into the PDF a teacher gets. As an
+    // attachment it went to the downloads folder first, which is a
+    // detour on the way to the print dialog.
     return new Response(recapSheets(digests, asOf), {
       headers: {
         'content-type': 'text/html; charset=utf-8',
-        'content-disposition': 'attachment; filename="rocket-rally-class-recaps.html"',
         'cache-control': 'no-store',
       },
     });
