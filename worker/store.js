@@ -231,15 +231,14 @@ export async function offlineGifts(db) {
 }
 
 export async function campaignStats(db) {
-  const [totals, byPriority, partnerRows, credits] = await db.batch([
+  // The home page needs the school-wide participation figure too,
+  // and it has to come from the tally the board reads or the two
+  // pages print different percentages for the same school.
+  const [[totals, byPriority, partnerRows], credits] = await Promise.all([db.batch([
     totalsStmt(db),
     db.prepare("SELECT priority, SUM(amount_cents) AS cents FROM donations WHERE priority != '' GROUP BY priority"),
     partnersStmt(db),
-    // The home page needs the school-wide participation figure too,
-    // and it has to come from the tally the board reads or the two
-    // pages print different percentages for the same school.
-    creditsStmt(db),
-  ]);
+  ]), loadCredits(db)]);
   const priorities = {};
   let sharedCents = 0;
   for (const row of byPriority.results) {
@@ -260,7 +259,7 @@ export async function campaignStats(db) {
     }
   }
   const classrooms = {};
-  for (const [id, line] of Object.entries(perClassroom(tally(credits.results)))) {
+  for (const [id, line] of Object.entries(perClassroom(tally(credits)))) {
     classrooms[id] = { rockets: line.rockets, raised: Math.round(line.cents / 100) };
   }
   return {
@@ -275,17 +274,16 @@ export async function campaignStats(db) {
    raised — from the same tally the PTA's classroom sheet reads, and no
    student name. */
 export async function boardStats(db) {
-  const [totals, credits, roll, partnerRows] = await db.batch([
+  const [[totals, roll, partnerRows], credits] = await Promise.all([db.batch([
     totalsStmt(db),
-    creditsStmt(db),
     db.prepare(`SELECT donor_name, priority, partner_tier, amount_cents, visibility
                 FROM donations WHERE id NOT LIKE 'pc\\_%' ESCAPE '\\'
                 ORDER BY created DESC, id DESC`),
     partnersStmt(db),
-  ]);
+  ]), loadCredits(db)]);
 
   const classrooms = {};
-  for (const [id, line] of Object.entries(perClassroom(tally(credits.results)))) {
+  for (const [id, line] of Object.entries(perClassroom(tally(credits)))) {
     classrooms[id] = { rockets: line.rockets, raised: Math.round(line.cents / 100) };
   }
 
@@ -326,23 +324,33 @@ const roomOrder = (seen) => {
     .map((id) => classroomById(id) || { id, grade: '', teacher: id, students: 0 });
 };
 
-/* Every Rocket credit with its gift: joined so a gift deleted by hand
-   (refund, the go-live wipe) takes its classroom credits with it.
-   Partnerships carry no credits and stay out. */
-const creditsStmt = (db, only = '1') => db.prepare(`
-  SELECT s.donation_id, s.classroom, s.student_name, s.shirts, d.amount_cents, d.created
-  FROM donation_students s JOIN donations d ON d.id = s.donation_id
-  WHERE ${only}
-  ORDER BY d.created, d.id, s.position`);
+/* Every Rocket credit with its gift. D1 bills a join's probe of the
+   gift row at two or three reads per credit, whichever index it goes
+   through, and a materialised CTE bills its temp table too; two flat
+   scans of covering indexes, joined here, cost one read per row. The
+   join also drops a credit whose gift was deleted by hand (a refund,
+   the go-live wipe). Partnerships carry no credits and stay out.
 
-/* The gifts that touch these classrooms, whole: a gift naming Rockets
-   in two rooms splits its dollars by how many it named, so the tally
-   needs every credit of that gift, not just the one in this room. */
-const touching = (classrooms) => [
-  `s.donation_id IN (SELECT donation_id FROM donation_students
-     WHERE classroom IN (${classrooms.map(() => '?').join(', ')}))`,
-  classrooms,
-];
+   `rooms` narrows both scans to the gifts touching those classrooms,
+   whole: a gift naming Rockets in two rooms splits its dollars by how
+   many it named, so the tally needs every credit of that gift. */
+async function loadCredits(db, rooms = []) {
+  const gifts = rooms.length
+    ? `IN (SELECT donation_id FROM donation_students WHERE classroom IN (${rooms.map(() => '?').join(', ')}))`
+    : 'IS NOT NULL';
+  const [students, donations] = await db.batch([
+    db.prepare(`SELECT donation_id, position, classroom, student_name, shirts
+                FROM donation_students WHERE donation_id ${gifts}`).bind(...rooms),
+    db.prepare(`SELECT id, amount_cents, created FROM donations WHERE id ${gifts}`).bind(...rooms),
+  ]);
+  const gift = new Map(donations.results.map((d) => [d.id, d]));
+  return students.results
+    .filter((c) => gift.has(c.donation_id))
+    .map((c) => ({ ...c, amount_cents: gift.get(c.donation_id).amount_cents, created: gift.get(c.donation_id).created }))
+    .sort((a, b) => a.created - b.created
+      || (a.donation_id < b.donation_id ? -1 : a.donation_id > b.donation_id ? 1 : 0)
+      || a.position - b.position);
+}
 
 /* The school's own clock, not UTC. Shirts go to the printer in
    batches, and the cutoff is a moment: an order placed at 6pm Pacific
@@ -427,27 +435,27 @@ const perClassroom = (rooms) => {
 };
 
 export async function classroomTotals(db) {
-  return perClassroom(tally((await creditsStmt(db).all()).results));
+  return perClassroom(tally(await loadCredits(db)));
 }
 
 /* The student sheet: what each Rocket has raised, under their class,
    biggest first. Family gifts that named no Rocket close the sheet so
    it still adds up to the board. */
 export async function studentsReport(db) {
-  const [credits, uncredited] = await db.batch([
-    creditsStmt(db),
+  const [credits, uncredited] = await Promise.all([
+    loadCredits(db),
     db.prepare(`SELECT COUNT(*) AS gifts, COALESCE(SUM(amount_cents), 0) AS cents
                 FROM donations d WHERE partner_tier = ''
-                AND NOT EXISTS (SELECT 1 FROM donation_students s WHERE s.donation_id = d.id)`),
+                AND NOT EXISTS (SELECT 1 FROM donation_students s WHERE s.donation_id = d.id)`).first(),
   ]);
-  const rooms = tally(credits.results);
+  const rooms = tally(credits);
   const rows = [];
   for (const room of roomOrder(rooms)) {
     const students = Object.entries(rooms[room.id] || {}).sort(([ka, a], [kb, b]) =>
       (ka === '') - (kb === '') || b.cents - a.cents || b.gifts - a.gifts || a.name.localeCompare(b.name));
     for (const [, s] of students) rows.push([room.grade, room.teacher, s.name, s.gifts, dollars(s.cents)]);
   }
-  const rest = uncredited.results[0];
+  const rest = uncredited;
   if (rest.gifts) rows.push(['', '', 'No Rocket named', rest.gifts, dollars(rest.cents)]);
   return { columns: ['grade', 'teacher', 'student', 'gifts', 'raised'], rows };
 }
@@ -477,7 +485,7 @@ export async function classroomsReport(db) {
 export async function shirtsReport(db, { from = '', to = '' } = {}) {
   const lo = windowEnd(from, false);
   const hi = windowEnd(to, true);
-  const credits = (await creditsStmt(db).all()).results.filter((c) => c.shirts);
+  const credits = (await loadCredits(db)).filter((c) => c.shirts);
   const rooms = {};
   for (const c of credits) {
     const at = orderedAt(c.created);
@@ -621,10 +629,11 @@ export async function renameRocket(db, classroom, from, to) {
    Partnerships are a business's gift to the school, not a child's. A
    partner's participation credit (`pc_`) is no gift at all, so it is
    left out rather than counted toward anonGifts. */
-const donorsStmt = (db, only = '1') => db.prepare(`
+const donorsStmt = (db, rooms) => db.prepare(`
   SELECT s.classroom, s.student_name, d.donor_name, d.visibility
   FROM donation_students s JOIN donations d ON d.id = s.donation_id
-  WHERE ${only} AND d.partner_tier = '' AND d.id NOT LIKE 'pc\\_%' ESCAPE '\\'
+  WHERE s.classroom IN (${rooms.map(() => '?').join(', ')})
+    AND d.partner_tier = '' AND d.id NOT LIKE 'pc\\_%' ESCAPE '\\'
   ORDER BY d.created DESC, d.id DESC, s.position`);
 
 const donorsByRocket = (rows) => {
@@ -652,12 +661,12 @@ export async function giftRockets(db, donationId) {
 
   // A gift names at most four Rockets, so this reads a few classrooms
   // rather than the school.
-  const [only, args] = touching([...new Set(mine.map((r) => r.classroom))]);
-  const [credits, thanked] = await db.batch([
-    creditsStmt(db, only).bind(...args),
-    donorsStmt(db, only).bind(...args),
+  const mineRooms = [...new Set(mine.map((r) => r.classroom))];
+  const [credits, thanked] = await Promise.all([
+    loadCredits(db, mineRooms),
+    donorsStmt(db, mineRooms).bind(...mineRooms).all(),
   ]);
-  const rooms = tally(credits.results);
+  const rooms = tally(credits);
   const donors = donorsByRocket(thanked.results);
   const seen = new Set();
   const rockets = [];

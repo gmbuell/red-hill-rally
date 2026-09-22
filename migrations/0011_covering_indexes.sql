@@ -1,9 +1,11 @@
 -- D1 bills one row read per index entry and one more per table row an
 -- index sends it to. The board and the home page walk both tables on
--- every view, so each read gets an index that carries every column the
+-- every view, so each scan gets an index that carries every column the
 -- query selects: one row read per row instead of two. The wide one on
 -- donations serves the honor roll, the campaign totals, the partner
--- wall, and the donation side of the credits join.
+-- wall, and the gift side of the credits load; a probe through any of
+-- these costs more than one through the primary key, which is why the
+-- credits load is two scans joined in the worker rather than a join.
 CREATE INDEX idx_donation_students_credit
   ON donation_students(donation_id, position, classroom, student_name, shirts);
 CREATE INDEX idx_donations_roll
