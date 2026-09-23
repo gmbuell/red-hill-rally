@@ -23,7 +23,7 @@ two-sentence pointer; this file is the operating manual.
 | `npm install` | wrangler, vitest + workers pool, lighthouse |
 | `npx wrangler d1 migrations apply red-hill-rally --local` | once per clone: local D1 schema |
 | `npm run dev` | `wrangler dev` on http://localhost:8787 |
-| `npm test` | vitest (214 tests, ~4 s) |
+| `npm test` | vitest (223 tests, ~4 s) |
 | `npm run audit` | Lighthouse on every page but `/admin` (noindex), mobile + desktop (needs Chrome); defaults to the live site (`npm run audit -- --url http://localhost:8787` for local). `--runs 3 --min 98` reproduces the CI gate, `--form mobile` limits it to one form factor |
 | `npm run wcag` | WCAG 2.2 checks on every page, mobile + desktop (needs Chrome): text contrast, non-text contrast, focus rings, target size, body leading ≥ 1.5, body text ≥ 16px and labels ≥ 13px. Defaults to the live site (`npm run wcag -- --url http://localhost:8787` for local, `--page donate --form mobile` to narrow). Each cell shows how many elements the check examined |
 | `npm run deploy` | **Ships to production**: the worker and every file under `site/`. The `predeploy` step runs the tests, then applies pending D1 migrations to the remote database, so schema and code ship together. Every push to `main` runs this through Cloudflare Workers Builds (dashboard → the worker → Settings → Build), so merging a PR deploys it |
@@ -352,6 +352,19 @@ flip to live, in this order:
       next day in UTC, which would drop that shirt into the wrong batch
       or out of both; `orderedAt` in `store.js` is the one place that
       decides, and `test/api.spec.js` pins the 10:33pm case.
+    - *Changing a size* ("Change a shirt size" in Mission Control,
+      `POST /api/shirt-size`) swaps one shirt on one order for another
+      size: classroom → Rocket → the shirt they bought → the size it
+      should be, all built from `shirtOrders(db)` in the admin payload
+      so the PTA points at a real shirt rather than typing one. It
+      touches only the `shirts` column of that `(donation_id,
+      position)` row, so no money moves, no total changes, and the
+      order **keeps its `created` stamp** — the shirt stays in the
+      batch it was always in rather than reappearing in a later one.
+      The UPDATE carries the column's old value, so two people in
+      Mission Control at once can't overwrite each other; the loser is
+      told to refresh. Only a swap: adding or removing a shirt would
+      move money, so that stays a refund conversation.
 - **A family checking their Rocket** — the thank-you page shows what
   the Rockets that gift credited have raised across every gift, not
   just this one, so the URL Stripe hands the donor works as a private

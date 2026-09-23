@@ -526,6 +526,51 @@ export const shirtSizeTotals = ({ rows }) => {
   return { sizes: ordered, total: ordered.reduce((n, z) => n + z.quantity, 0) };
 };
 
+/* Every shirt on order, one entry per Rocket per checkout, so Mission
+   Control can offer the PTA a real shirt to point at rather than a
+   size typed from memory. `(donation_id, position)` is the row the
+   change lands on; `at` is the same Pacific stamp the printer's sheet
+   prints, so the two agree about which batch a shirt is in. */
+export async function shirtOrders(db) {
+  const credits = (await loadCredits(db)).filter((c) => c.shirts);
+  return credits.map((c) => ({
+    id: c.donation_id,
+    position: c.position,
+    classroom: c.classroom,
+    student: c.student_name.trim(),
+    sizes: c.shirts.split(',').filter((z) => shirtSizeById(z)),
+    at: orderedAt(c.created),
+  })).filter((o) => o.sizes.length);
+}
+
+/* A child grew, or a parent guessed. One shirt on one order becomes
+   another size, and nothing else moves: the shirt still costs what it
+   cost, the gift is the same gift, and the order keeps the moment it
+   came in, so a shirt already in a batch stays in that batch rather
+   than reappearing in the next one as a surprise.
+
+   Only one shirt changes even when the Rocket ordered several. The
+   UPDATE carries the old value of the whole column, so two people in
+   Mission Control at once can't overwrite each other's change: the
+   second one finds nothing to update and is told to refresh. */
+export async function changeShirtSize(db, { donationId, position, from, to }) {
+  const row = await db.prepare(
+    `SELECT shirts, student_name FROM donation_students
+     WHERE donation_id = ?1 AND position = ?2`).bind(donationId, position).first();
+  if (!row || !row.shirts) return null;
+  const sizes = row.shirts.split(',');
+  const i = sizes.indexOf(from);
+  if (i < 0) return null;
+  const next = [...sizes];
+  next[i] = to;
+  const res = await db.prepare(
+    `UPDATE donation_students SET shirts = ?3
+     WHERE donation_id = ?1 AND position = ?2 AND shirts = ?4`)
+    .bind(donationId, position, next.join(','), row.shirts).run();
+  if (!res.meta.changes) return null;
+  return { student: row.student_name.trim() };
+}
+
 /* ---- the Thursday classroom digest ---------------------------------
    Teacher addresses live here rather than in data.js: this repository
    is public and these are staff email addresses. The PTA types them

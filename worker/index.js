@@ -11,7 +11,8 @@ import { recordDonation, campaignStats, boardStats, studentsReport, shirtsReport
   recordOfflineGift, deleteOfflineGift, offlineGifts,
   teacherEmails, setTeacherEmails, weekKey, claimDigest, finishDigest, releaseDigest, digestHistory,
   renameRocket, NO_NAME, giftRockets, giftsForEmail, claimLinkRequest,
-  recordPartnerCredit, deletePartnerCredit, partnerCredits } from './store.js';
+  recordPartnerCredit, deletePartnerCredit, partnerCredits,
+  shirtOrders, changeShirtSize } from './store.js';
 import { buildDigests, recapSheets } from './digest.js';
 import { sendEmail, mailConfigured } from './mail.js';
 import { renderPage } from './pages.js';
@@ -19,7 +20,7 @@ import data from '../site/js/data.js';
 import ui from '../site/js/ui.js';
 
 const { moneyCents } = ui;
-const { ORG, MAX_NAME, MAX_AMOUNT, SHIRT, STUDENT_GOAL, feeCoverCents, priorityById, partnerTierById, classroomById, CLASSROOMS, shirtsOpen } = data;
+const { ORG, MAX_NAME, MAX_AMOUNT, SHIRT, STUDENT_GOAL, feeCoverCents, priorityById, partnerTierById, classroomById, CLASSROOMS, shirtsOpen, shirtSizeById } = data;
 
 /* The charge description prints on every Stripe receipt, making it the
    donor's IRS written acknowledgment (Pub 1771): org name, and either
@@ -512,6 +513,36 @@ async function handleRenameRocket(request, env, url) {
   return json({ moved, to });
 }
 
+/* One shirt on one order, resized. A size is the one thing about a
+   gift the PTA can safely correct after the fact: it moves no money,
+   changes no total, and takes nothing away from a class. Adding or
+   removing a shirt would do all three, so this route only ever swaps
+   one size for another — a shirt that shouldn't have been bought is
+   still a conversation with the family and a refund. */
+async function handleShirtSize(request, env, url) {
+  if (!(await adminKeyOk(request, url, env))) return json({ error: 'unauthorized' }, 401);
+  const body = await request.json().catch(() => null);
+  if (!body) return json({ error: 'Please try that again.' }, 400);
+
+  const donation = typeof body.donation === 'string' ? body.donation : '';
+  const position = Number(body.position);
+  const from = shirtSizeById(body.from);
+  const to = shirtSizeById(body.to);
+  if (!donation || !Number.isInteger(position) || position < 0 || !from) {
+    return json({ error: 'Please pick the shirt to change.' }, 400);
+  }
+  if (!to) return json({ error: 'Please pick the size it should be.' }, 400);
+  if (from.id === to.id) return json({ error: `That shirt is already ${to.label}.` }, 400);
+
+  const changed = await changeShirtSize(env.DB, {
+    donationId: donation, position, from: from.id, to: to.id,
+  });
+  if (!changed) {
+    return json({ error: 'That shirt isn’t on the order any more — refresh and try again.' }, 404);
+  }
+  return json({ student: changed.student, from: from.label, to: to.label });
+}
+
 /* The Thursday digest's address book. The whole list is replaced at
    once: Mission Control edits it as one block, so a classroom left out
    of the paste is a classroom taken off the send. */
@@ -604,14 +635,17 @@ async function handleReport(request, url, env, name) {
     const [stats, ...reports] = await Promise.all([
       campaignStats(env.DB), ...Object.values(REPORTS).map((report) => report(env.DB)),
     ]);
-    const [offline, addresses, history, credits] = await Promise.all([
+    const [offline, addresses, history, credits, orders] = await Promise.all([
       offlineGifts(env.DB), teacherEmails(env.DB), digestHistory(env.DB),
-      partnerCredits(env.DB),
+      partnerCredits(env.DB), shirtOrders(env.DB),
     ]);
     const body = {
       campaign: stats.campaign,
       offline,
       credits,
+      // Each shirt as its own row on its own order, so the size-change
+      // picker offers shirts that really were bought.
+      shirtOrders: orders,
       digest: { emails: addresses, history, ready: mailConfigured(env) },
       // So the page can tell an unnamed credit from a real name
       // without repeating the label.
@@ -740,6 +774,7 @@ export default {
         case 'DELETE /api/offline-gift': return await handleOfflineGift(request, env, url);
         case 'POST /api/teacher-emails': return await handleTeacherEmails(request, env, url);
         case 'POST /api/rename-rocket': return await handleRenameRocket(request, env, url);
+        case 'POST /api/shirt-size': return await handleShirtSize(request, env, url);
         case 'GET /api/my-rockets': return await handleGiftRockets(request, env, url);
         case 'POST /api/my-link': return await handleMyLink(request, env, url);
         case 'POST /api/digest-test': return await handleDigestTest(request, env, url);

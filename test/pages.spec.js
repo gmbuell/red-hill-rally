@@ -54,6 +54,17 @@ describe('rendered pages', () => {
     for (const needle of PII) expect(text).not.toContain(needle);
   });
 
+  /* Sizes get corrected all season, and the PTA has to be able to say
+     out loud that a correction costs the class nothing — otherwise the
+     safe-looking move is to leave the wrong shirt alone. */
+  it('offers the shirt size change, and promises it moves no money', async () => {
+    const { text } = await page('/admin');
+    expect(text).toContain('id="swap-head"');
+    expect(text).toContain('id="sw-shirt"');
+    expect(text).toMatch(/only the size on the printer/i);
+    expect(text).toMatch(/keeps the time it came in/i);
+  });
+
   it('marks the current page in the nav', async () => {
     expect((await page('/')).text).toContain('<a href="/" aria-current="page">Home</a>');
     expect((await page('/rally-board')).text).toContain('<a href="/rally-board" aria-current="page">Rally Board</a>');

@@ -1810,6 +1810,132 @@ describe('renaming a Rocket', () => {
 });
 
 
+/* ---- a shirt that needs a different size ---- */
+
+/* Sizes are guessed months before the shirts are printed, so a size
+   change is the one correction the PTA makes routinely. It has to
+   change the printer's sheet and nothing else: the money was already
+   taken, the shirt already counted, and a size swap that quietly moved
+   a class's dollars or pulled an order into a later batch would be
+   worse than the wrong shirt. */
+describe('changing a shirt size', () => {
+  const KEY = { authorization: 'Bearer test-admin-key' };
+  const roomA = data.classroomById(ROOM_A);
+  const [SZ1, SZ2, SZ3] = data.SHIRT.sizes;
+  const DAY_A = '2025-08-24 22:33';
+
+  /* One checkout, one Rocket, the sizes it bought. */
+  const order = (id, sizes, name = 'Mia Rodriguez') => deliverWebhook(sessionEvent({
+    id,
+    amount_total: 10000 + sizes.length * SHIRT_CENTS,
+    metadata: {
+      students: JSON.stringify([{ c: ROOM_A, n: name }]),
+      shirts: sizes.map((z) => `0:${z}`).join(','),
+    },
+  }));
+
+  const swap = (body) => SELF.fetch('https://rally.test/api/shirt-size', {
+    method: 'POST',
+    headers: { ...KEY, 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+
+  const sheet = async () => (await (await SELF.fetch('https://rally.test/api/admin.json', { headers: KEY })).json());
+  /* The shirt rows as the printer reads them: size label and the
+     moment the order came in. */
+  const printed = async () => (await sheet()).shirts.rows.map((r) => [r[3], r[4], r[5]]);
+  const only = async () => {
+    const [one, ...rest] = (await sheet()).shirtOrders;
+    expect(rest).toHaveLength(0);
+    return one;
+  };
+
+  it('needs the admin key', async () => {
+    await order('cs_s0', [SZ1.id]);
+    const res = await SELF.fetch('https://rally.test/api/shirt-size', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ donation: 'cs_s0', position: 0, from: SZ1.id, to: SZ2.id }),
+    });
+    expect(res.status).toBe(401);
+    expect(await printed()).toEqual([[SZ1.label, 1, DAY_A]]);
+  });
+
+  it('lists every shirt on order with the row its change lands on', async () => {
+    await order('cs_s1', [SZ1.id, SZ2.id]);
+    expect(await only()).toEqual({
+      id: 'cs_s1', position: 0, classroom: ROOM_A,
+      student: 'Mia Rodriguez', sizes: [SZ1.id, SZ2.id], at: DAY_A,
+    });
+  });
+
+  it('prints the new size, at the time the order came in', async () => {
+    await order('cs_s2', [SZ1.id]);
+    const res = await swap({ donation: 'cs_s2', position: 0, from: SZ1.id, to: SZ2.id });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({
+      student: 'Mia Rodriguez', from: SZ1.label, to: SZ2.label,
+    });
+    // Same batch, same moment: only the size moved.
+    expect(await printed()).toEqual([[SZ2.label, 1, DAY_A]]);
+  });
+
+  it('leaves the gift, the class and every total exactly where they were', async () => {
+    await order('cs_s3', [SZ1.id]);
+    const before = await getJson('/api/board');
+    expect((await swap({ donation: 'cs_s3', position: 0, from: SZ1.id, to: SZ2.id })).status).toBe(200);
+    expect(await getJson('/api/board')).toEqual(before);
+    // And the class sheet still counts the one shirt it always did.
+    const line = (await sheet()).classrooms.rows.find((r) => r[1] === roomA.teacher);
+    expect(line[line.length - 1]).toBe(1);
+  });
+
+  it('changes one shirt, not every shirt of that size on the order', async () => {
+    await order('cs_s4', [SZ1.id, SZ1.id, SZ2.id]);
+    expect((await swap({ donation: 'cs_s4', position: 0, from: SZ1.id, to: SZ3.id })).status).toBe(200);
+    expect((await only()).sizes).toEqual([SZ3.id, SZ1.id, SZ2.id]);
+    const rows = await printed();
+    expect(rows).toContainEqual([SZ1.label, 1, DAY_A]);
+    expect(rows).toContainEqual([SZ2.label, 1, DAY_A]);
+    expect(rows).toContainEqual([SZ3.label, 1, DAY_A]);
+  });
+
+  it('never reaches another Rocket’s shirt', async () => {
+    await order('cs_s5', [SZ1.id], 'Mia Rodriguez');
+    await order('cs_s6', [SZ1.id], 'Leo Park');
+    expect((await swap({ donation: 'cs_s5', position: 0, from: SZ1.id, to: SZ2.id })).status).toBe(200);
+    const orders = (await sheet()).shirtOrders;
+    expect(orders.find((o) => o.student === 'Mia Rodriguez').sizes).toEqual([SZ2.id]);
+    expect(orders.find((o) => o.student === 'Leo Park').sizes).toEqual([SZ1.id]);
+  });
+
+  it('refuses what it cannot do, and changes nothing when it refuses', async () => {
+    await order('cs_s7', [SZ1.id]);
+    const bad = async (body) => (await swap(body)).status;
+    const good = { donation: 'cs_s7', position: 0, from: SZ1.id, to: SZ2.id };
+    // A size the school doesn't sell, either end of the swap.
+    expect(await bad({ ...good, to: 'NOT-A-SIZE' })).toBe(400);
+    expect(await bad({ ...good, from: 'NOT-A-SIZE' })).toBe(400);
+    // The size it already is.
+    expect(await bad({ ...good, to: SZ1.id })).toBe(400);
+    expect(await bad({ ...good, position: 'first' })).toBe(400);
+    // A real size, but not one on that order — and not an order at all.
+    expect(await bad({ ...good, from: SZ2.id, to: SZ3.id })).toBe(404);
+    expect(await bad({ ...good, donation: 'cs_nothing' })).toBe(404);
+    expect(await printed()).toEqual([[SZ1.label, 1, DAY_A]]);
+  });
+
+  it('can be changed again, and again', async () => {
+    await order('cs_s8', [SZ1.id]);
+    expect((await swap({ donation: 'cs_s8', position: 0, from: SZ1.id, to: SZ2.id })).status).toBe(200);
+    expect((await swap({ donation: 'cs_s8', position: 0, from: SZ2.id, to: SZ3.id })).status).toBe(200);
+    expect(await printed()).toEqual([[SZ3.label, 1, DAY_A]]);
+    // The old size is gone, not sitting alongside the new one.
+    expect((await only()).sizes).toEqual([SZ3.id]);
+  });
+});
+
+
 /* ---- the donor's own Rockets, for the thank-you page ---- */
 
 describe('a donor checking their Rocket', () => {

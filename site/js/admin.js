@@ -203,6 +203,102 @@
     renderShirts();
   });
 
+  /* ---- a shirt that needs a different size ---- */
+
+  /* The picker is built from the orders themselves — classroom, then
+     Rocket, then the shirt they actually bought — so the PTA points at
+     a real shirt instead of typing a size from memory, and the row the
+     change lands on is the row that order created. */
+  let shirtOrderList = [];
+  const swErr = RH.qs('#sw-error');
+  const swDone = RH.qs('#sw-done');
+  const sizeLabel = (id) => (SHIRT.sizes.find((z) => z.id === id) || {}).label || id;
+
+  RH.qs('#sw-class').innerHTML = html`${RH.classroomOptions()}`;
+  RH.qs('#sw-size').innerHTML = html`${SHIRT.sizes.map((z) =>
+    html`<option value="${z.id}">${z.label}</option>`)}`;
+
+  /* The Rockets with shirts in one class, folded the way the printer's
+     sheet folds them: two spellings of one child are one Rocket, and
+     the first spelling seen is the one shown. */
+  const shirtRocketsIn = (classroom) => {
+    const by = new Map();
+    for (const o of shirtOrderList) {
+      if (o.classroom !== classroom) continue;
+      const key = o.student.toLowerCase();
+      if (!by.has(key)) by.set(key, { key, name: o.student, orders: [] });
+      by.get(key).orders.push(o);
+    }
+    return [...by.values()].sort((a, b) => a.name.localeCompare(b.name));
+  };
+
+  /* One option per shirt, not per size: a Rocket who bought two of a
+     size gets two lines, numbered, because the PTA is changing one of
+     them. Which one makes no difference — they are the same shirt. */
+  const renderSwapShirts = () => {
+    const rocket = shirtRocketsIn(RH.qs('#sw-class').value)
+      .find((r) => r.key === RH.qs('#sw-rocket').value);
+    const options = [];
+    for (const o of rocket ? rocket.orders : []) {
+      const total = {};
+      o.sizes.forEach((z) => { total[z] = (total[z] || 0) + 1; });
+      const nth = {};
+      for (const z of o.sizes) {
+        const n = (nth[z] = (nth[z] || 0) + 1);
+        options.push({
+          value: `${o.id}|${o.position}|${z}`,
+          label: `${sizeLabel(z)}${total[z] > 1 ? ` (${n} of ${total[z]})` : ''} · ordered ${o.at}`,
+        });
+      }
+    }
+    RH.qs('#sw-shirt').innerHTML = options.length
+      ? html`${options.map((o) => html`<option value="${o.value}">${o.label}</option>`)}`
+      : html`<option value="">No shirts on order for this Rocket</option>`;
+  };
+
+  const renderSwapRockets = () => {
+    const rockets = shirtRocketsIn(RH.qs('#sw-class').value);
+    // Refreshing after a change shouldn't move the PTA off the Rocket
+    // they were working on; a different class has no such key, so
+    // switching classes still lands on that class's first Rocket.
+    const held = RH.qs('#sw-rocket').value;
+    RH.qs('#sw-rocket').innerHTML = rockets.length
+      ? html`${rockets.map((r) => html`<option value="${r.key}">${r.name}</option>`)}`
+      : html`<option value="">No shirts ordered in this class</option>`;
+    if (rockets.some((r) => r.key === held)) RH.qs('#sw-rocket').value = held;
+    renderSwapShirts();
+  };
+
+  RH.qs('#sw-class').addEventListener('change', renderSwapRockets);
+  RH.qs('#sw-rocket').addEventListener('change', renderSwapShirts);
+
+  RH.qs('#swap-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    swErr.hidden = true;
+    swDone.hidden = true;
+    const picked = RH.qs('#sw-shirt').value;
+    if (!picked) {
+      swErr.textContent = 'Pick the shirt to change first.';
+      swErr.hidden = false;
+      return;
+    }
+    const [donation, position, from] = picked.split('|');
+    const btn = RH.qs('#sw-save');
+    btn.disabled = true;
+    const { ok, data: res } = await RH.postJson('/api/shirt-size', {
+      donation, position: Number(position), from, to: RH.qs('#sw-size').value,
+    }, { authorization: `Bearer ${keyOf()}` }).catch(() => ({ ok: false, data: {} }));
+    btn.disabled = false;
+    if (!ok) {
+      swErr.textContent = res.error || 'That didn’t save — please try again.';
+      swErr.hidden = false;
+      return;
+    }
+    swDone.textContent = `${res.student || 'That Rocket'}’s ${res.from} is now ${res.to}. The printer’s sheet has it.`;
+    swDone.hidden = false;
+    load();
+  });
+
   /* ---- a partner's own student ---- */
 
   /* Participation only. The form takes no amount because there is no
@@ -477,6 +573,8 @@
     renderTable(RH.qs('#students-table'), data.students);
     shirtRows = data.shirts;
     renderShirts();
+    shirtOrderList = data.shirtOrders || [];
+    renderSwapRockets();
     renderOffline(data.offline || []);
     renderCredits(data.credits || []);
     renderDigest(data.digest);
