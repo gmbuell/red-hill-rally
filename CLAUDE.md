@@ -23,7 +23,7 @@ two-sentence pointer; this file is the operating manual.
 | `npm install` | wrangler, vitest + workers pool, lighthouse |
 | `npx wrangler d1 migrations apply red-hill-rally --local` | once per clone: local D1 schema |
 | `npm run dev` | `wrangler dev` on http://localhost:8787 |
-| `npm test` | vitest (223 tests, ~4 s) |
+| `npm test` | vitest (232 tests, ~4 s) |
 | `npm run audit` | Lighthouse on every page but `/admin` (noindex), mobile + desktop (needs Chrome); defaults to the live site (`npm run audit -- --url http://localhost:8787` for local). `--runs 3 --min 98` reproduces the CI gate, `--form mobile` limits it to one form factor |
 | `npm run wcag` | WCAG 2.2 checks on every page, mobile + desktop (needs Chrome): text contrast, non-text contrast, focus rings, target size, body leading ≥ 1.5, body text ≥ 16px and labels ≥ 13px. Defaults to the live site (`npm run wcag -- --url http://localhost:8787` for local, `--page donate --form mobile` to narrow). Each cell shows how many elements the check examined |
 | `npm run deploy` | **Ships to production**: the worker and every file under `site/`. The `predeploy` step runs the tests, then applies pending D1 migrations to the remote database, so schema and code ship together. Every push to `main` runs this through Cloudflare Workers Builds (dashboard → the worker → Settings → Build), so merging a PR deploys it |
@@ -499,12 +499,27 @@ flip to live, in this order:
 - **Checks and cash** — "Record a check" on /admin takes a gift the PTA
   received by hand and counts it exactly like a card gift: the ticker,
   the classroom race, the honor roll, the Rocket's own total. It takes
-  no fee and sells no shirt, and it never touches Stripe, so there is
+  no fee, and it never touches Stripe, so there is
   no receipt — the PTA writes those itself. Recorded gifts carry an
   `off_` id instead of a session id and are the only rows the page can
   delete: the list under the form has a Remove button per gift, which
   is how a wrong amount gets fixed. A donor who wants their check
   listed as Anonymous gets the same treatment a card gift does.
+  - *Shirts ride along.* The form carries the donate form's own shirt
+    picker (`RH.shirtPickerMarkup`), so a family who pays cash reaches
+    the printer's sheet the way a family who pays online does.
+    **`amount` is what was handed over**, not the gift: the route
+    subtracts `shirts × (SHIRT.price − SHIRT.credit)` before storing
+    `amount_cents`, so a $20 cash shirt raises the same $10 a $20 card
+    shirt raises, and `test/api.spec.js` pins the two against each
+    other. The panel prints the arithmetic as it is typed, the list
+    shows Received beside Counts, and an amount under the shirts' cost
+    is refused.
+  - The **ordering deadline is not enforced here**, on purpose: past
+    it, this is the PTA adding a shirt to an order they are placing
+    themselves. The panel says the printer has to be told, since the
+    batch may already be gone. (Checkout still refuses — see
+    **Shirts**.)
 - **Shirts** — price, fundraising credit, receipt value, and sizes
   are `SHIRT` in `site/js/data.js`; `MAX_SHIRTS` caps an order. Shirts
   are sold two ways: as an add-on under each Rocket in the donate

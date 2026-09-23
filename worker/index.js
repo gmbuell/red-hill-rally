@@ -334,7 +334,14 @@ const adminKeyOk = async (request, url, env) => {
 /* A gift the PTA took in by hand: a check left in the office, cash at a
    Gathering. Validated exactly like a card gift — the same amount
    limits, the same roster check on the Rockets — because it reaches
-   the same tables and the same public totals. */
+   the same tables and the same public totals.
+
+   Shirts too. A family that pays cash gets the same shirt as a family
+   that pays online, so the order has to reach the printer's sheet the
+   same way; the alternative was a size written on a sticky note. The
+   ordering deadline isn't enforced here on purpose: past it, this is
+   the PTA choosing to add a shirt to an order they are placing by
+   hand, and Mission Control says so. */
 async function handleOfflineGift(request, env, url) {
   if (!(await adminKeyOk(request, url, env))) return json({ error: 'unauthorized' }, 401);
 
@@ -349,9 +356,24 @@ async function handleOfflineGift(request, env, url) {
   const priority = priorityById(body.priority);
   if (!priority) return json({ error: 'Pick which priority this gift is for.' }, 400);
 
+  const norm = normalizeStudents(body.students);
+  if (norm.error) return json({ error: norm.error }, 400);
+  const shirts = norm.students.reduce((n, s) => n + (s.s ? s.s.length : 0), 0);
+
+  /* `amount` is what the family handed over — the number on the check,
+     which is what the treasurer reconciles against the deposit. The
+     shirts come out of it here, so the campaign counts the same share
+     of a cash shirt that it counts of a card one. A shirt-only order
+     is a real order: what's left over may be nothing. */
+  const shirtCost = shirts * SHIRT.price;
   const amount = Number(body.amount);
-  if (!Number.isInteger(amount) || amount < 1 || amount > MAX_AMOUNT) {
-    return json({ error: `Enter a whole-dollar amount between $1 and $${MAX_AMOUNT.toLocaleString('en-US')}.` }, 400);
+  const least = Math.max(shirtCost, 1);
+  if (!Number.isInteger(amount) || amount < least || amount > MAX_AMOUNT) {
+    return json({
+      error: shirts
+        ? `${shirts} shirt${shirts === 1 ? '' : 's'} at $${SHIRT.price} comes to $${shirtCost}, so this can't be less than that.`
+        : `Enter a whole-dollar amount between $1 and $${MAX_AMOUNT.toLocaleString('en-US')}.`,
+    }, 400);
   }
 
   const visibility = body.visibility === 'anon' ? 'anon' : 'public';
@@ -360,19 +382,15 @@ async function handleOfflineGift(request, env, url) {
     return json({ error: 'Enter the name to list on the honor roll, or mark it anonymous.' }, 400);
   }
 
-  const norm = normalizeStudents(body.students);
-  if (norm.error) return json({ error: norm.error }, 400);
-
   const id = await recordOfflineGift(env.DB, {
-    amountCents: amount * 100,
+    amountCents: (amount - shirts * (SHIRT.price - SHIRT.credit)) * 100,
     priority: priority.id,
     donorName,
     visibility,
-    // A shirt is bought, never recorded by hand, so sizes are dropped.
-    students: norm.students.map((s) => ({ c: s.c, n: s.n })),
+    students: norm.students,
     createdSec: Math.floor(Date.now() / 1000),
   });
-  return json({ id });
+  return json({ id, shirts });
 }
 
 /* What a donor's own Rockets have raised, for the thank-you page.

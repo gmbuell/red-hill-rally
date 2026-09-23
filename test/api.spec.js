@@ -912,13 +912,116 @@ describe('gifts recorded by hand', () => {
     expect(board.donors[0].name).toBe('The Nguyen Family');
   });
 
-  it('takes no fee and no shirt, whatever is sent', async () => {
-    await add({ ...check, students: [{ c: ROOM_A, n: 'Ana', s: [data.SHIRT.sizes[0].id] }] });
+  it('takes no fee, whatever is sent', async () => {
+    await add(check);
     const row = await env.DB.prepare('SELECT fee_cents, amount_cents FROM donations').first();
     expect(row.fee_cents).toBe(0);
     expect(row.amount_cents).toBe(25000);
-    const shirts = await env.DB.prepare('SELECT shirts FROM donation_students').first();
-    expect(shirts.shirts).toBe('');
+  });
+
+  /* A family that pays cash gets the same shirt as a family that pays
+     online, so the office has to be able to put the order on the
+     printer's sheet — and the money has to land the way a card order's
+     does, or a cash shirt quietly raises twice what a card shirt
+     raises on the same board. */
+  describe('a shirt paid for in cash', () => {
+    const [SZ1, SZ2] = data.SHIRT.sizes;
+    const price = data.SHIRT.price;
+    const credit = data.SHIRT.credit;
+    const withShirts = (amount, sizes) => add({
+      ...check, amount, students: [{ c: ROOM_A, n: 'Ana Nguyen', s: sizes }],
+    });
+
+    it('counts exactly what the same order bought with a card counts', async () => {
+      // $20 cash, one shirt, no gift on top.
+      expect((await withShirts(price, [SZ1.id])).status).toBe(200);
+      const byHand = (await campaignStats(env.DB)).campaign.raised;
+
+      // The same $20 shirt, bought online, lands beside it.
+      await recordDonation(env.DB, paidSession({
+        id: 'cs_same_shirt',
+        amount_total: price * 100,
+        metadata: { shirts: `0:${SZ1.id}`, fee_cents: '0' },
+      }), 1756100000);
+      const both = (await campaignStats(env.DB)).campaign.raised;
+      expect(both - byHand).toBe(byHand);
+      expect(byHand).toBe(credit);
+    });
+
+    it('takes the shirts out of the amount received, not out of the gift', async () => {
+      // $70: two shirts ($40) and $30 on top. The campaign counts the
+      // $30 plus each shirt's own credit.
+      expect((await withShirts(70, [SZ1.id, SZ2.id])).status).toBe(200);
+      const row = await env.DB.prepare('SELECT amount_cents FROM donations').first();
+      expect(row.amount_cents).toBe((70 - 2 * (price - credit)) * 100);
+      expect((await campaignStats(env.DB)).campaign.raised).toBe(70 - 2 * (price - credit));
+    });
+
+    it('puts the order on the printer’s sheet, at the day it was taken in', async () => {
+      expect((await withShirts(price * 2, [SZ1.id, SZ2.id])).status).toBe(200);
+      const { shirts } = await (await SELF.fetch('https://rally.test/api/admin.json', { headers: KEY })).json();
+      const mine = shirts.rows.filter((r) => r[2] === 'Ana Nguyen');
+      expect(mine.map((r) => r[3])).toEqual([SZ1.label, SZ2.label]);
+      expect(mine.every((r) => r[4] === 1)).toBe(true);
+      // One order, so one moment — and it is today's, not a blank.
+      expect(new Set(mine.map((r) => r[5])).size).toBe(1);
+      expect(mine[0][5]).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/);
+    });
+
+    it('refuses less money than the shirts cost, and says the number', async () => {
+      const res = await withShirts(price - 1, [SZ1.id]);
+      expect(res.status).toBe(400);
+      expect((await res.json()).error).toContain(`$${price}`);
+      expect((await campaignStats(env.DB)).campaign.raised).toBe(0);
+      // Exactly the price is a real order with nothing on top.
+      expect((await withShirts(price, [SZ1.id])).status).toBe(200);
+    });
+
+    it('refuses a shirt with no Rocket to hand it to', async () => {
+      const res = await add({ ...check, amount: price, students: [{ c: ROOM_A, n: '', s: [SZ1.id] }] });
+      expect(res.status).toBe(400);
+      expect((await res.json()).error).toMatch(/name/i);
+      // A classroom is just as necessary as the name.
+      expect((await add({ ...check, amount: price, students: [{ c: '', n: 'Ana', s: [SZ1.id] }] })).status).toBe(400);
+    });
+
+    it('still records one after ordering has closed — the PTA places that order by hand', async () => {
+      try {
+        vi.setSystemTime(new Date('2026-09-26T02:01:00Z')); // past the deadline
+        expect((await withShirts(price, [SZ1.id])).status).toBe(200);
+        const { shirts } = await (await SELF.fetch('https://rally.test/api/admin.json', { headers: KEY })).json();
+        expect(shirts.rows.some((r) => r[2] === 'Ana Nguyen')).toBe(true);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('lists what was handed over beside what was counted, with the sizes', async () => {
+      const { id } = await (await withShirts(70, [SZ1.id, SZ2.id])).json();
+      const listed = await (await SELF.fetch('https://rally.test/api/admin.json', { headers: KEY })).json();
+      expect(listed.offline[0]).toMatchObject({
+        id, received: 70, amount: 70 - 2 * (price - credit), shirts: 2,
+      });
+      expect(listed.offline[0].rockets).toContain(SZ1.label);
+      expect(listed.offline[0].rockets).toContain('Ana Nguyen');
+
+      // Removing it takes the shirts off the printer's sheet too.
+      await SELF.fetch(`https://rally.test/api/offline-gift?id=${id}`, { method: 'DELETE', headers: KEY });
+      const after = await (await SELF.fetch('https://rally.test/api/admin.json', { headers: KEY })).json();
+      expect(after.shirts.rows).toHaveLength(0);
+    });
+
+    it('can be resized afterwards like any other order', async () => {
+      const { id } = await (await withShirts(price, [SZ1.id])).json();
+      const res = await SELF.fetch('https://rally.test/api/shirt-size', {
+        method: 'POST',
+        headers: { ...KEY, 'content-type': 'application/json' },
+        body: JSON.stringify({ donation: id, position: 0, from: SZ1.id, to: SZ2.id }),
+      });
+      expect(res.status).toBe(200);
+      const { shirts } = await (await SELF.fetch('https://rally.test/api/admin.json', { headers: KEY })).json();
+      expect(shirts.rows.map((r) => r[3])).toEqual([SZ2.label]);
+    });
   });
 
   it('validates like checkout does', async () => {

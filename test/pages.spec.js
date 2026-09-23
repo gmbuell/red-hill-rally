@@ -54,6 +54,17 @@ describe('rendered pages', () => {
     for (const needle of PII) expect(text).not.toContain(needle);
   });
 
+  /* A cash shirt's money splits the way a card shirt's does, and the
+     PTA types the whole amount handed over — so the panel has to say
+     which number goes in the box, or a $20 cash shirt gets entered as
+     $20 raised beside a card shirt's $10. */
+  it('asks for the whole amount received and explains the shirt’s share', async () => {
+    const { text } = await page('/admin');
+    expect(text).toContain('id="off-shirts"');
+    expect(text).toContain('Amount received');
+    expect(text).toMatch(/comes off the campaign total/i);
+  });
+
   /* Sizes get corrected all season, and the PTA has to be able to say
      out loud that a correction costs the class nothing — otherwise the
      safe-looking move is to leave the wrong shirt alone. */

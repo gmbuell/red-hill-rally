@@ -122,14 +122,14 @@
       <div class="sheet-head">
         <div>
           <h2 id="offline-head">Record a check</h2>
-          <p>A check left in the office, or cash at a Gathering. It counts exactly like a card gift: the ticker, the classroom race, the honor roll and the Rocket&rsquo;s own total.</p>
+          <p>A check left in the office, or cash at a Gathering &mdash; with a shirt on it if the family bought one. It counts exactly like a card gift: the ticker, the classroom race, the honor roll, the Rocket&rsquo;s own total, and the printer&rsquo;s sheet.</p>
         </div>
       </div>
 
       <form id="offline-form" class="offline-form" novalidate>
         <div class="offline-grid">
           <div class="field">
-            <label for="off-amount">Amount</label>
+            <label for="off-amount">Amount received</label>
             <input type="number" id="off-amount" inputmode="numeric" min="1" step="1" placeholder="$">
           </div>
           <div class="field">
@@ -149,10 +149,14 @@
             <input type="text" id="off-student" autocomplete="off" placeholder="from the memo line">
           </div>
         </div>
+        <div id="off-shirts"></div>
+        <p class="batch-count" id="off-math"></p>
+        <p class="offline-warn" id="off-late" hidden></p>
         <label class="check-row">
           <input type="checkbox" id="off-anon">
           <span>List this one as Anonymous</span>
         </label>
+        <small class="fine-print">Put the whole amount they handed over in <em>Amount received</em>. A shirt&rsquo;s cost comes off the campaign total here the same way it does on a card order, so a $20 cash shirt raises $10 and the rest pays for the shirt.</small>
         <button type="submit" class="btn" id="off-save">Record it</button>
         <p class="form-error" id="off-error" role="alert" hidden></p>
         <p class="offline-done" id="off-done" role="status" hidden></p>

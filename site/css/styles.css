@@ -1557,6 +1557,17 @@ select:focus-visible,
 #shirt-sizes { max-width: 22rem; margin-bottom: 1.6rem; }
 #shirt-sizes .sizes-total td { font-weight: 800; color: var(--navy); }
 
+/* The donate form's own shirt picker, reused under the offline fields
+   so one place decides the sizes and the price. */
+.offline-form .shirts { max-width: 20rem; margin-top: 0.4rem; }
+/* Not an error — the order can still be recorded; it just no longer
+   rides along on the printer's next batch by itself. */
+.offline-warn {
+  margin: 0 0 1rem;
+  font-weight: 700;
+  color: var(--red-ink);
+}
+
 .offline-form .form-error, .offline-done { text-align: left; }
 .offline-done {
   font-weight: 700;

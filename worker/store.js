@@ -175,6 +175,10 @@ export async function partnerCredits(db) {
   }));
 }
 
+/* `amountCents` is the fundraising, the same figure a card gift
+   stores: the money taken in, less the part of each shirt that is the
+   shirt. The route does that subtraction, because the PTA types what
+   the check was written for. */
 export async function recordOfflineGift(db, { amountCents, priority, donorName, visibility, students, createdSec }) {
   const id = offlineId();
   const gift = db.prepare(`
@@ -185,7 +189,7 @@ export async function recordOfflineGift(db, { amountCents, priority, donorName, 
     .bind(id, amountCents, priority, donorName, visibility, createdSec);
   const credits = students.map((s, i) => db.prepare(`
     INSERT INTO donation_students (donation_id, position, classroom, student_name, shirts)
-    VALUES (?1, ?2, ?3, ?4, '')`).bind(id, i, s.c, s.n));
+    VALUES (?1, ?2, ?3, ?4, ?5)`).bind(id, i, s.c, s.n, (s.s || []).join(',')));
   await db.batch([gift, ...credits]);
   return id;
 }
@@ -206,22 +210,32 @@ export async function deleteOfflineGift(db, id) {
 export async function offlineGifts(db) {
   const { results } = await db.prepare(
     `SELECT d.id, d.amount_cents, d.priority, d.donor_name, d.visibility, d.created,
-            COALESCE(GROUP_CONCAT(s.classroom || '|' || s.student_name, ';'), '') AS rockets
+            COALESCE(GROUP_CONCAT(s.classroom || '|' || s.shirts || '|' || s.student_name, ';'), '') AS rockets
      FROM donations d LEFT JOIN donation_students s ON s.donation_id = d.id
      WHERE d.id LIKE 'off\\_%' ESCAPE '\\'
      GROUP BY d.id ORDER BY d.created DESC, d.id DESC`,
   ).all();
   return results.map((row) => {
-    const named = row.rockets ? row.rockets.split(';').map((pair) => {
-      const [c, ...rest] = pair.split('|');
+    let shirts = 0;
+    /* The name is last in each triple: a name with a '|' in it still
+       reads back whole, while the classroom and the sizes can't. */
+    const named = row.rockets ? row.rockets.split(';').map((triple) => {
+      const [c, sizes, ...rest] = triple.split('|');
       const room = classroomById(c);
       const name = rest.join('|').trim();
-      return [name || '(no name)', room ? room.teacher : c].join(' · ');
+      const worn = sizes ? sizes.split(',').filter(Boolean) : [];
+      shirts += worn.length;
+      const labels = worn.map((z) => (shirtSizeById(z) || { label: z }).label).join(', ');
+      return [name || '(no name)', room ? room.teacher : c, labels].filter(Boolean).join(' · ');
     }) : [];
     const p = priorityById(row.priority);
     return {
       id: row.id,
+      // What was counted, and what was handed over: they differ by the
+      // cost of the shirts, exactly as a card order's do.
       amount: row.amount_cents / 100,
+      received: row.amount_cents / 100 + shirts * (SHIRT.price - SHIRT.credit),
+      shirts,
       priority: p ? p.name : row.priority,
       donor: row.visibility === 'anon' ? 'Anonymous' : row.donor_name,
       rockets: named.join(', '),

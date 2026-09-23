@@ -70,7 +70,8 @@
     table.innerHTML = html`
       <thead><tr>
         <th scope="col">Recorded</th><th scope="col">Name</th><th scope="col">Rocket</th>
-        <th scope="col">Priority</th><th scope="col" class="num">Amount</th><th scope="col"></th>
+        <th scope="col">Priority</th><th scope="col" class="num">Received</th>
+        <th scope="col" class="num">Counts</th><th scope="col"></th>
       </tr></thead>
       <tbody>${rows.length ? rows.map((r) => html`
         <tr>
@@ -78,12 +79,62 @@
           <td>${r.donor}</td>
           <td>${r.rockets || '—'}</td>
           <td>${r.priority}</td>
+          <td class="num">${RH.money(r.received == null ? r.amount : r.received)}</td>
           <td class="num">${RH.money(r.amount)}</td>
           <td><button type="button" class="linklike" data-remove="${r.id}">Remove</button></td>
         </tr>`)
-        : html`<tr><td colspan="6" class="empty">Nothing recorded by hand yet.</td></tr>`}
+        : html`<tr><td colspan="7" class="empty">Nothing recorded by hand yet.</td></tr>`}
       </tbody>`;
   };
+
+  /* ---- shirts on a check ---- */
+
+  /* The donate form's own picker, so the sizes, the price and the
+     "size up" advice are decided in one place. Every chosen size adds
+     an empty select under it, the way a family sees it. */
+  const offShirtsEl = RH.qs('#off-shirts');
+  const drawOffShirts = (sizes) => {
+    offShirtsEl.innerHTML = RH.shirtPickerMarkup('off', 0, sizes);
+    RH.setShirts(offShirtsEl, sizes);
+  };
+  const offShirts = () => RH.shirtsIn(offShirtsEl);
+
+  /* The arithmetic out loud, because the number the PTA types is what
+     the family handed over and the number the campaign counts is not
+     the same. Getting that wrong by hand is how an offline shirt ends
+     up raising $20 on a board where a card shirt raised $10. */
+  const renderOffMath = () => {
+    const shirts = offShirts();
+    const received = Number(RH.qs('#off-amount').value);
+    const cost = shirts.length * SHIRT.price;
+    const el = RH.qs('#off-math');
+    if (!shirts.length) { el.textContent = ''; return; }
+    const plural = `${shirts.length} shirt${shirts.length === 1 ? '' : 's'}`;
+    el.textContent = !Number.isInteger(received) || received < cost
+      ? `${plural} at ${RH.money(SHIRT.price)} is ${RH.money(cost)} — that much at least.`
+      : `${RH.money(received)} received: ${plural} (${RH.money(cost)}) and ${RH.money(received - cost)} on top. ${RH.money(received - shirts.length * (SHIRT.price - SHIRT.credit))} counts toward the campaign.`;
+  };
+
+  /* Past the deadline this still records — the PTA is the one placing
+     the order — but the printer has already been handed a batch, so
+     the page says what has to happen next rather than pretending. */
+  const renderOffLate = () => {
+    const el = RH.qs('#off-late');
+    const late = offShirts().length && !shirtsOpen();
+    el.textContent = late
+      ? `Shirt ordering closed ${SHIRT.deadlineLabel}. This will go on the printer’s sheet, but it won’t be in a batch already sent — tell the printer about it.`
+      : '';
+    el.hidden = !late;
+  };
+
+  const offShirtsChanged = () => {
+    drawOffShirts(offShirts());
+    renderOffMath();
+    renderOffLate();
+  };
+  offShirtsEl.addEventListener('change', offShirtsChanged);
+  RH.qs('#off-amount').addEventListener('input', renderOffMath);
+  drawOffShirts([]);
 
   RH.qs('#offline-form').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -92,12 +143,16 @@
     const btn = RH.qs('#off-save');
     const classroom = RH.qs('#off-class').value;
     const student = RH.qs('#off-student').value.trim();
+    const sizes = offShirts();
+    /* A Rocket row goes with the gift as soon as any of the three is
+       filled in — so shirts picked without a classroom are refused by
+       name rather than quietly dropped on the way out. */
     const body = {
       amount: Number(RH.qs('#off-amount').value),
       priority: RH.qs('#off-priority').value,
       donorName: RH.qs('#off-donor').value.trim(),
       visibility: RH.qs('#off-anon').checked ? 'anon' : 'public',
-      students: classroom ? [{ c: classroom, n: student }] : [],
+      students: classroom || student || sizes.length ? [{ c: classroom, n: student, s: sizes }] : [],
     };
     btn.disabled = true;
     const { ok, data: res } = await RH.postJson('/api/offline-gift', body, {
@@ -109,7 +164,10 @@
       offErr.hidden = false;
       return;
     }
-    offDone.textContent = `Recorded ${RH.money(body.amount)}. It’s on the board now.`;
+    const bought = res.shirts || 0;
+    offDone.textContent = bought
+      ? `Recorded ${RH.money(body.amount)}, with ${bought} shirt${bought === 1 ? '' : 's'} for ${student}. It’s on the board and on the printer’s sheet.`
+      : `Recorded ${RH.money(body.amount)}. It’s on the board now.`;
     offDone.hidden = false;
     /* Clear the Rocket too, not just the name: a classroom left
        selected would quietly credit the next check to the wrong one. */
@@ -118,6 +176,10 @@
     RH.qs('#off-class').value = '';
     RH.qs('#off-student').value = '';
     RH.qs('#off-anon').checked = false;
+    // The sizes go with it: the next check is a different family's.
+    drawOffShirts([]);
+    renderOffMath();
+    renderOffLate();
     load();
   });
 
