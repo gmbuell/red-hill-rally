@@ -54,6 +54,20 @@ describe('rendered pages', () => {
     for (const needle of PII) expect(text).not.toContain(needle);
   });
 
+  /* The question the PTA actually gets asked is about one gift, not a
+     class average, and the answer has to be findable without anyone
+     opening a database. */
+  it('carries the gift ledger and the way to put a gift on a Rocket', async () => {
+    const { text } = await page('/admin');
+    expect(text).toContain('id="gifts-table"');
+    expect(text).toContain('data-download="gifts"');
+    expect(text).toContain('id="gift-orphans"');
+    expect(text).toContain('id="cg-gift"');
+    // Still no student names in the served HTML — the sheet is filled
+    // in the browser, behind the key, like every other one here.
+    for (const needle of PII) expect(text).not.toContain(needle);
+  });
+
   /* A cash shirt's money splits the way a card shirt's does, and the
      PTA types the whole amount handed over — so the panel has to say
      which number goes in the box, or a $20 cash shirt gets entered as

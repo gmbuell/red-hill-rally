@@ -15,9 +15,12 @@
     grade: 'Grade', teacher: 'Teacher', students: 'Class size', gifts: 'Gifts',
     rockets: 'Rockets', participation_pct: 'Participation', raised: 'Raised', shirts: 'Shirts',
     student: 'Rocket', size: 'Size', quantity: 'Qty',
+    when: 'Received', source: 'How', donor: 'Donor', credited: 'Credited to',
+    classes: 'Class', priority: 'Counted toward', fee: 'Fee covered',
   };
-  const NUMERIC = new Set(['students', 'gifts', 'rockets', 'participation_pct', 'raised', 'shirts', 'quantity']);
-  const show = (col, v) => (col === 'raised' ? RH.moneyCents(Math.round(Number(v) * 100))
+  const NUMERIC = new Set(['students', 'gifts', 'rockets', 'participation_pct', 'raised', 'shirts', 'quantity', 'fee']);
+  const MONEY = new Set(['raised', 'fee']);
+  const show = (col, v) => (MONEY.has(col) ? RH.moneyCents(Math.round(Number(v) * 100))
     : col === 'participation_pct' ? `${v}%` : v);
 
   /* A sortable table: click a header to sort by it, again to flip.
@@ -51,6 +54,140 @@
   const authed = (path, init = {}) => fetch(path, {
     ...init,
     headers: { authorization: `Bearer ${keyOf()}`, ...(init.headers || {}) },
+  });
+
+  /* ---- the book: every gift, and what it counted for ---- */
+
+  /* The sheet the PTA looks a single donation up in. Rolled-up numbers
+     answer "how is the class doing"; this answers "where did Grandma's
+     $25 go", which is the question that gets asked out loud — usually
+     by someone holding a Stripe receipt with a date and an amount on
+     it, which is why both are on every row and in the search. */
+  let giftRows = { columns: [], rows: [] };
+  const GIFT_ID = 'gift_id';
+  const giftWhere = (col) => giftRows.columns.indexOf(col);
+  /* A partnership names no Rocket on purpose — its money is kept out
+     of the classroom race — so it is not a gift waiting to be fixed,
+     and it stays out of the count and out of the filter. */
+  const loose = (r) => r[giftWhere('source')] !== 'partner' && !String(r[giftWhere('credited')]).trim();
+
+  const renderGifts = () => {
+    const needle = RH.qs('#gift-find').value.trim().toLowerCase();
+    const orphansOnly = RH.qs('#gift-orphans').checked;
+    const rows = giftRows.rows.filter((r) => {
+      if (orphansOnly && !loose(r)) return false;
+      return !needle || r.join(' ').toLowerCase().includes(needle);
+    });
+    /* The gift id is the Stripe id: long, and nobody reads it off a
+       screen. It stays in the download, where it does its job. */
+    const drop = giftWhere(GIFT_ID);
+    renderTable(RH.qs('#gifts-table'), {
+      columns: giftRows.columns.filter((c) => c !== GIFT_ID),
+      rows: rows.map((r) => r.filter((_, i) => i !== drop)),
+    });
+
+    const raised = giftWhere('raised');
+    const total = rows.reduce((n, r) => n + Math.round(Number(r[raised]) * 100), 0);
+    const waiting = giftRows.rows.filter(loose).length;
+    const el = RH.qs('#gift-count');
+    const shown = `${rows.length} gift${rows.length === 1 ? '' : 's'}, ${RH.moneyCents(total)}`;
+    el.textContent = !giftRows.rows.length ? 'No gifts yet.'
+      : orphansOnly || needle ? `${shown} of ${giftRows.rows.length}.`
+        : `${shown}. ${waiting ? `${waiting === 1 ? 'One of them names' : `${waiting} of them name`} no Rocket — counted for the school, for no class.` : 'Every one of them names a Rocket.'}`;
+  };
+
+  RH.qs('#gift-find').addEventListener('input', renderGifts);
+  RH.qs('#gift-orphans').addEventListener('change', renderGifts);
+
+  /* ---- putting a gift on the Rocket it was meant for ---- */
+
+  /* The same Rocket rows the donate form uses, so a gift credited here
+     and a gift credited at checkout are built from one list and split
+     their dollars the same way. */
+  const cgRows = RH.studentRows({
+    rowsEl: RH.qs('#cg-rows'),
+    addBtn: RH.qs('#cg-add'),
+    prefix: 'cg',
+    classError: 'Please pick a classroom for this Rocket.',
+    nameError: 'Please give the Rocket’s name.',
+  });
+  cgRows.render();
+
+  /* Newest first, because the gift someone is asking about is almost
+     always this morning's. Each option says what it credits now, so an
+     already-credited gift is obvious before it gets overwritten. */
+  const renderGiftPicker = () => {
+    const held = RH.qs('#cg-gift').value;
+    const when = giftWhere('when');
+    const donor = giftWhere('donor');
+    const credited = giftWhere('credited');
+    const raised = giftWhere('raised');
+    const source = giftWhere('source');
+    const id = giftWhere(GIFT_ID);
+    const pickable = giftRows.rows.filter((r) => r[source] !== 'partner');
+    RH.qs('#cg-gift').innerHTML = pickable.length
+      ? html`${pickable.map((r) => html`<option value="${r[id]}">${
+        `${r[when]} · ${r[donor]} · ${RH.moneyCents(Math.round(Number(r[raised]) * 100))} · ${String(r[credited]).trim() || 'no Rocket'}`
+      }</option>`)}`
+      : html`<option value="">No gifts yet</option>`;
+    if (pickable.some((r) => r[id] === held)) RH.qs('#cg-gift').value = held;
+  };
+
+  /* Picking a gift loads whatever it credits now, so the common fix is
+     an edit rather than a retype — and so it is plain that saving
+     replaces what is there. */
+  const loadGiftRockets = () => {
+    const id = RH.qs('#cg-gift').value;
+    const row = giftRows.rows.find((r) => r[giftWhere(GIFT_ID)] === id);
+    const names = row ? String(row[giftWhere('credited')]).split(',').map((n) => n.trim()).filter(Boolean) : [];
+    const picked = names.map((n) => {
+      // The Rockets sheet knows which class each name is in; two kids
+      // with one name in two classes is the one case it can't call, so
+      // it leaves the classroom empty rather than guessing.
+      const hits = rockets.rows.filter((r) => r[2] === n);
+      const room = hits.length === 1 ? CLASSROOMS.find((c) => c.teacher === hits[0][1]) : null;
+      return { c: room ? room.id : '', n, s: [] };
+    });
+    cgRows.students.splice(0, cgRows.students.length, ...(picked.length ? picked : [{ c: '', n: '', s: [] }]));
+    cgRows.render();
+  };
+  RH.qs('#cg-gift').addEventListener('change', loadGiftRockets);
+
+  RH.qs('#credit-gift-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const failEl = RH.qs('#cg-fail');
+    const doneEl = RH.qs('#cg-done');
+    failEl.hidden = true;
+    doneEl.hidden = true;
+    const gift = RH.qs('#cg-gift').value;
+    if (!gift) {
+      failEl.textContent = 'Pick the gift to credit first.';
+      failEl.hidden = false;
+      return;
+    }
+    if (!cgRows.validate((st) => ({ c: !st.c, n: !st.n.trim() }))) {
+      failEl.textContent = 'Every Rocket needs a classroom and a name.';
+      failEl.hidden = false;
+      return;
+    }
+    const btn = RH.qs('#cg-save');
+    btn.disabled = true;
+    const { ok, data: res } = await RH.postJson('/api/gift-rockets', {
+      donation: gift,
+      students: cgRows.students.map((st) => ({ c: st.c, n: st.n.trim() })),
+    }, { authorization: `Bearer ${keyOf()}` }).catch(() => ({ ok: false, data: {} }));
+    btn.disabled = false;
+    if (!ok) {
+      failEl.textContent = res.error || 'That didn’t save — please try again.';
+      failEl.hidden = false;
+      return;
+    }
+    const names = RH.nameList(cgRows.students.map((st) => st.n.trim()));
+    doneEl.textContent = res.credited > 1
+      ? `That gift now counts for ${names}, split between them.`
+      : `That gift now counts for ${names}.`;
+    doneEl.hidden = false;
+    load();
   });
 
   /* ---- gifts the PTA takes in by hand ---- */
@@ -633,6 +770,8 @@
     RH.qs('#as-of').textContent = `As of ${new Date().toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}.`;
     renderTable(RH.qs('#classrooms-table'), data.classrooms, { col: 'participation_pct', desc: true });
     renderTable(RH.qs('#students-table'), data.students);
+    giftRows = data.gifts || { columns: [], rows: [] };
+    renderGifts();
     shirtRows = data.shirts;
     renderShirts();
     shirtOrderList = data.shirtOrders || [];
@@ -643,6 +782,8 @@
     rockets = data.students;
     noNameLabel = data.noName || '';
     renderRenameNames();
+    // After `rockets`, so picking a gift can look a name's class up.
+    renderGiftPicker();
   };
 
   form.addEventListener('submit', (e) => {

@@ -10,7 +10,7 @@
 import data from '../site/js/data.js';
 import { shirtsFromMetadata } from './students.js';
 
-const { CAMPAIGN, CLASSROOMS, PRIORITIES, SUPPORT_ALL, SHIRT, priorityById, classroomById, shirtSizeById, pacificAt, MAX_STUDENTS } = data;
+const { CAMPAIGN, CLASSROOMS, PRIORITIES, SUPPORT_ALL, SHIRT, priorityById, partnerTierById, classroomById, shirtSizeById, pacificAt, MAX_STUDENTS } = data;
 
 /* A session's Rockets: the `students` JSON our checkout stamps into
    metadata (a partnership carries none). */
@@ -539,6 +539,94 @@ export const shirtSizeTotals = ({ rows }) => {
     .map((z) => ({ size: z.label, quantity: byLabel[z.label] }));
   return { sizes: ordered, total: ordered.reduce((n, z) => n + z.quantity, 0) };
 };
+
+/* Every gift, newest first, and what each one counted toward: the book
+   a single donation can be looked up in. The rolled-up sheets answer
+   "how is the class doing"; nothing answered "where did Grandma's $25
+   go", which is the question that actually gets asked — and the honor
+   roll can't answer it, because it carries no amount and no Rocket.
+
+   A gift with an empty Rockets cell is the whole point of the sheet:
+   the Rocket step in checkout is optional, so an aunt giving from the
+   home page lands here with nothing attached, counted for the school
+   and for nobody's class. `creditGift` is how that gets fixed.
+
+   The gift id is the last column because it is long and ugly and the
+   PTA doesn't read it — but it is the Stripe session id, so the CSV
+   reconciles line by line against the Stripe dashboard. */
+export async function giftsReport(db) {
+  const [gifts, credits] = await db.batch([
+    db.prepare(`SELECT id, amount_cents, fee_cents, priority, partner_tier,
+                       donor_name, visibility, created
+                FROM donations ORDER BY created DESC, id DESC`),
+    db.prepare(`SELECT donation_id, position, classroom, student_name, shirts
+                FROM donation_students ORDER BY donation_id, position`),
+  ]);
+  const byGift = {};
+  for (const c of credits.results) (byGift[c.donation_id] ||= []).push(c);
+
+  const rows = gifts.results.map((g) => {
+    const mine = byGift[g.id] || [];
+    const credit = isCreditOnly(g.id);
+    const tier = partnerTierById(g.partner_tier);
+    const priority = priorityById(g.priority);
+    /* A business's participation credit carries the business name, and
+       it is 'anon' only because it is no honor-roll gift. Everyone else
+       who asked not to be listed isn't listed here either — the same
+       answer the hand-entered list has always given. */
+    const anon = g.visibility === 'anon' && !credit;
+    return [
+      orderedAt(g.created),
+      credit ? 'credit' : tier ? 'partner' : g.id.startsWith(OFFLINE_PREFIX) ? 'by hand' : 'card',
+      anon || !g.donor_name ? 'Anonymous' : g.donor_name,
+      mine.map((c) => c.student_name.trim()).filter(Boolean).join(', '),
+      [...new Set(mine.map((c) => (classroomById(c.classroom) || {}).teacher || c.classroom))].join(', '),
+      tier ? tier.name : priority ? priority.name
+        : g.priority === SUPPORT_ALL.id ? SUPPORT_ALL.name : g.priority,
+      dollars(g.amount_cents),
+      dollars(g.fee_cents),
+      mine.reduce((n, c) => n + (c.shirts ? c.shirts.split(',').length : 0), 0),
+      g.id,
+    ];
+  });
+  return {
+    columns: ['when', 'source', 'donor', 'credited', 'classes', 'priority', 'raised', 'fee', 'shirts', 'gift_id'],
+    rows,
+  };
+}
+
+/* Put a gift on a Rocket — or on the two or three it was always meant
+   for. The dollars split between them the way checkout splits them, so
+   a gift credited here and the same gift credited at checkout reach
+   the classroom race identically.
+
+   The rows are replaced rather than added to, so the panel fixes a
+   wrong Rocket as well as a missing one. Two refusals:
+
+   - A **partnership** stays out. Its money is already in the campaign
+     total and is deliberately kept out of the classroom race; crediting
+     it to a class would hand that class a windfall no family gave. A
+     partner's own child is counted with `recordPartnerCredit`, which
+     adds the participation and no dollars.
+   - A gift **carrying shirts** stays out. Those shirts are printed with
+     a name on them and sorted into a batch by it; moving the Rocket
+     under them would send a child somebody else's shirt. */
+export async function creditGift(db, donationId, students) {
+  const gift = await db.prepare(
+    'SELECT id, partner_tier FROM donations WHERE id = ?1').bind(donationId).first();
+  if (!gift) return { error: 'gone' };
+  if (gift.partner_tier) return { error: 'partner' };
+  const { results: had } = await db.prepare(
+    'SELECT position, shirts FROM donation_students WHERE donation_id = ?1').bind(donationId).all();
+  if (had.some((r) => r.shirts)) return { error: 'shirts' };
+  await db.batch([
+    db.prepare('DELETE FROM donation_students WHERE donation_id = ?1').bind(donationId),
+    ...students.map((s, i) => db.prepare(`
+      INSERT INTO donation_students (donation_id, position, classroom, student_name, shirts)
+      VALUES (?1, ?2, ?3, ?4, '')`).bind(donationId, i, s.c, s.n)),
+  ]);
+  return { credited: students.length, replaced: had.length };
+}
 
 /* Every shirt on order, one entry per Rocket per checkout, so Mission
    Control can offer the PTA a real shirt to point at rather than a

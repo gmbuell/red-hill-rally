@@ -36,6 +36,51 @@
     <div class="admin-totals" id="admin-totals"></div>
     <p class="admin-asof"><span id="as-of"></span> <button type="button" class="linklike" id="refresh-btn">Refresh</button> &middot; <button type="button" class="linklike" id="close-btn">Close the reports</button></p>
 
+    <section class="sheet" aria-labelledby="gifts-head">
+      <div class="sheet-head">
+        <div>
+          <h2 id="gifts-head">Every gift</h2>
+          <p>The book. One row per donation, newest first: who gave, what it counted toward, and which Rocket it credited. Search by name, amount or class. The download carries the gift id, which is the Stripe id, so it reconciles line by line against Stripe.</p>
+        </div>
+        <button type="button" class="btn secondary small" data-download="gifts">Download gifts.csv</button>
+      </div>
+
+      <div class="batch-row">
+        <div class="field">
+          <label for="gift-find">Search</label>
+          <input type="search" id="gift-find" autocomplete="off" placeholder="a name, an amount, a teacher">
+        </div>
+        <label class="check-row">
+          <input type="checkbox" id="gift-orphans">
+          <span>Only gifts with no Rocket</span>
+        </label>
+      </div>
+      <p class="batch-count" id="gift-count"></p>
+      <div class="sheet-scroll"><table id="gifts-table"></table></div>
+    </section>
+
+    <section class="sheet" aria-labelledby="credit-gift-head">
+      <div class="sheet-head">
+        <div>
+          <h2 id="credit-gift-head">Put a gift on a Rocket</h2>
+          <p>Naming a Rocket at checkout is optional, so a grandparent or an aunt can give without it &mdash; the gift counts for the school and for nobody&rsquo;s class. This attaches the Rocket it was meant for, or the two or three it was meant for, and their dollars split the way they would have at checkout. Picking a gift that already names Rockets loads them, so this fixes a wrong one too.</p>
+        </div>
+      </div>
+
+      <form id="credit-gift-form" class="offline-form" novalidate>
+        <div class="field">
+          <label for="cg-gift">Gift</label>
+          <select id="cg-gift"></select>
+        </div>
+        <div id="cg-rows"></div>
+        <button type="button" class="btn secondary small" id="cg-add">+ Add another Rocket</button>
+        <small class="fine-print">Nothing about the money changes &mdash; the amount, the priority and the honor roll stay exactly as they are. Only the class and the Rocket it counts for.</small>
+        <button type="submit" class="btn" id="cg-save">Credit it</button>
+        <p class="form-error" id="cg-fail" role="alert" hidden></p>
+        <p class="offline-done" id="cg-done" role="status" hidden></p>
+      </form>
+    </section>
+
     <section class="sheet" aria-labelledby="classrooms-head">
       <div class="sheet-head">
         <div>

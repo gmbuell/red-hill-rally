@@ -12,7 +12,7 @@ import { recordDonation, campaignStats, boardStats, studentsReport, shirtsReport
   teacherEmails, setTeacherEmails, weekKey, claimDigest, finishDigest, releaseDigest, digestHistory,
   renameRocket, NO_NAME, giftRockets, giftsForEmail, claimLinkRequest,
   recordPartnerCredit, deletePartnerCredit, partnerCredits,
-  shirtOrders, changeShirtSize } from './store.js';
+  shirtOrders, changeShirtSize, giftsReport, creditGift } from './store.js';
 import { buildDigests, recapSheets } from './digest.js';
 import { sendEmail, mailConfigured } from './mail.js';
 import { renderPage } from './pages.js';
@@ -322,7 +322,7 @@ async function handleWebhook(request, env) {
    for /admin. Prefer `Authorization: Bearer <ADMIN_KEY>` — the ?key=
    form works too but leaves the key in browser history and logged
    request URLs. */
-const REPORTS = { students: studentsReport, shirts: shirtsReport, classrooms: classroomsReport };
+const REPORTS = { students: studentsReport, shirts: shirtsReport, classrooms: classroomsReport, gifts: giftsReport };
 
 const adminKeyOk = async (request, url, env) => {
   const auth = request.headers.get('authorization') || '';
@@ -529,6 +529,41 @@ async function handleRenameRocket(request, env, url) {
   const moved = await renameRocket(env.DB, room.id, from, to);
   if (!moved) return json({ error: 'No gifts in that class carry that name.' }, 404);
   return json({ moved, to });
+}
+
+/* Put a gift on the Rocket it was meant for.
+
+   The Rocket step in checkout is optional and says so, so a
+   grandparent or an aunt giving from the home page lands as a gift
+   that counted for the school and for nobody's class. Until now that
+   was unfixable from here: "Fix a Rocket's name" moves a name that
+   exists, and a gift with no Rocket has no name to move. This is the
+   one place that can attach one — or attach the two it was always
+   meant for, whose dollars then split the way checkout splits them. */
+async function handleCreditGift(request, env, url) {
+  if (!(await adminKeyOk(request, url, env))) return json({ error: 'unauthorized' }, 401);
+  const body = await request.json().catch(() => null);
+  if (!body) return json({ error: 'Please try that again.' }, 400);
+
+  const donation = typeof body.donation === 'string' ? body.donation.trim() : '';
+  if (!donation) return json({ error: 'Pick the gift to credit.' }, 400);
+
+  const norm = normalizeStudents(body.students, { nameRequired: true });
+  if (norm.error) return json({ error: norm.error }, 400);
+  if (!norm.students.length) return json({ error: 'Name at least one Rocket for this gift.' }, 400);
+  if (norm.students.some((s) => s.s && s.s.length)) {
+    return json({ error: 'Shirts are ordered, not credited — record the order instead.' }, 400);
+  }
+
+  const res = await creditGift(env.DB, donation, norm.students.map((s) => ({ c: s.c, n: s.n })));
+  if (res.error === 'gone') return json({ error: 'That gift is no longer here — refresh and try again.' }, 404);
+  if (res.error === 'partner') {
+    return json({ error: 'A partnership can’t be credited to a class — its money is already in the total and stays out of the race. Use “Credit a partner’s student”.' }, 400);
+  }
+  if (res.error === 'shirts') {
+    return json({ error: 'This gift has shirts on it, printed with a name — ask Garrett rather than moving it here.' }, 400);
+  }
+  return json(res);
 }
 
 /* One shirt on one order, resized. A size is the one thing about a
@@ -798,7 +833,9 @@ export default {
         case 'POST /api/digest-test': return await handleDigestTest(request, env, url);
         case 'POST /api/partner-credit':
         case 'DELETE /api/partner-credit': return await handlePartnerCredit(request, env, url);
+        case 'POST /api/gift-rockets': return await handleCreditGift(request, env, url);
         case 'GET /api/students.csv':
+        case 'GET /api/gifts.csv':
         case 'GET /api/shirts.csv':
         case 'GET /api/classrooms.csv':
         case 'GET /api/recaps.html':
