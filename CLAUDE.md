@@ -351,14 +351,16 @@ flip to live, in this order:
       one shared password opens this page. A partner participation
       credit (`pc_`) shows the business, since that name is on the
       partner wall and the row is no honor-roll gift.
-    - An empty *credited* cell is the point of the sheet. Naming a
+    - An empty *classes* cell is the point of the sheet. Naming a
       Rocket at checkout is optional, so an aunt giving from the home
       page lands counted for the school and for no class — invisible
       in every other sheet. The count line says how many, the filter
       narrows to them, and **"Put a gift on a Rocket"**
       (`POST /api/gift-rockets` → `creditGift`) attaches the one or
-      several it was meant for, whose dollars then split the way
-      checkout splits them (`test/api.spec.js` pins the two paths
+      several it was meant for — including a gift already credited to
+      a class under no name, which the picker labels as such so that
+      credit isn't mistaken for nothing — whose dollars then split
+      the way checkout splits them (`test/api.spec.js` pins the paths
       against one oracle). It replaces the gift's credits rather than
       adding to them, so it fixes a wrong Rocket too, and it refuses a
       **partnership** (money kept out of the race on purpose — use
