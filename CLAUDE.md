@@ -23,7 +23,7 @@ two-sentence pointer; this file is the operating manual.
 | `npm install` | wrangler, vitest + workers pool, lighthouse |
 | `npx wrangler d1 migrations apply red-hill-rally --local` | once per clone: local D1 schema |
 | `npm run dev` | `wrangler dev` on http://localhost:8787 |
-| `npm test` | vitest (249 tests, ~5 s) |
+| `npm test` | vitest (251 tests, ~5 s) |
 | `npm run audit` | Lighthouse on every page but `/admin` (noindex), mobile + desktop (needs Chrome); defaults to the live site (`npm run audit -- --url http://localhost:8787` for local). `--runs 3 --min 98` reproduces the CI gate, `--form mobile` limits it to one form factor |
 | `npm run wcag` | WCAG 2.2 checks on every page, mobile + desktop (needs Chrome): text contrast, non-text contrast, focus rings, target size, body leading ≥ 1.5, body text ≥ 16px and labels ≥ 13px. Defaults to the live site (`npm run wcag -- --url http://localhost:8787` for local, `--page donate --form mobile` to narrow). Each cell shows how many elements the check examined |
 | `npm run deploy` | **Ships to production**: the worker and every file under `site/`. The `predeploy` step runs the tests, then applies pending D1 migrations to the remote database, so schema and code ship together. Every push to `main` runs this through Cloudflare Workers Builds (dashboard → the worker → Settings → Build), so merging a PR deploys it |
@@ -654,7 +654,19 @@ flip to live, in this order:
   object metadata.
   - *Publish a held PDF or an offline partner*: web-sized image into
     `site/img/partners/`, a `PARTNERS` entry in `site/js/data.js`,
-    redeploy.
+    redeploy. House style for the file: trimmed to its own artwork,
+    flattened onto white (the card's ground) and saved **RGB, no
+    alpha**, 640px wide, WebP — every logo in the folder matches, and
+    the card centres it in a fixed box with `object-fit: contain`.
+    Nothing links the filename to the entry, so `test/pages.spec.js`
+    fetches the logo every listed partner names: a typo there ships a
+    business a broken image on the wall they paid for, and it reviews
+    clean because the name and the badge are right.
+    - This is **display only** — it moves no money. An offline
+      partnership's dollars are not in the campaign total until they
+      reach D1, and "Record a check" is the wrong tool for one: it
+      stores `partner_tier = ''`, so the partnership would count in
+      the family-gift tally and land in the family honor roll.
   - *Pull a published logo* (wrong file, inappropriate content):
     `npx wrangler d1 execute red-hill-rally --remote --command "UPDATE donations SET logo_id = '' WHERE donor_name = '<business>'"`.
     The wall, the board strip, and the direct /logo URL stop within

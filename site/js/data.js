@@ -309,18 +309,23 @@ const ANNUAL_LEVELS = [
 const PARTNERS = [
   { name: 'Earthco Landscape Services', logo: 'earthco-landscape.webp', annual: 'apollo', presenting: true },
   { name: 'The O’Dell Group Real Estate', logo: 'odell-group.webp', annual: 'apollo' },
+  { name: 'Baum Orthodontics', logo: 'baum-orthodontics.webp', annual: 'apollo' },
   { name: 'AOQ Sports', logo: 'aoq-sports.webp', annual: 'orbit' },
   { name: 'Galaxy Automotive & Tire', logo: 'galaxy-automotive.webp', annual: 'orbit' },
   { name: 'Felton Ninja Academy', logo: 'felton-ninja-academy.webp', annual: 'orbit' },
   { name: 'Tustin Aesthetic Dentistry', logo: 'tustin-aesthetic-dentistry.webp', annual: 'orbit' },
+  { name: 'Hi-Standard Automotive', logo: 'hi-standard.webp', annual: 'orbit' },
+  { name: 'Design by HOD', logo: 'design-by-hod.webp', annual: 'orbit' },
   // Thanked by name, no level recorded: recognition the PTA is giving
   // now, not a ledger. A tier here would claim a dollar figure nobody
   // has settled, and one arriving through checkout still outranks it.
   { name: 'The Lost Bean', logo: 'the-lost-bean.webp', label: 'Rally Partner' },
+  { name: 'Christakis', logo: 'christakis.webp', label: 'Rally Partner' },
   { name: 'Black Gold Pump & Supply' },
   { name: 'CH Design & Renovation' },
   { name: 'Sakura Smiles Pediatric Dentistry' },
   { name: 'OC Mom Trainer' },
+  { name: 'Yang Family Dentistry' },
 ];
 
 /* Lookup helpers shared by the worker and every page script. */

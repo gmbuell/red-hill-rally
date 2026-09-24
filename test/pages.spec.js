@@ -190,6 +190,36 @@ describe('rendered pages', () => {
     expect(text.indexOf(apollo.name)).toBeLessThan(text.indexOf(orbit.name));
   });
 
+  /* A partner is added by hand: a file into site/img/partners/ and a
+     line in data.js. Nothing connects the two, so a typo in the
+     filename ships a business a broken image on the wall their
+     sponsorship paid for — and it looks fine in review, because the
+     name and the badge are right. */
+  it('serves the logo file every listed partner names', async () => {
+    const listed = data.PARTNERS.filter((p) => p.logo);
+    expect(listed.length).toBeGreaterThan(0);
+    for (const p of listed) {
+      const res = await SELF.fetch(`https://rally.test/img/partners/${p.logo}`);
+      expect(res.status, `${p.name} → ${p.logo}`).toBe(200);
+      expect(res.headers.get('content-type'), p.name).toContain('image/');
+    }
+  });
+
+  it('shows every annual partner on the wall and on the board', async () => {
+    const wall = await page('/partners');
+    const board = await page('/rally-board');
+    // Business names carry ampersands, which the renderer escapes.
+    const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+    for (const p of data.PARTNERS.filter((x) => x.annual)) {
+      const level = data.annualLevelById(p.annual);
+      for (const { text } of [wall, board]) {
+        expect(text).toContain(esc(p.name));
+        expect(text).toContain(`/img/partners/${p.logo}`);
+        expect(text).toContain(`class="partner-tier">${level.name}<`);
+      }
+    }
+  });
+
   it('ranks the classroom and lists the donor on the board', async () => {
     await gift();
     const { text } = await page('/rally-board');
