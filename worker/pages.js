@@ -4,8 +4,8 @@
    (campaign totals, the classroom race, the partner wall). A stats
    failure renders the zero state, never an error page. */
 
-import { campaignStats, boardStats } from './store.js';
-import { header, footer, homeSlots, donateSlots, boardSlots, partnersSlots, linkSlots, shirtSlots } from './views.js';
+import { campaignStats, boardStats, prizeStats } from './store.js';
+import { header, footer, homeSlots, donateSlots, boardSlots, partnersSlots, linkSlots, shirtSlots, prizesSlots } from './views.js';
 
 /* The pages with something to render beyond the chrome: a D1 read
    (`live`) and a slot builder. A page in site/ with neither needs no
@@ -15,6 +15,7 @@ export const PAGES = {
   '/donate': { slots: donateSlots },
   '/rally-board': { live: boardStats, slots: boardSlots },
   '/partners': { live: campaignStats, slots: partnersSlots },
+  '/prizes': { live: prizeStats, slots: prizesSlots },
   '/student-link': { slots: linkSlots },
   '/shirt': { slots: shirtSlots },
 };

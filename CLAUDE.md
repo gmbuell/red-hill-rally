@@ -23,7 +23,7 @@ two-sentence pointer; this file is the operating manual.
 | `npm install` | wrangler, vitest + workers pool, lighthouse |
 | `npx wrangler d1 migrations apply red-hill-rally --local` | once per clone: local D1 schema |
 | `npm run dev` | `wrangler dev` on http://localhost:8787 |
-| `npm test` | vitest (251 tests, ~5 s) |
+| `npm test` | vitest (267 tests, ~5 s) |
 | `npm run audit` | Lighthouse on every page but `/admin` (noindex), mobile + desktop (needs Chrome); defaults to the live site (`npm run audit -- --url http://localhost:8787` for local). `--runs 3 --min 98` reproduces the CI gate, `--form mobile` limits it to one form factor |
 | `npm run wcag` | WCAG 2.2 checks on every page, mobile + desktop (needs Chrome): text contrast, non-text contrast, focus rings, target size, body leading ≥ 1.5, body text ≥ 16px and labels ≥ 13px. Defaults to the live site (`npm run wcag -- --url http://localhost:8787` for local, `--page donate --form mobile` to narrow). Each cell shows how many elements the check examined |
 | `npm run deploy` | **Ships to production**: the worker and every file under `site/`. The `predeploy` step runs the tests, then applies pending D1 migrations to the remote database, so schema and code ship together. Every push to `main` runs this through Cloudflare Workers Builds (dashboard → the worker → Settings → Build), so merging a PR deploys it |
@@ -180,9 +180,65 @@ secrets; the maintainer reviews and ships PRs.
   a class at 84% has already won and must never read the board as
   though it were losing to the room above it. `test/views.spec.js`
   pins both.
+- **The prizes page publishes two live numbers and no name.** Families
+  kept asking the PTA what it would take to win Principal for the Day,
+  so `prizeStats` in `store.js` feeds a line under the grand prize:
+  *"Our current first place student has raised more than $1,200
+  so far."* Four rules hold
+  it together, and `test/pages.spec.js` pins each one.
+  - **Rounded down to the nearest $100.** So it doesn't twitch at
+    every $10 gift, and so the published figure always sits *under*
+    the real leader — matching it to the dollar does not take the
+    lead. "More than" is therefore literally true.
+  - **A number, never a name.** It returns dollars and a gift count.
+    The per-Rocket names it reads stay backend-only, and the page is
+    probed for them like every other.
+  - **The dollar figure and nothing else about the leader** — not the
+    number of gifts behind it, not when the last one landed. Every
+    extra fact is one more thing published about one child, and a
+    test pins the sentence ending where it ends.
+  - **Under $100 the slot returns `null`** and the line leaves the
+    page, the same removal the shirt form uses. So does the zero state
+    when the D1 read fails: a page that couldn't count says nothing
+    rather than something wrong.
+  - It reads the same `tally` the Rockets sheet reads, so two
+    spellings of a child are one Rocket and a split gift splits here
+    too — the page and Mission Control cannot name different leaders.
+    Gifts naming no Rocket fold into a nameless bucket that may hold
+    several families, and are excluded.
+  - The **second number is on the lunch card**: how many Rockets have
+    reached `LUNCH.gifts`. That prize has no cap, so it is a count of
+    winners rather than a bar to clear — the evidence that ten gifts
+    is a thing children here actually do, which beats any amount of
+    saying so. Same rules: a count, never a name; none yet and the
+    line leaves the page rather than announcing that nobody has
+    managed it. Both numbers come off one `tally` pass, so the page
+    still costs a single D1 read.
+  - **The Rally Board carries both**, in a "Student Prizes" section
+    built in the same pair of shapes as the classroom race above it:
+    Principal for the Day has one winner like the Golden Shoe, the
+    lunch is a threshold like the participation prizes and so gets a
+    count rather than a leader. A board showing only leaders teaches
+    families the Rally is a contest they are losing, which is what the
+    threshold prizes exist to prevent. `boardStats` already builds the
+    tally, so `prizeNumbers` runs off it for no extra read and the two
+    pages cannot print different leaders — `test/pages.spec.js` checks
+    them against each other. On the board, empty reads "Still
+    anyone's" and "Still open" rather than vanishing: it is a live
+    scoreboard, and its other cards already do that.
 
 ## Gotchas
 
+- **No `<div>` inside a `<p>`.** The parser closes the paragraph
+  first, so the element lands *after* the card as a sibling — on the
+  board's prize cards that put the reassurance line into the grid
+  beside them as a third column, and it shipped that way on the
+  participation card, showing only once a class reached 80%. It also
+  hid the line from `scripts/wcag.mjs`, which found it under both the
+  16px and the 1.5 line-height floors the moment it was back inside
+  its card. Those cards are `<p class="shoe-note">`, so the line is a
+  `<span class="every">` with `display: block`; `test/views.spec.js`
+  refuses any block element in a shoe-note.
 - The preview worker is the `preview` environment in `wrangler.jsonc`:
   same code, own bindings. It holds no secrets, so checkout answers
   503 and the export 401 there, and a preview reads the demo seed, not

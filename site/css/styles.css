@@ -400,13 +400,21 @@ select:focus-visible,
   color: var(--grey);
 }
 
-/* The reassurance under the participation counts: quieter than the
-   figures, but not fine print — it is the line that stops a class
-   reading the list as a leaderboard. */
+/* The reassurance under the counts: quieter than the figures, but not
+   fine print — it is the line that stops a class reading the list as a
+   leaderboard. A span, because these cards are paragraphs and a <div>
+   inside a <p> is closed out of it by the parser: the line escaped its
+   card and landed in the grid beside it as a third column. */
 .shoe-note .every {
-  margin-top: 0.35rem;
-  font-size: 0.95rem;
-  line-height: 1.45;
+  display: block;
+  /* Set apart by the gap above it, not by being smaller: the comment
+     above says this is not fine print, and the WCAG gate agrees — body
+     text is 16px at 1.5. It had been shrinking below both, unnoticed,
+     because the parser was throwing it out of the card before anything
+     measured it. */
+  margin-top: 0.5rem;
+  font-size: 1rem;
+  line-height: 1.5;
   color: var(--grey);
 }
 
@@ -1429,6 +1437,30 @@ select:focus-visible,
 }
 .grand-prize p { margin: 0; color: rgba(255, 255, 255, 0.88); }
 .grand-prize strong { color: var(--white); }
+/* The live line under the grand prize: what first place has raised,
+   which is the question families ask one at a time. It sits on navy,
+   so the number takes --red-glow (small red type on black; see the
+   token notes above) and the note under it stays near-white rather
+   than grey, which would fail on this background. The whole line is
+   removed server-side before there is a number worth printing. */
+.lead-bar {
+  margin: 1.2rem 0 0;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.32);
+}
+.lead-bar strong {
+  display: block;
+  color: var(--red-glow);
+  font-size: 1.15rem;
+  /* The gate's floor for body text, and right for two lines of it on
+     a phone. */
+  line-height: 1.5;
+}
+.lead-bar small {
+  display: block;
+  margin-top: 0.35rem;
+  color: rgba(255, 255, 255, 0.86);
+}
 
 .prize-list { list-style: none; padding: 0; margin: 1.2rem 0 0; }
 .prize-list li {
@@ -1460,6 +1492,11 @@ select:focus-visible,
 }
 .prize-list p { margin: 0; }
 .prize-body { margin: 0.8rem 0 0; }
+/* The live count under the lunch prize: how many Rockets have already
+   earned a seat. Red on the card's pale ground takes --red-ink (see
+   the token notes); the whole line is removed server-side while the
+   answer is none. */
+.prize-won { margin: 0.7rem 0 0; color: var(--red-ink); }
 
 @media (max-width: 34rem) {
   .prize-list li { flex-direction: column; gap: 0.4rem; }

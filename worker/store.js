@@ -10,7 +10,7 @@
 import data from '../site/js/data.js';
 import { shirtsFromMetadata } from './students.js';
 
-const { CAMPAIGN, CLASSROOMS, PRIORITIES, SUPPORT_ALL, SHIRT, priorityById, partnerTierById, classroomById, shirtSizeById, pacificAt, MAX_STUDENTS } = data;
+const { CAMPAIGN, CLASSROOMS, PRIORITIES, SUPPORT_ALL, SHIRT, LUNCH, priorityById, partnerTierById, classroomById, shirtSizeById, pacificAt, MAX_STUDENTS } = data;
 
 /* A session's Rockets: the `students` JSON our checkout stamps into
    metadata (a partnership carries none). */
@@ -296,8 +296,9 @@ export async function boardStats(db) {
     partnersStmt(db),
   ]), loadCredits(db)]);
 
+  const rooms = tally(credits);
   const classrooms = {};
-  for (const [id, line] of Object.entries(perClassroom(tally(credits)))) {
+  for (const [id, line] of Object.entries(perClassroom(rooms))) {
     classrooms[id] = { rockets: line.rockets, raised: Math.round(line.cents / 100) };
   }
 
@@ -313,7 +314,7 @@ export async function boardStats(db) {
     };
   });
 
-  return { campaign: campaignShape(totals), classrooms, donors, partners: partnerShape(partnerRows) };
+  return { campaign: campaignShape(totals), classrooms, donors, partners: partnerShape(partnerRows), prizes: prizeNumbers(rooms) };
 }
 
 /* ---- the PTA's reports (admin-only) ---- */
@@ -450,6 +451,56 @@ const perClassroom = (rooms) => {
 
 export async function classroomTotals(db) {
   return perClassroom(tally(await loadCredits(db)));
+}
+
+/* What first place has raised, for the Principal for the Day line on
+   the prizes page — a number, and deliberately nothing else. Families
+   keep asking the PTA what it would take to win, and the answer was
+   being given out one text message at a time.
+
+   Three things make this publishable on a page with no key:
+
+   - **No name leaves here.** It returns dollars. The per-Rocket names
+     this reads are already backend-only and stay that way, which
+     `test/pages.spec.js` probes the rendered page for.
+   - **Rounded down to the nearest $100**, so it doesn't twitch every
+     time someone gives $10, and so the published figure always sits
+     *under* the real leader. A family that matches the number to the
+     dollar has not taken the lead — which is what keeps this a
+     reason to give rather than a target to snipe.
+   - **Gifts that named no Rocket are not a Rocket.** They fold into
+     one nameless bucket per classroom that can hold several families,
+     so counting it as a contender would publish a number nobody
+     actually raised.
+
+   It reads what the Rockets sheet reads, through the same `tally`, so
+   the number on the page and the number in Mission Control cannot
+   disagree — the first thing a parent would call about.
+
+   `lunch` is the other number: how many Rockets have already reached
+   `LUNCH.gifts`. That prize has no cap, so this is a count of winners
+   rather than a leaderboard — the reassuring shape of the same idea,
+   and the one figure that answers "is ten gifts actually doable" with
+   evidence instead of encouragement.
+
+   Taken off a tally that has already been built, so the board — which
+   builds one anyway — prints both figures for no extra read, and the
+   prizes page and the board can't show different numbers. */
+const prizeNumbers = (rooms) => {
+  let top = 0;
+  let lunch = 0;
+  for (const students of Object.values(rooms)) {
+    for (const [name, s] of Object.entries(students)) {
+      if (!name) continue;
+      if (s.cents > top) top = s.cents;
+      if (s.gifts >= LUNCH.gifts) lunch += 1;
+    }
+  }
+  return { lead: Math.floor(top / 10000) * 100, lunch };
+};
+
+export async function prizeStats(db) {
+  return prizeNumbers(tally(await loadCredits(db)));
 }
 
 /* The student sheet: what each Rocket has raised, under their class,

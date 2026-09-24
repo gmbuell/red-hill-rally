@@ -453,3 +453,78 @@ describe('the shirt ordering deadline', () => {
     expect(homeSlots(null)['shirt-callout-note']).toBeUndefined();
   });
 });
+
+/* The board carries the two student prizes in the same pair of shapes
+   as the two classroom ones: one with a single winner, one nobody
+   competes for. A board that showed only leaders would teach families
+   the Rally is a contest they are losing, which is the opposite of
+   what the participation prizes are for. */
+describe('the student prizes on the board', () => {
+  const notes = (prizes) => {
+    const slots = boardSlots({
+      campaign: { raised: 100, gifts: 1 }, classrooms: {}, donors: [], partners: [], prizes,
+    });
+    return { lead: String(slots['lead-note']), lunch: String(slots['lunch-note']) };
+  };
+
+  it('prints the first-place figure and the count who have earned the lunch', () => {
+    const { lead, lunch } = notes({ lead: 1200, lunch: 3 });
+    expect(lead).toContain('More than $1,200');
+    expect(lead).toContain('in first place');
+    expect(lunch).toContain('<strong>3 Rockets</strong> have earned a seat');
+  });
+
+  it('says the lunch is a threshold, not a race', () => {
+    const { lunch } = notes({ lead: 1200, lunch: 3 });
+    expect(lunch).toContain(`${data.LUNCH.gifts} gifts of any size earns a seat, however many Rockets get there`);
+  });
+
+  it('reads in the singular for the first Rocket to earn it', () => {
+    expect(notes({ lead: 500, lunch: 1 }).lunch).toContain('<strong>1 Rocket</strong> has earned a seat');
+  });
+
+  it('opens with both prizes still open rather than with blanks', () => {
+    const { lead, lunch } = notes({});
+    expect(lead).toContain('Still anyone');
+    expect(lunch).toContain('Still open');
+    // The rule is on the card either way, so an empty board still
+    // says what to aim for.
+    expect(lunch).toContain('earns a seat');
+    expect(lead).not.toContain('$0');
+    expect(lunch).not.toContain('0 Rockets');
+  });
+
+  it('survives a board with no stats at all', () => {
+    const slots = boardSlots(null);
+    expect(String(slots['lead-note'])).toContain('Still anyone');
+    expect(String(slots['lunch-note'])).toContain('Still open');
+  });
+
+  it('names nobody', () => {
+    const { lead, lunch } = notes({ lead: 1200, lunch: 3 });
+    // The figures are all either prize carries; the Rockets behind
+    // them are counted, never listed.
+    expect(`${lead} ${lunch}`).not.toMatch(/Rocket[^s<]*[A-Z][a-z]+/);
+  });
+});
+
+/* A <div> inside a <p> is closed out of it by the parser, so the
+   reassurance line escaped its card and landed in the grid beside it
+   as a third column. It shipped that way on the participation card
+   and only showed once a class reached 80%. */
+describe('the reassurance lines stay inside their cards', () => {
+  it('uses no block element inside a shoe-note paragraph', () => {
+    const slots = boardSlots({
+      campaign: { raised: 5000, gifts: 9 },
+      classrooms: Object.fromEntries(data.CLASSROOMS.map((c) => [c.id, { rockets: c.students, raised: 500 }])),
+      donors: [], partners: [], prizes: { lead: 1200, lunch: 3 },
+    });
+    for (const id of ['shoe-note', 'prize-note', 'lead-note', 'lunch-note']) {
+      const markup = String(slots[id]);
+      expect(markup, id).not.toMatch(/<(div|p|ul|ol|li|section)\b/);
+    }
+    // And the line itself is still there on the card that carries it.
+    expect(String(slots['prize-note'])).toContain('Every class that gets there wins');
+    expect(String(slots['lunch-note'])).toContain('earns a seat, however many Rockets get there');
+  });
+});

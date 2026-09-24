@@ -7,7 +7,7 @@ import data from '../site/js/data.js';
 import { paidSession, paidPartnership, PII, PAGE_PATHS } from './fixtures.js';
 
 const [P_MAIN] = data.PRIORITIES;
-const [ROOM_A] = data.CLASSROOMS.map((c) => c.id);
+const [ROOM_A, ROOM_B] = data.CLASSROOMS.map((c) => c.id);
 
 const page = async (path) => {
   const res = await SELF.fetch(`https://rally.test${path}`);
@@ -115,6 +115,149 @@ describe('rendered pages', () => {
     expect(text).toContain('id="sw-shirt"');
     expect(text).toMatch(/only the size on the printer/i);
     expect(text).toMatch(/keeps the time it came in/i);
+  });
+
+  /* Families ask the PTA what it would take to win Principal for the
+     Day, one text message at a time. The page answers — with a number
+     and never a name, rounded down so it is honest in the safe
+     direction. */
+  describe('what first place has raised', () => {
+    const forRocket = (id, name, cents) => recordDonation(env.DB, paidSession({
+      id, amount_total: cents,
+      metadata: { students: JSON.stringify([{ c: ROOM_A, n: name }]) },
+    }), 1756100000);
+
+    it('prints the leader’s total, rounded down to the hundred', async () => {
+      await forRocket('cs_a', 'Sammy Webber', 125000);   // $1,250, one gift
+      await forRocket('cs_b', 'Sammy Webber', 4900);     // and $49 more
+      await forRocket('cs_c', 'Leo Park', 40000);
+      const { text } = await page('/prizes');
+      // $1,299 rounds down to $1,200: never up, and never the real
+      // figure, so matching it to the dollar doesn't take the lead.
+      expect(text).toContain('Our current first place student has raised more than $1,200 so far.');
+      expect(text).not.toContain('$1,299');
+      expect(text).not.toContain('$1,300');
+    });
+
+    it('names nobody, and says nothing about anyone in second', async () => {
+      await forRocket('cs_a', 'Sammy Webber', 125000);
+      await forRocket('cs_b', 'Leo Park', 40000);
+      const { text } = await page('/prizes');
+      expect(text).not.toContain('Sammy');
+      expect(text).not.toContain('Leo Park');
+      expect(text).not.toContain('$400');
+      for (const needle of PII) expect(text).not.toContain(needle);
+      /* The dollar figure and nothing else about the leader — not how
+         many gifts are behind it, not when the last one landed. Every
+         extra fact is one more thing published about one child. */
+      expect(text).toMatch(/first place student has raised more than \$1,200 so far\.</);
+    });
+
+    it('counts a Rocket the way the PTA’s own sheet counts one', async () => {
+      // Two spellings are one child; a gift split between two Rockets
+      // is split here too. Both are the tally the Rockets sheet uses,
+      // so the page and Mission Control can't print different leaders.
+      await forRocket('cs_a', 'Sammy Webber', 60000);
+      await forRocket('cs_b', 'sammy webber', 60000);
+      await recordDonation(env.DB, paidSession({
+        id: 'cs_split', amount_total: 100000,
+        metadata: { students: JSON.stringify([{ c: ROOM_A, n: 'Leo Park' }, { c: ROOM_A, n: 'Ada Chen' }]) },
+      }), 1756100000);
+      const { text } = await page('/prizes');
+      // Sammy's two spellings make $1,200; the split gift gives Leo
+      // $500, so it is Sammy in front.
+      expect(text).toContain('more than $1,200 so far');
+    });
+
+    /* The lunch has no cap, so this one is a count of winners rather
+       than a bar. It is the evidence that ten gifts is a thing
+       children here actually do. */
+    it('counts the Rockets who have already earned the lunch', async () => {
+      const gifts = (name, n) => Promise.all(Array.from({ length: n }, (_, i) =>
+        recordDonation(env.DB, paidSession({
+          id: `cs_${name}_${i}`, amount_total: 1000,
+          metadata: { students: JSON.stringify([{ c: ROOM_A, n: name }]) },
+        }), 1756100000)));
+      await gifts('Sammy', data.LUNCH.gifts);        // exactly ten: in
+      await gifts('Audrey', data.LUNCH.gifts + 4);   // more than ten: in
+      await gifts('Leo', data.LUNCH.gifts - 1);      // one short: out
+      const { text } = await page('/prizes');
+      expect(text).toContain('2 Rockets have earned a seat so far.');
+      expect(text).not.toContain('Sammy');
+      expect(text).not.toContain('Leo');
+    });
+
+    it('says it in the singular for the first one', async () => {
+      await Promise.all(Array.from({ length: data.LUNCH.gifts }, (_, i) =>
+        recordDonation(env.DB, paidSession({
+          id: `cs_solo_${i}`, amount_total: 1000,
+          metadata: { students: JSON.stringify([{ c: ROOM_A, n: 'Sammy Webber' }]) },
+        }), 1756100000)));
+      const { text } = await page('/prizes');
+      expect(text).toContain('1 Rocket has earned a seat so far.');
+    });
+
+    /* Same two figures on the board, off the tally it already builds.
+       If these ever disagreed with the prizes page, the argument is
+       with a family. */
+    it('shows the same two numbers on the Rally Board', async () => {
+      await recordDonation(env.DB, paidSession({
+        id: 'cs_big', amount_total: 125000,
+        metadata: { students: JSON.stringify([{ c: ROOM_A, n: 'Sammy Webber' }]) },
+      }), 1756100000);
+      await Promise.all(Array.from({ length: data.LUNCH.gifts }, (_, i) =>
+        recordDonation(env.DB, paidSession({
+          id: `cs_many_${i}`, amount_total: 1000,
+          metadata: { students: JSON.stringify([{ c: ROOM_B, n: 'Audrey Webber' }]) },
+        }), 1756100000)));
+
+      const board = await page('/rally-board');
+      expect(board.text).toContain('More than $1,200');
+      expect(board.text).toContain('<strong>1 Rocket</strong> has earned a seat');
+      for (const needle of PII) expect(board.text).not.toContain(needle);
+      expect(board.text).not.toContain('Sammy');
+      expect(board.text).not.toContain('Audrey');
+
+      // And the prizes page agrees, to the dollar.
+      const prizes = await page('/prizes');
+      expect(prizes.text).toContain('more than $1,200 so far');
+      expect(prizes.text).toContain('1 Rocket has earned a seat so far.');
+    });
+
+    it('leaves the line off the page entirely before there is a number', async () => {
+      const { text } = await page('/prizes');
+      expect(text).not.toContain('first place student has raised');
+      // And no "0 Rockets have earned a seat", which reads as a prize
+      // nobody can reach.
+      expect(text).not.toContain('earned a seat');
+      expect(text).not.toContain('id="lunch-count"');
+      // The prize itself stays on the page either way.
+      expect(text).toContain('catered lunch with Ms. Malpass');
+      // Removed, not emptied: nothing to style around or read out.
+      expect(text).not.toContain('id="prize-lead"');
+      // And the prize itself is still on the page.
+      expect(text).toContain('Principal for the Day');
+    });
+
+    it('stays off the page while the leader is under the first hundred', async () => {
+      await forRocket('cs_a', 'Sammy Webber', 9900);
+      const { text } = await page('/prizes');
+      expect(text).not.toContain('first place student has raised');
+      expect(text).not.toContain('$0');
+    });
+
+    it('does not count gifts that named no Rocket as a contender', async () => {
+      // A classroom with no name folds into one bucket that can hold
+      // several families; publishing it would be a total nobody raised.
+      await recordDonation(env.DB, paidSession({
+        id: 'cs_nameless', amount_total: 500000,
+        metadata: { students: JSON.stringify([{ c: ROOM_A, n: '' }]) },
+      }), 1756100000);
+      await forRocket('cs_a', 'Sammy Webber', 30000);
+      const { text } = await page('/prizes');
+      expect(text).toContain('more than $300 so far');
+      expect(text).not.toContain('$5,000');
+    });
   });
 
   it('marks the current page in the nav', async () => {

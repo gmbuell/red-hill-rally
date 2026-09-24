@@ -7,7 +7,7 @@
 import data from '../site/js/data.js';
 import ui from '../site/js/ui.js';
 
-const { ORG, PRIORITIES, CAMPAIGN, ANNUAL_COST, SHIRT, CLASSROOMS, boardClassrooms, PARTNER_TIERS, PARTNERS, ANNUAL_LEVELS, SUPPORT_ALL, priorityById, partnerTierById, annualLevelById, gradeName, priorityTarget, presentingPartner, shirtsOpen } = data;
+const { ORG, PRIORITIES, CAMPAIGN, ANNUAL_COST, SHIRT, LUNCH, CLASSROOMS, boardClassrooms, PARTNER_TIERS, PARTNERS, ANNUAL_LEVELS, SUPPORT_ALL, priorityById, partnerTierById, annualLevelById, gradeName, priorityTarget, presentingPartner, shirtsOpen } = data;
 const { html, raw, money, nameList, studentRowsMarkup, LINK_ROWS, SHIRT_ROWS, dartUp } = ui;
 
 /* ---- motifs (from the brand guide's Spirit Kit) -------------------- */
@@ -495,8 +495,32 @@ export const boardSlots = (live) => {
     ? html`Every class can earn funds for classroom supplies and needs. Reach 80% participation to earn $150 and 100% participation to earn $250. Every class that gets there wins, however many do.`
     : html`<strong>${classes(at80)}</strong> at 80% or more &middot; ${at100
       ? html`<strong>${at100}</strong> at 100%`
-      : html`<strong>none</strong> at 100% yet`}<div class="every">Every class that gets there wins: $150 at 80%, $250 at 100%, however many classes make it.</div>`;
+      : html`<strong>none</strong> at 100% yet`}<span class="every">Every class that gets there wins: $150 at 80%, $250 at 100%, however many classes make it.</span>`;
   const partNote = html`<small class="label">Classroom participation</small> ${partLine}`;
+
+  /* The two student prizes, in the same pair of shapes as the two
+     classroom ones above: Principal for the Day has a single winner
+     like the Golden Shoe, and the lunch is a threshold like the
+     participation prizes, so it gets a count of Rockets who have
+     already won rather than a leader. The parallel is the point — a
+     board that shows only leaders teaches families that the Rally is
+     a contest they are losing.
+
+     Both figures come off `boardStats`, which has already built the
+     tally, so the board costs no extra read and cannot print a
+     different leader than the prizes page. Neither carries a name:
+     the dollars are rounded down to the hundred in `store.js`, so
+     "more than" is literally true and matching the figure to the
+     dollar does not take the lead. */
+  const prizes = (live && live.prizes) || {};
+  const lead = prizes.lead || 0;
+  const lunch = prizes.lunch || 0;
+  const leadNote = html`<small class="label">Principal for the Day &middot; most raised</small> ${lead
+    ? html`<strong>More than ${money(lead)}</strong> in first place`
+    : html`Still anyone&rsquo;s. It goes to the Rocket who raises the most.`}`;
+  const lunchNote = html`<small class="label">Lunch with Ms. Malpass and Mr. Strong &middot; ${LUNCH.gifts} gifts</small> ${lunch
+    ? html`<strong>${lunch} Rocket${lunch === 1 ? '' : 's'}</strong> ${lunch === 1 ? 'has' : 'have'} earned a seat`
+    : html`Still open.`}<span class="every">${LUNCH.gifts} gifts of any size earns a seat, however many Rockets get there.</span>`;
 
   /* Named gifts newest first; anonymous gifts are tallied in one
      closing line so a busy campaign stays readable. */
@@ -545,6 +569,8 @@ export const boardSlots = (live) => {
     'race-rank': html`<strong>Ordered by participation</strong>, the share of each class with at least one gift, with ties broken by dollars raised. The order is only how the list is sorted. A class lower down loses nothing: every class that reaches a participation prize wins it, however many get there. Only the Golden Shoe has a single winner.`,
     'shoe-note': goldenShoe,
     'prize-note': partNote,
+    'lead-note': leadNote,
+    'lunch-note': lunchNote,
     'honor-roll': roll,
     'board-partners': partnerWall(partners, html`
       <p class="board-lede">Your business could be up here &mdash; the Rally runs September&ndash;October.</p>`),
@@ -565,6 +591,36 @@ export const partnersSlots = (live) => ({
   'partner-wall': partnerWall(mergedPartners(live && live.partners), html`
     <p class="hint">Your business could be first &mdash; the Rally launches in September.</p>`),
 });
+
+/* Prizes: what first place has raised, under the grand prize.
+
+   A statement of fact rather than a challenge ("first place has
+   raised…", not "it takes…"): the reader works out what they'd need,
+   and the page isn't daring anyone. `store.prizeLead` rounds down to
+   the nearest $100, so "more than" is the literal truth and the real
+   leader is always a little further off than the page admits.
+
+   Below $100 the slot returns null and the line leaves the page
+   altogether — the same removal the shirt form uses. "First place has
+   raised more than $0" is not a fact worth publishing, and early in a
+   campaign it reads as a school nobody is giving to. The zero state
+   (a failed D1 read) lands here too, so a page that couldn't count
+   says nothing rather than something wrong. */
+export const prizesSlots = (live) => {
+  const lead = (live && live.lead) || 0;
+  const lunch = (live && live.lunch) || 0;
+  return {
+    'prize-lead': lead < 100 ? null : html`
+      <strong>Our current first place student has raised more than ${money(lead)} so far.</strong>
+      <small>Updated as gifts come in.</small>`,
+    /* The lunch has no cap, so this is a count of Rockets who have
+       already won it, not a bar to clear. It is the evidence that ten
+       gifts is a thing children here actually do — worth more than any
+       amount of saying so. None yet and the line goes, rather than
+       announcing that nobody has managed it. */
+    'lunch-count': lunch ? html`<strong>${lunch} Rocket${lunch === 1 ? ' has' : 's have'} earned a seat so far.</strong>` : null,
+  };
+};
 
 /* Student Link: the first (empty) row, so the form paints complete. */
 export const linkSlots = () => ({
