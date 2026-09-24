@@ -656,8 +656,10 @@ flip to live, in this order:
     `site/img/partners/`, a `PARTNERS` entry in `site/js/data.js`,
     redeploy. House style for the file: trimmed to its own artwork,
     flattened onto white (the card's ground) and saved **RGB, no
-    alpha**, 640px wide, WebP — every logo in the folder matches, and
-    the card centres it in a fixed box with `object-fit: contain`.
+    alpha**, WebP, longest side 640px inside a 5% margin, so a new
+    file lands at 704px. The older logos predate the rule — they run
+    464 to 900px and two still carry an alpha channel — and the card
+    centres each one in a fixed box with `object-fit: contain`.
     Nothing links the filename to the entry, so `test/pages.spec.js`
     fetches the logo every listed partner names: a typo there ships a
     business a broken image on the wall they paid for, and it reviews
