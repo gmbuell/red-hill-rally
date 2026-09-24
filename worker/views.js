@@ -596,7 +596,7 @@ export const partnersSlots = (live) => ({
 
    A statement of fact rather than a challenge ("first place has
    raised…", not "it takes…"): the reader works out what they'd need,
-   and the page isn't daring anyone. `store.prizeLead` rounds down to
+   and the page isn't daring anyone. `store.prizeStats` rounds down to
    the nearest $100, so "more than" is the literal truth and the real
    leader is always a little further off than the page admits.
 
