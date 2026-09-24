@@ -82,6 +82,7 @@ p { margin: 0 0 1rem; }
 a { color: var(--navy); }
 a:focus-visible,
 button:focus-visible,
+summary:focus-visible,
 input:focus-visible,
 select:focus-visible,
 [tabindex]:focus-visible {
@@ -1488,7 +1489,61 @@ select:focus-visible,
 .admin-totals .label { color: rgba(255, 255, 255, 0.86); }
 .admin-asof { color: var(--grey); margin-bottom: 1rem; }
 .admin-asof .linklike { color: var(--navy); font-weight: 700; }
-.sheet { margin-top: 3rem; }
+/* Tighter than it reads: each sheet is headed by a rule and its own
+   padding, so the gap between two closed headings is this plus that.
+   Ten sheets at the old 3rem was 480px of nothing on a phone. */
+.sheet { margin-top: 1.4rem; }
+
+/* Ten sheets on one page is a scroll nobody reads to the bottom of, so
+   each one folds shut. Native <details>: it works with no script at
+   all, the keyboard and screen readers already know it, and the
+   browser keeps a half-filled form inside it intact while it is open.
+   Closed, the page is ten headings and their counts — the whole Rally
+   on one screen. `.panel-tally` is what makes that worth having;
+   a row of headings with no numbers on them is just a menu. */
+/* The summary carries the rule that used to head each sheet, and the
+   sheet's own top margin does the spacing — no margins here, so a
+   closed panel is exactly its own heading tall. */
+.panel > summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.3rem 1rem;
+  cursor: pointer;
+  border-top: 2px solid var(--navy);
+  padding: 1.2rem 0 0.2rem;
+  /* Both halves of hiding the default triangle: Firefox and the rest
+     read list-style, WebKit needs its own pseudo-element. */
+  list-style: none;
+}
+.panel > summary::-webkit-details-marker { display: none; }
+.panel > summary::after {
+  content: '';
+  width: 0.45rem;
+  height: 0.45rem;
+  margin-left: auto;
+  border-right: 2.5px solid var(--navy);
+  border-bottom: 2.5px solid var(--navy);
+  transform: translateY(-0.15rem) rotate(45deg);
+  flex: none;
+}
+.panel[open] > summary::after { transform: translateY(0.1rem) rotate(-135deg); }
+.panel > summary h2 { margin: 0; }
+.panel-tally {
+  color: var(--grey);
+  font-weight: 700;
+  /* Not a heading, so it keeps body size and sits on the same line
+     where there is room. */
+  font-size: 1rem;
+}
+.panel-body { padding-top: 1.2rem; }
+.panel-body > .sheet-head { border-top: 0; padding-top: 0; }
+.panel-bar { color: var(--grey); margin-bottom: 0; }
+.panel-bar .linklike { color: var(--navy); font-weight: 700; }
+@media (prefers-reduced-motion: no-preference) {
+  .panel > summary::after { transition: transform 0.15s ease; }
+}
+
 .sheet-head {
   display: flex;
   justify-content: space-between;

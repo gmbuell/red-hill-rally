@@ -54,6 +54,30 @@ describe('rendered pages', () => {
     for (const needle of PII) expect(text).not.toContain(needle);
   });
 
+  /* Ten sheets stacked open is a page nobody scrolls to the bottom of,
+     so every one of them folds. Native <details>, which means it works
+     before admin.js runs and the keyboard already knows how. */
+  it('folds every sheet shut, and labels each one with its own heading', async () => {
+    const { text } = await page('/admin');
+    const sections = text.match(/<section class="sheet" aria-labelledby="[^"]+">/g) || [];
+    expect(sections.length).toBeGreaterThan(5);
+
+    // Each sheet holds one panel, and the h2 inside its summary is the
+    // heading the section points at — so nothing loses its name to the
+    // fold.
+    const labelled = text.match(/aria-labelledby="([^"]+)"[\s\S]{0,200}?<summary>\s*<h2 id="([^"]+)"/g) || [];
+    expect(labelled).toHaveLength(sections.length);
+    for (const block of labelled) {
+      const [, points, heading] = block.match(/aria-labelledby="([^"]+)"[\s\S]*?<h2 id="([^"]+)"/);
+      expect(heading).toBe(points);
+    }
+
+    // Nothing starts open: the page opens as a list of headings.
+    expect(text).not.toMatch(/<details[^>]*\sopen/);
+    expect(text).toContain('id="panels-open"');
+    expect(text).toContain('id="panels-close"');
+  });
+
   /* The question the PTA actually gets asked is about one gift, not a
      class average, and the answer has to be findable without anyone
      opening a database. */

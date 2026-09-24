@@ -36,281 +36,354 @@
     <div class="admin-totals" id="admin-totals"></div>
     <p class="admin-asof"><span id="as-of"></span> <button type="button" class="linklike" id="refresh-btn">Refresh</button> &middot; <button type="button" class="linklike" id="close-btn">Close the reports</button></p>
 
-    <section class="sheet" aria-labelledby="gifts-head">
-      <div class="sheet-head">
-        <div>
-          <h2 id="gifts-head">Every gift</h2>
-          <p>The book. One row per donation, newest first: who gave, what it counted toward, and which Rocket it credited. Search by name, amount or class. The download carries the gift id, which is the Stripe id, so it reconciles line by line against Stripe.</p>
-          <p class="sheet-note">A donor marked <strong>(anonymous)</strong> asked not to be named on the Rally Board. The name is here so you can look their gift up &mdash; keep it off anything public. Email addresses aren&rsquo;t shown anywhere on this site; they&rsquo;re in Stripe.</p>
-        </div>
-        <button type="button" class="btn secondary small" data-download="gifts">Download gifts.csv</button>
-      </div>
+    <!-- Every sheet is folded shut. The headings are the whole page at
+         a glance, each with its own count, and this tab remembers
+         whichever ones get opened. -->
+    <p class="panel-bar"><button type="button" class="linklike" id="panels-open">Open all</button> &middot; <button type="button" class="linklike" id="panels-close">Close all</button></p>
 
-      <div class="batch-row">
-        <div class="field">
-          <label for="gift-find">Search</label>
-          <input type="search" id="gift-find" autocomplete="off" placeholder="a name, an amount, a teacher">
+    <section class="sheet" aria-labelledby="gifts-head">
+      <details class="panel" data-panel="gifts">
+        <summary>
+          <h2 id="gifts-head">Every gift</h2>
+          <span class="panel-tally" id="gifts-tally"></span>
+        </summary>
+        <div class="panel-body">
+          <div class="sheet-head">
+            <div>
+              <p>The book. One row per donation, newest first: who gave, what it counted toward, and which Rocket it credited. Search by name, amount or class. The download carries the gift id, which is the Stripe id, so it reconciles line by line against Stripe.</p>
+              <p class="sheet-note">A donor marked <strong>(anonymous)</strong> asked not to be named on the Rally Board. The name is here so you can look their gift up &mdash; keep it off anything public. Email addresses aren&rsquo;t shown anywhere on this site; they&rsquo;re in Stripe.</p>
+            </div>
+            <button type="button" class="btn secondary small" data-download="gifts">Download gifts.csv</button>
+          </div>
+
+          <div class="batch-row">
+            <div class="field">
+              <label for="gift-find">Search</label>
+              <input type="search" id="gift-find" autocomplete="off" placeholder="a name, an amount, a teacher">
+            </div>
+            <label class="check-row">
+              <input type="checkbox" id="gift-orphans">
+              <span>Only gifts with no Rocket</span>
+            </label>
+          </div>
+          <p class="batch-count" id="gift-count"></p>
+          <div class="sheet-scroll"><table id="gifts-table"></table></div>
         </div>
-        <label class="check-row">
-          <input type="checkbox" id="gift-orphans">
-          <span>Only gifts with no Rocket</span>
-        </label>
-      </div>
-      <p class="batch-count" id="gift-count"></p>
-      <div class="sheet-scroll"><table id="gifts-table"></table></div>
+      </details>
     </section>
 
     <section class="sheet" aria-labelledby="credit-gift-head">
-      <div class="sheet-head">
-        <div>
+      <details class="panel" data-panel="credit-gift">
+        <summary>
           <h2 id="credit-gift-head">Put a gift on a Rocket</h2>
-          <p>Naming a Rocket at checkout is optional, so a grandparent or an aunt can give without it &mdash; the gift counts for the school and for nobody&rsquo;s class. This attaches the Rocket it was meant for, or the two or three it was meant for, and their dollars split the way they would have at checkout. Picking a gift that already names Rockets loads them, so this fixes a wrong one too.</p>
-        </div>
-      </div>
+          <span class="panel-tally" id="credit-gift-tally"></span>
+        </summary>
+        <div class="panel-body">
+          <div class="sheet-head">
+            <div>
+              <p>Naming a Rocket at checkout is optional, so a grandparent or an aunt can give without it &mdash; the gift counts for the school and for nobody&rsquo;s class. This attaches the Rocket it was meant for, or the two or three it was meant for, and their dollars split the way they would have at checkout. Picking a gift that already names Rockets loads them, so this fixes a wrong one too.</p>
+            </div>
+          </div>
 
-      <form id="credit-gift-form" class="offline-form" novalidate>
-        <div class="field">
-          <label for="cg-gift">Gift</label>
-          <select id="cg-gift"></select>
+          <form id="credit-gift-form" class="offline-form" novalidate>
+            <div class="field">
+              <label for="cg-gift">Gift</label>
+              <select id="cg-gift"></select>
+            </div>
+            <div id="cg-rows"></div>
+            <button type="button" class="btn secondary small" id="cg-add">+ Add another Rocket</button>
+            <small class="fine-print">Nothing about the money changes &mdash; the amount, the priority and the honor roll stay exactly as they are. Only the class and the Rocket it counts for.</small>
+            <button type="submit" class="btn" id="cg-save">Credit it</button>
+            <p class="form-error" id="cg-fail" role="alert" hidden></p>
+            <p class="offline-done" id="cg-done" role="status" hidden></p>
+          </form>
         </div>
-        <div id="cg-rows"></div>
-        <button type="button" class="btn secondary small" id="cg-add">+ Add another Rocket</button>
-        <small class="fine-print">Nothing about the money changes &mdash; the amount, the priority and the honor roll stay exactly as they are. Only the class and the Rocket it counts for.</small>
-        <button type="submit" class="btn" id="cg-save">Credit it</button>
-        <p class="form-error" id="cg-fail" role="alert" hidden></p>
-        <p class="offline-done" id="cg-done" role="status" hidden></p>
-      </form>
+      </details>
     </section>
 
     <section class="sheet" aria-labelledby="classrooms-head">
-      <div class="sheet-head">
-        <div>
+      <details class="panel" data-panel="classrooms">
+        <summary>
           <h2 id="classrooms-head">Classrooms</h2>
-          <p>For the marquee. Ranked by participation, the way the Rally Board ranks them; click any column to re-sort.</p>
+          <span class="panel-tally" id="classrooms-tally"></span>
+        </summary>
+        <div class="panel-body">
+          <div class="sheet-head">
+            <div>
+              <p>For the marquee. Ranked by participation, the way the Rally Board ranks them; click any column to re-sort.</p>
+            </div>
+            <button type="button" class="btn secondary small" data-download="classrooms">Download classrooms.csv</button>
+          </div>
+          <div class="sheet-scroll"><table id="classrooms-table"></table></div>
         </div>
-        <button type="button" class="btn secondary small" data-download="classrooms">Download classrooms.csv</button>
-      </div>
-      <div class="sheet-scroll"><table id="classrooms-table"></table></div>
+      </details>
     </section>
 
     <section class="sheet" aria-labelledby="students-head">
-      <div class="sheet-head">
-        <div>
+      <details class="panel" data-panel="students">
+        <summary>
           <h2 id="students-head">Rockets</h2>
-          <p>For shout-outs. Every named Rocket under their class, biggest first; sort by raised for the school-wide list. A gift naming several kids splits its dollars, and each shirt&rsquo;s share goes to its own Rocket.</p>
+          <span class="panel-tally" id="students-tally"></span>
+        </summary>
+        <div class="panel-body">
+          <div class="sheet-head">
+            <div>
+              <p>For shout-outs. Every named Rocket under their class, biggest first; sort by raised for the school-wide list. A gift naming several kids splits its dollars, and each shirt&rsquo;s share goes to its own Rocket.</p>
+            </div>
+            <button type="button" class="btn secondary small" data-download="students">Download students.csv</button>
+          </div>
+          <div class="sheet-scroll"><table id="students-table"></table></div>
         </div>
-        <button type="button" class="btn secondary small" data-download="students">Download students.csv</button>
-      </div>
-      <div class="sheet-scroll"><table id="students-table"></table></div>
+      </details>
     </section>
 
     <section class="sheet" aria-labelledby="shirts-head">
-      <div class="sheet-head">
-        <div>
+      <details class="panel" data-panel="shirts">
+        <summary>
           <h2 id="shirts-head">Shirt order</h2>
-          <p>For the printer. One row per Rocket, size and order, with the moment it came in, so a batch can be cut at a time as well as a day. Times are Pacific, the way the school counts them.</p>
-        </div>
-        <button type="button" class="btn secondary small" data-download="shirts">Download shirts.csv</button>
-      </div>
+          <span class="panel-tally" id="shirts-tally"></span>
+        </summary>
+        <div class="panel-body">
+          <div class="sheet-head">
+            <div>
+              <p>For the printer. One row per Rocket, size and order, with the moment it came in, so a batch can be cut at a time as well as a day. Times are Pacific, the way the school counts them.</p>
+            </div>
+            <button type="button" class="btn secondary small" data-download="shirts">Download shirts.csv</button>
+          </div>
 
-      <div class="batch-row">
-        <div class="field">
-          <label for="shirt-from">Ordered from</label>
-          <input type="datetime-local" id="shirt-from">
-        </div>
-        <div class="field">
-          <label for="shirt-to">Ordered through</label>
-          <input type="datetime-local" id="shirt-to">
-        </div>
-        <button type="button" class="btn secondary small" id="shirt-all">Show all</button>
-      </div>
-      <p class="batch-count" id="shirt-count"></p>
-      <div class="sheet-scroll"><table id="shirt-sizes"></table></div>
+          <div class="batch-row">
+            <div class="field">
+              <label for="shirt-from">Ordered from</label>
+              <input type="datetime-local" id="shirt-from">
+            </div>
+            <div class="field">
+              <label for="shirt-to">Ordered through</label>
+              <input type="datetime-local" id="shirt-to">
+            </div>
+            <button type="button" class="btn secondary small" id="shirt-all">Show all</button>
+          </div>
+          <p class="batch-count" id="shirt-count"></p>
+          <div class="sheet-scroll"><table id="shirt-sizes"></table></div>
 
-      <div class="sheet-scroll"><table id="shirts-table"></table></div>
+          <div class="sheet-scroll"><table id="shirts-table"></table></div>
+        </div>
+      </details>
     </section>
 
     <section class="sheet" aria-labelledby="swap-head">
-      <div class="sheet-head">
-        <div>
+      <details class="panel" data-panel="swap">
+        <summary>
           <h2 id="swap-head">Change a shirt size</h2>
-          <p>A family ordered a Youth Medium and the child needs a Youth Large. Pick the shirt and the size it should be. Nothing else moves: the gift, the shirt count, the classroom race and every total stay exactly as they are &mdash; only the size on the printer&rsquo;s sheet changes.</p>
-        </div>
-      </div>
+        </summary>
+        <div class="panel-body">
+          <div class="sheet-head">
+            <div>
+              <p>A family ordered a Youth Medium and the child needs a Youth Large. Pick the shirt and the size it should be. Nothing else moves: the gift, the shirt count, the classroom race and every total stay exactly as they are &mdash; only the size on the printer&rsquo;s sheet changes.</p>
+            </div>
+          </div>
 
-      <form id="swap-form" class="offline-form" novalidate>
-        <div class="offline-grid">
-          <div class="field">
-            <label for="sw-class">Classroom</label>
-            <select id="sw-class"></select>
-          </div>
-          <div class="field">
-            <label for="sw-rocket">Rocket</label>
-            <select id="sw-rocket"></select>
-          </div>
-          <div class="field">
-            <label for="sw-shirt">Shirt on order</label>
-            <select id="sw-shirt"></select>
-          </div>
-          <div class="field">
-            <label for="sw-size">Should be</label>
-            <select id="sw-size"></select>
-          </div>
+          <form id="swap-form" class="offline-form" novalidate>
+            <div class="offline-grid">
+              <div class="field">
+                <label for="sw-class">Classroom</label>
+                <select id="sw-class"></select>
+              </div>
+              <div class="field">
+                <label for="sw-rocket">Rocket</label>
+                <select id="sw-rocket"></select>
+              </div>
+              <div class="field">
+                <label for="sw-shirt">Shirt on order</label>
+                <select id="sw-shirt"></select>
+              </div>
+              <div class="field">
+                <label for="sw-size">Should be</label>
+                <select id="sw-size"></select>
+              </div>
+            </div>
+            <small class="fine-print">The order keeps the time it came in, so the shirt stays in the batch it was always in. If that batch is already with the printer, tell them about the change too &mdash; this page can&rsquo;t.</small>
+            <button type="submit" class="btn" id="sw-save">Change the size</button>
+            <p class="form-error" id="sw-error" role="alert" hidden></p>
+            <p class="offline-done" id="sw-done" role="status" hidden></p>
+          </form>
         </div>
-        <small class="fine-print">The order keeps the time it came in, so the shirt stays in the batch it was always in. If that batch is already with the printer, tell them about the change too &mdash; this page can&rsquo;t.</small>
-        <button type="submit" class="btn" id="sw-save">Change the size</button>
-        <p class="form-error" id="sw-error" role="alert" hidden></p>
-        <p class="offline-done" id="sw-done" role="status" hidden></p>
-      </form>
+      </details>
     </section>
 
     <section class="sheet" aria-labelledby="offline-head">
-      <div class="sheet-head">
-        <div>
+      <details class="panel" data-panel="offline">
+        <summary>
           <h2 id="offline-head">Record a check</h2>
-          <p>A check left in the office, or cash at a Gathering &mdash; with a shirt on it if the family bought one. It counts exactly like a card gift: the ticker, the classroom race, the honor roll, the Rocket&rsquo;s own total, and the printer&rsquo;s sheet.</p>
-        </div>
-      </div>
+          <span class="panel-tally" id="offline-tally"></span>
+        </summary>
+        <div class="panel-body">
+          <div class="sheet-head">
+            <div>
+              <p>A check left in the office, or cash at a Gathering &mdash; with a shirt on it if the family bought one. It counts exactly like a card gift: the ticker, the classroom race, the honor roll, the Rocket&rsquo;s own total, and the printer&rsquo;s sheet.</p>
+            </div>
+          </div>
 
-      <form id="offline-form" class="offline-form" novalidate>
-        <div class="offline-grid">
-          <div class="field">
-            <label for="off-amount">Amount received</label>
-            <input type="number" id="off-amount" inputmode="numeric" min="1" step="1" placeholder="$">
-          </div>
-          <div class="field">
-            <label for="off-priority">Priority</label>
-            <select id="off-priority"></select>
-          </div>
-          <div class="field">
-            <label for="off-donor">Name for the honor roll</label>
-            <input type="text" id="off-donor" autocomplete="off" placeholder="e.g. The Nguyen Family">
-          </div>
-          <div class="field">
-            <label for="off-class">Rocket&rsquo;s classroom</label>
-            <select id="off-class"></select>
-          </div>
-          <div class="field">
-            <label for="off-student">Rocket&rsquo;s name <span class="optional">&middot; optional</span></label>
-            <input type="text" id="off-student" autocomplete="off" placeholder="from the memo line">
-          </div>
-        </div>
-        <div id="off-shirts"></div>
-        <p class="batch-count" id="off-math"></p>
-        <p class="offline-warn" id="off-late" hidden></p>
-        <label class="check-row">
-          <input type="checkbox" id="off-anon">
-          <span>List this one as Anonymous</span>
-        </label>
-        <small class="fine-print">Put the whole amount they handed over in <em>Amount received</em>. A shirt&rsquo;s cost comes off the campaign total here the same way it does on a card order, so a $20 cash shirt raises $10 and the rest pays for the shirt.</small>
-        <button type="submit" class="btn" id="off-save">Record it</button>
-        <p class="form-error" id="off-error" role="alert" hidden></p>
-        <p class="offline-done" id="off-done" role="status" hidden></p>
-      </form>
+          <form id="offline-form" class="offline-form" novalidate>
+            <div class="offline-grid">
+              <div class="field">
+                <label for="off-amount">Amount received</label>
+                <input type="number" id="off-amount" inputmode="numeric" min="1" step="1" placeholder="$">
+              </div>
+              <div class="field">
+                <label for="off-priority">Priority</label>
+                <select id="off-priority"></select>
+              </div>
+              <div class="field">
+                <label for="off-donor">Name for the honor roll</label>
+                <input type="text" id="off-donor" autocomplete="off" placeholder="e.g. The Nguyen Family">
+              </div>
+              <div class="field">
+                <label for="off-class">Rocket&rsquo;s classroom</label>
+                <select id="off-class"></select>
+              </div>
+              <div class="field">
+                <label for="off-student">Rocket&rsquo;s name <span class="optional">&middot; optional</span></label>
+                <input type="text" id="off-student" autocomplete="off" placeholder="from the memo line">
+              </div>
+            </div>
+            <div id="off-shirts"></div>
+            <p class="batch-count" id="off-math"></p>
+            <p class="offline-warn" id="off-late" hidden></p>
+            <label class="check-row">
+              <input type="checkbox" id="off-anon">
+              <span>List this one as Anonymous</span>
+            </label>
+            <small class="fine-print">Put the whole amount they handed over in <em>Amount received</em>. A shirt&rsquo;s cost comes off the campaign total here the same way it does on a card order, so a $20 cash shirt raises $10 and the rest pays for the shirt.</small>
+            <button type="submit" class="btn" id="off-save">Record it</button>
+            <p class="form-error" id="off-error" role="alert" hidden></p>
+            <p class="offline-done" id="off-done" role="status" hidden></p>
+          </form>
 
-      <div class="sheet-scroll"><table id="offline-table"></table></div>
+          <div class="sheet-scroll"><table id="offline-table"></table></div>
+        </div>
+      </details>
     </section>
 
     <section class="sheet" aria-labelledby="credit-head">
-      <div class="sheet-head">
-        <div>
+      <details class="panel" data-panel="credit">
+        <summary>
           <h2 id="credit-head">Credit a partner&rsquo;s student</h2>
-          <p>A business partner&rsquo;s own child, counted as a participant for their class. No dollars: the partnership is already in the campaign total, and partner money stays out of the classroom race on purpose. This adds the participation and nothing else &mdash; no honor roll listing, no change to any total.</p>
-        </div>
-      </div>
+          <span class="panel-tally" id="credit-tally"></span>
+        </summary>
+        <div class="panel-body">
+          <div class="sheet-head">
+            <div>
+              <p>A business partner&rsquo;s own child, counted as a participant for their class. No dollars: the partnership is already in the campaign total, and partner money stays out of the classroom race on purpose. This adds the participation and nothing else &mdash; no honor roll listing, no change to any total.</p>
+            </div>
+          </div>
 
-      <form id="credit-form" class="offline-form" novalidate>
-        <div class="offline-grid">
-          <div class="field">
-            <label for="cr-business">Partner business</label>
-            <input type="text" id="cr-business" autocomplete="off" placeholder="e.g. CH Design &amp; Renovation">
-          </div>
-          <div class="field">
-            <label for="cr-class">Student&rsquo;s classroom</label>
-            <select id="cr-class"></select>
-          </div>
-          <div class="field">
-            <label for="cr-student">Student&rsquo;s name</label>
-            <input type="text" id="cr-student" autocomplete="off" placeholder="e.g. Oliver Hanhart">
-          </div>
-        </div>
-        <button type="submit" class="btn" id="cr-save">Credit it</button>
-        <p class="form-error" id="cr-error" role="alert" hidden></p>
-        <p class="offline-done" id="cr-done" role="status" hidden></p>
-      </form>
+          <form id="credit-form" class="offline-form" novalidate>
+            <div class="offline-grid">
+              <div class="field">
+                <label for="cr-business">Partner business</label>
+                <input type="text" id="cr-business" autocomplete="off" placeholder="e.g. CH Design &amp; Renovation">
+              </div>
+              <div class="field">
+                <label for="cr-class">Student&rsquo;s classroom</label>
+                <select id="cr-class"></select>
+              </div>
+              <div class="field">
+                <label for="cr-student">Student&rsquo;s name</label>
+                <input type="text" id="cr-student" autocomplete="off" placeholder="e.g. Oliver Hanhart">
+              </div>
+            </div>
+            <button type="submit" class="btn" id="cr-save">Credit it</button>
+            <p class="form-error" id="cr-error" role="alert" hidden></p>
+            <p class="offline-done" id="cr-done" role="status" hidden></p>
+          </form>
 
-      <div class="sheet-scroll"><table id="credit-table"></table></div>
+          <div class="sheet-scroll"><table id="credit-table"></table></div>
+        </div>
+      </details>
     </section>
 
     <section class="sheet" aria-labelledby="rename-head">
-      <div class="sheet-head">
-        <div>
+      <details class="panel" data-panel="rename">
+        <summary>
           <h2 id="rename-head">Fix a Rocket&rsquo;s name</h2>
-          <p>Donors type names by hand, so one child can land as &ldquo;Audrey&rdquo; and &ldquo;Audrey Webber&rdquo;. Each spelling counts as its own Rocket, which splits their total and credits the class with two participants instead of one. Fixing the name moves the gifts and corrects the count.</p>
-        </div>
-      </div>
+        </summary>
+        <div class="panel-body">
+          <div class="sheet-head">
+            <div>
+              <p>Donors type names by hand, so one child can land as &ldquo;Audrey&rdquo; and &ldquo;Audrey Webber&rdquo;. Each spelling counts as its own Rocket, which splits their total and credits the class with two participants instead of one. Fixing the name moves the gifts and corrects the count.</p>
+            </div>
+          </div>
 
-      <form id="rename-form" class="offline-form" novalidate>
-        <div class="offline-grid">
-          <div class="field">
-            <label for="rn-class">Classroom</label>
-            <select id="rn-class"></select>
-          </div>
-          <div class="field">
-            <label for="rn-from">Name to fix</label>
-            <select id="rn-from"></select>
-          </div>
-          <div class="field">
-            <label for="rn-to">Should be</label>
-            <input type="text" id="rn-to" autocomplete="off" list="rn-names" placeholder="e.g. Audrey Webber">
-            <datalist id="rn-names"></datalist>
-          </div>
+          <form id="rename-form" class="offline-form" novalidate>
+            <div class="offline-grid">
+              <div class="field">
+                <label for="rn-class">Classroom</label>
+                <select id="rn-class"></select>
+              </div>
+              <div class="field">
+                <label for="rn-from">Name to fix</label>
+                <select id="rn-from"></select>
+              </div>
+              <div class="field">
+                <label for="rn-to">Should be</label>
+                <input type="text" id="rn-to" autocomplete="off" list="rn-names" placeholder="e.g. Audrey Webber">
+                <datalist id="rn-names"></datalist>
+              </div>
+            </div>
+            <small class="fine-print">Typing a name already in that class merges the two, and their gifts and totals combine.</small>
+            <button type="submit" class="btn" id="rn-save">Fix the name</button>
+            <p class="form-error" id="rn-error" role="alert" hidden></p>
+            <p class="offline-done" id="rn-done" role="status" hidden></p>
+          </form>
         </div>
-        <small class="fine-print">Typing a name already in that class merges the two, and their gifts and totals combine.</small>
-        <button type="submit" class="btn" id="rn-save">Fix the name</button>
-        <p class="form-error" id="rn-error" role="alert" hidden></p>
-        <p class="offline-done" id="rn-done" role="status" hidden></p>
-      </form>
+      </details>
     </section>
 
     <section class="sheet" aria-labelledby="digest-head">
-      <div class="sheet-head">
-        <div>
+      <details class="panel" data-panel="digest">
+        <summary>
           <h2 id="digest-head">Teacher recaps</h2>
-          <p>Each teacher&rsquo;s own class: participation, dollars, their Rockets, and how far to the next prize. <strong>Nothing sends on its own.</strong> Open the recaps below and send the ones you want, when you want them.</p>
+          <span class="panel-tally" id="digest-tally"></span>
+        </summary>
+        <div class="panel-body">
+          <div class="sheet-head">
+            <div>
+              <p>Each teacher&rsquo;s own class: participation, dollars, their Rockets, and how far to the next prize. <strong>Nothing sends on its own.</strong> Open the recaps below and send the ones you want, when you want them.</p>
+            </div>
+          </div>
+
+          <p class="digest-state" id="digest-state" role="status"></p>
+
+          <div class="digest-test">
+            <p>Open every class as a printable recap, one class per page. Print or save the ones you want and send them yourself.</p>
+            <button type="button" class="btn secondary small" data-download="recaps">Open class recaps</button>
+            <small class="fine-print">Opens in a new tab. Pick one class up top and print it to save that teacher&rsquo;s page as a PDF, named for them. It names the students in each class, so a page goes to that class&rsquo;s teacher and nobody else.</small>
+          </div>
+
+          <div class="digest-test">
+            <div class="field">
+              <label for="digest-to">Send a sample to</label>
+              <input type="email" id="digest-to" autocomplete="email" placeholder="your own address">
+            </div>
+            <button type="button" class="btn secondary small" id="digest-send-test">Email me a sample</button>
+            <small class="fine-print">Sends one class&rsquo;s email to you only. No teacher is contacted.</small>
+          </div>
+
+          <form id="digest-form" class="offline-form" novalidate>
+            <div class="field">
+              <label for="digest-list">Teacher addresses</label>
+              <textarea id="digest-list" rows="8" spellcheck="false" autocomplete="off"></textarea>
+              <p class="error" id="digest-error">Every line needs a classroom from the list and one email address.</p>
+            </div>
+            <small class="fine-print">One class per line, teacher first: <code>Mrs. Harrison, sharrison@tustin.k12.ca.us</code>. Used by the sample below, and by the weekly send if it is ever switched back on. Saving replaces the whole list.</small>
+            <button type="submit" class="btn" id="digest-save">Save the list</button>
+            <p class="form-error" id="digest-fail" role="alert" hidden></p>
+            <p class="offline-done" id="digest-done" role="status" hidden></p>
+          </form>
+
+          <div class="sheet-scroll"><table id="digest-table"></table></div>
         </div>
-      </div>
-
-      <p class="digest-state" id="digest-state" role="status"></p>
-
-      <div class="digest-test">
-        <p>Open every class as a printable recap, one class per page. Print or save the ones you want and send them yourself.</p>
-        <button type="button" class="btn secondary small" data-download="recaps">Open class recaps</button>
-        <small class="fine-print">Opens in a new tab. Pick one class up top and print it to save that teacher&rsquo;s page as a PDF, named for them. It names the students in each class, so a page goes to that class&rsquo;s teacher and nobody else.</small>
-      </div>
-
-      <div class="digest-test">
-        <div class="field">
-          <label for="digest-to">Send a sample to</label>
-          <input type="email" id="digest-to" autocomplete="email" placeholder="your own address">
-        </div>
-        <button type="button" class="btn secondary small" id="digest-send-test">Email me a sample</button>
-        <small class="fine-print">Sends one class&rsquo;s email to you only. No teacher is contacted.</small>
-      </div>
-
-      <form id="digest-form" class="offline-form" novalidate>
-        <div class="field">
-          <label for="digest-list">Teacher addresses</label>
-          <textarea id="digest-list" rows="8" spellcheck="false" autocomplete="off"></textarea>
-          <p class="error" id="digest-error">Every line needs a classroom from the list and one email address.</p>
-        </div>
-        <small class="fine-print">One class per line, teacher first: <code>Mrs. Harrison, sharrison@tustin.k12.ca.us</code>. Used by the sample below, and by the weekly send if it is ever switched back on. Saving replaces the whole list.</small>
-        <button type="submit" class="btn" id="digest-save">Save the list</button>
-        <p class="form-error" id="digest-fail" role="alert" hidden></p>
-        <p class="offline-done" id="digest-done" role="status" hidden></p>
-      </form>
-
-      <div class="sheet-scroll"><table id="digest-table"></table></div>
+      </details>
     </section>
   </div>
   <p class="form-error" id="admin-error" role="alert" hidden></p>

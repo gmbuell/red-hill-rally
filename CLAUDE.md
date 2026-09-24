@@ -23,7 +23,7 @@ two-sentence pointer; this file is the operating manual.
 | `npm install` | wrangler, vitest + workers pool, lighthouse |
 | `npx wrangler d1 migrations apply red-hill-rally --local` | once per clone: local D1 schema |
 | `npm run dev` | `wrangler dev` on http://localhost:8787 |
-| `npm test` | vitest (248 tests, ~5 s) |
+| `npm test` | vitest (249 tests, ~5 s) |
 | `npm run audit` | Lighthouse on every page but `/admin` (noindex), mobile + desktop (needs Chrome); defaults to the live site (`npm run audit -- --url http://localhost:8787` for local). `--runs 3 --min 98` reproduces the CI gate, `--form mobile` limits it to one form factor |
 | `npm run wcag` | WCAG 2.2 checks on every page, mobile + desktop (needs Chrome): text contrast, non-text contrast, focus rings, target size, body leading ≥ 1.5, body text ≥ 16px and labels ≥ 13px. Defaults to the live site (`npm run wcag -- --url http://localhost:8787` for local, `--page donate --form mobile` to narrow). Each cell shows how many elements the check examined |
 | `npm run deploy` | **Ships to production**: the worker and every file under `site/`. The `predeploy` step runs the tests, then applies pending D1 migrations to the remote database, so schema and code ship together. Every push to `main` runs this through Cloudflare Workers Builds (dashboard → the worker → Settings → Build), so merging a PR deploys it |
@@ -307,9 +307,32 @@ flip to live, in this order:
 ## Operations
 
 - **Reports** — <https://rocketrally.org/admin> ("Mission Control")
-  shows all three sheets behind the key `ADMIN_KEY` in `.dev.vars`,
+  shows every sheet behind the key `ADMIN_KEY` in `.dev.vars`,
   with a download button for each; the key stays in the tab's session
-  storage and travels as a Bearer header. The same CSVs by curl:
+  storage and travels as a Bearer header.
+  - Each sheet is a **`<details class="panel" data-panel="…">`** that
+    starts closed, so the page opens as ten headings rather than a
+    scroll nobody reaches the bottom of. Native `<details>` on
+    purpose: it folds before `admin.js` runs, the keyboard and screen
+    readers already know it, and an open panel's half-filled form
+    survives a re-render elsewhere on the page. The `<h2>` lives in
+    the `<summary>` and is still what the section's `aria-labelledby`
+    points at — `test/pages.spec.js` pins that pairing, and pins that
+    nothing ships `open`.
+    - `.panel-tally` beside each heading carries that sheet's own
+      number, set in `load()`. It is what makes a closed page worth
+      having: "1 waiting" on *Put a gift on a Rocket* and "3 of 20
+      addressed" on *Teacher recaps* are the to-do list. Zero reads
+      "none yet", never "0".
+    - Open panels are remembered in `localStorage` under
+      `adminPanels`, wrapped in try/catch — a private window just
+      forgets. "Open all" and "Close all" sit above the first sheet.
+    - **`scripts/wcag.mjs` opens every `<details>`** before it
+      measures, next to where it un-hides `[hidden]`. A closed panel
+      is invisible to axe, so without that line the gate silently
+      stopped checking most of this page (it dropped from 129
+      elements to 63).
+  - The same CSVs by curl:
 
   ```sh
   curl -H "Authorization: Bearer <ADMIN_KEY>" \

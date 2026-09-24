@@ -51,6 +51,46 @@
     }));
   };
 
+  /* ---- the folding sheets ---- */
+
+  /* The markup does the folding on its own (native <details>), so this
+     only remembers which ones were left open and writes the counts
+     onto the headings. Closed with no count, a sheet is a guess. */
+  const PANELS_KEY = 'adminPanels';
+  const panels = [...document.querySelectorAll('.panel')];
+
+  const savePanels = () => {
+    try {
+      localStorage.setItem(PANELS_KEY, JSON.stringify(
+        panels.filter((p) => p.open).map((p) => p.dataset.panel)));
+    } catch { /* private window, storage off: the page just forgets. */ }
+  };
+
+  let remembered = [];
+  try { remembered = JSON.parse(localStorage.getItem(PANELS_KEY) || '[]'); } catch { /* as above */ }
+  panels.forEach((p) => {
+    p.open = Array.isArray(remembered) && remembered.includes(p.dataset.panel);
+    p.addEventListener('toggle', savePanels);
+  });
+
+  const setAll = (open) => {
+    panels.forEach((p) => { p.open = open; });
+    savePanels();
+  };
+  RH.qs('#panels-open').addEventListener('click', () => setAll(true));
+  RH.qs('#panels-close').addEventListener('click', () => setAll(false));
+
+  /* A count on a closed heading, in the sheet's own terms. Skipped
+     where there is nothing to count: the three panels that only take
+     an action have no number that means anything. */
+  const tally = (panel, text) => {
+    const el = RH.qs(`#${panel}-tally`);
+    if (el) el.textContent = text;
+  };
+  /* "0 credited" reads like a broken sheet; "none yet" reads like an
+     empty one, which is what it is. */
+  const countOf = (n, one, many = `${one}s`) => (n ? `${n} ${n === 1 ? one : many}` : 'none yet');
+
   const authed = (path, init = {}) => fetch(path, {
     ...init,
     headers: { authorization: `Bearer ${keyOf()}`, ...(init.headers || {}) },
@@ -69,13 +109,13 @@
   /* A partnership names no Rocket on purpose — its money is kept out
      of the classroom race — so it is not a gift waiting to be fixed,
      and it stays out of the count and out of the filter. */
-  const loose = (r) => r[giftWhere('source')] !== 'partner' && !String(r[giftWhere('credited')]).trim();
+  const noRocket = (r) => r[giftWhere('source')] !== 'partner' && !String(r[giftWhere('credited')]).trim();
 
   const renderGifts = () => {
     const needle = RH.qs('#gift-find').value.trim().toLowerCase();
     const orphansOnly = RH.qs('#gift-orphans').checked;
     const rows = giftRows.rows.filter((r) => {
-      if (orphansOnly && !loose(r)) return false;
+      if (orphansOnly && !noRocket(r)) return false;
       return !needle || r.join(' ').toLowerCase().includes(needle);
     });
     /* The gift id is the Stripe id: long, and nobody reads it off a
@@ -88,7 +128,7 @@
 
     const raised = giftWhere('raised');
     const total = rows.reduce((n, r) => n + Math.round(Number(r[raised]) * 100), 0);
-    const waiting = giftRows.rows.filter(loose).length;
+    const waiting = giftRows.rows.filter(noRocket).length;
     const el = RH.qs('#gift-count');
     const shown = `${rows.length} gift${rows.length === 1 ? '' : 's'}, ${RH.moneyCents(total)}`;
     el.textContent = !giftRows.rows.length ? 'No gifts yet.'
@@ -784,6 +824,23 @@
     renderRenameNames();
     // After `rockets`, so picking a gift can look a name's class up.
     renderGiftPicker();
+
+    /* The counts on the folded headings. Each one is the number that
+       sheet exists for, so a closed page still says where to look:
+       the gifts with nobody on them are the to-do, and the classes
+       without an address are the reason the recaps go by hand. */
+    const loose = giftRows.rows.filter(noRocket).length;
+    tally('gifts', `${countOf(giftRows.rows.length, 'gift')} · ${RH.money(data.campaign.raised)}`);
+    tally('credit-gift', loose ? `${loose} waiting` : 'all credited');
+    tally('classrooms', countOf(data.classrooms.rows.length, 'class', 'classes'));
+    // The Rockets sheet closes with a "No Rocket named" line when
+    // gifts named nobody. It is a real row and not a child.
+    tally('students', countOf(data.students.rows.filter((r) => r[1]).length, 'named', 'named'));
+    tally('shirts', countOf(shirts, 'shirt'));
+    tally('offline', countOf((data.offline || []).length, 'by hand', 'by hand'));
+    tally('credit', countOf((data.credits || []).length, 'credited', 'credited'));
+    const addressed = CLASSROOMS.filter((c) => ((data.digest || {}).emails || {})[c.id]).length;
+    tally('digest', `${addressed} of ${CLASSROOMS.length} addressed`);
   };
 
   form.addEventListener('submit', (e) => {

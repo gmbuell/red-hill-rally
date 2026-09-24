@@ -240,6 +240,11 @@ try {
       await page.evaluate(() => document.fonts.ready);
       await page.evaluate(() => {
         for (const el of document.querySelectorAll('[hidden]')) el.hidden = false;
+        /* Unfold every <details> as well. Mission Control's sheets
+           start closed, and a closed panel's contents are invisible to
+           axe and to the checks below — which would quietly drop most
+           of that page's elements out of the gate. */
+        for (const el of document.querySelectorAll('details')) el.open = true;
       });
       await page.addScriptTag({ content: axeSource });
       await page.evaluate(helpers);
