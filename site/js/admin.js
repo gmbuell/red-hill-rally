@@ -68,14 +68,8 @@
   const giftWhere = (col) => giftRows.columns.indexOf(col);
   /* A partnership names no Rocket on purpose — its money is kept out
      of the classroom race — so it is not a gift waiting to be fixed,
-     and it stays out of the count and out of the filter.
-
-     The test is the *classes* cell, not *credited*: the donate form
-     asks for a classroom and lets the name be left off, so most gifts
-     credit a class under no name at all. Those are already in the
-     race and in the Rockets sheet, under "(no name given)" — a gift
-     waiting to be fixed is one attached to no class. */
-  const loose = (r) => r[giftWhere('source')] !== 'partner' && !String(r[giftWhere('classes')]).trim();
+     and it stays out of the count and out of the filter. */
+  const loose = (r) => r[giftWhere('source')] !== 'partner' && !String(r[giftWhere('credited')]).trim();
 
   const renderGifts = () => {
     const needle = RH.qs('#gift-find').value.trim().toLowerCase();
@@ -121,24 +115,19 @@
 
   /* Newest first, because the gift someone is asking about is almost
      always this morning's. Each option says what it credits now, so an
-     already-credited gift is obvious before it gets overwritten — and
-     a gift credited to a class under no name says the class, so that
-     credit isn't mistaken for nothing and written over. */
+     already-credited gift is obvious before it gets overwritten. */
   const renderGiftPicker = () => {
     const held = RH.qs('#cg-gift').value;
     const when = giftWhere('when');
     const donor = giftWhere('donor');
     const credited = giftWhere('credited');
-    const classes = giftWhere('classes');
     const raised = giftWhere('raised');
     const source = giftWhere('source');
     const id = giftWhere(GIFT_ID);
     const pickable = giftRows.rows.filter((r) => r[source] !== 'partner');
-    const credits = (r) => String(r[credited]).trim()
-      || (String(r[classes]).trim() ? `${r[classes]}, no name` : 'no Rocket');
     RH.qs('#cg-gift').innerHTML = pickable.length
       ? html`${pickable.map((r) => html`<option value="${r[id]}">${
-        `${r[when]} · ${r[donor]} · ${RH.moneyCents(Math.round(Number(r[raised]) * 100))} · ${credits(r)}`
+        `${r[when]} · ${r[donor]} · ${RH.moneyCents(Math.round(Number(r[raised]) * 100))} · ${String(r[credited]).trim() || 'no Rocket'}`
       }</option>`)}`
       : html`<option value="">No gifts yet</option>`;
     if (pickable.some((r) => r[id] === held)) RH.qs('#cg-gift').value = held;

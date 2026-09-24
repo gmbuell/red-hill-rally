@@ -561,7 +561,7 @@ async function handleCreditGift(request, env, url) {
     return json({ error: 'A partnership can’t be credited to a class — its money is already in the total and stays out of the race. Use “Credit a partner’s student”.' }, 400);
   }
   if (res.error === 'shirts') {
-    return json({ error: 'This gift has shirts on it, printed with a name — ask Garret rather than moving it here.' }, 400);
+    return json({ error: 'This gift has shirts on it, printed with a name — ask Garrett rather than moving it here.' }, 400);
   }
   return json(res);
 }

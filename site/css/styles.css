@@ -1500,6 +1500,11 @@ select:focus-visible,
   margin-bottom: 1rem;
 }
 .sheet-head h2 { margin: 0 0 0.4rem; }
+/* A second paragraph in a sheet head is a note about using the sheet,
+   not small print. It stays at body size on purpose: this one names
+   the donors whose names must not be published, and a warning set
+   smaller than the thing it warns about is a warning nobody reads. */
+.sheet-head .sheet-note { max-width: 36rem; margin: 0.6rem 0 0; color: var(--grey); }
 .sheet-head p { max-width: 36rem; margin: 0; }
 .sheet-scroll { overflow-x: auto; }
 .sheet table { border-collapse: collapse; width: 100%; }

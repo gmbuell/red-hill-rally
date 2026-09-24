@@ -63,6 +63,9 @@ describe('rendered pages', () => {
     expect(text).toContain('data-download="gifts"');
     expect(text).toContain('id="gift-orphans"');
     expect(text).toContain('id="cg-gift"');
+    // The book names a donor who stayed off the board, so the panel
+    // has to say what that name is for and what it isn't for.
+    expect(text).toMatch(/keep it off anything public/i);
     // Still no student names in the served HTML — the sheet is filled
     // in the browser, behind the key, like every other one here.
     for (const needle of PII) expect(text).not.toContain(needle);

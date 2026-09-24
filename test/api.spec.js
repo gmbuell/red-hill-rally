@@ -2000,7 +2000,7 @@ describe('the gift ledger', () => {
     expect(row.shirts).toBe(1);
   });
 
-  it('marks how each gift arrived, and keeps an anonymous donor anonymous', async () => {
+  it('marks how each gift arrived, and marks a donor who stayed off the board', async () => {
     await deliverWebhook(sessionEvent({ id: 'cs_card' }));
     await deliverWebhook(sessionEvent({
       id: 'cs_shy', created: 1756200000,
@@ -2014,11 +2014,36 @@ describe('the gift ledger', () => {
     const rows = await book();
     expect(rows.find((r) => r.gift_id === 'cs_card').source).toBe('card');
     expect(rows.find((r) => r.gift_id.startsWith('off_')).source).toBe('by hand');
+    /* "Anonymous" is a choice about the Rally Board, not about the
+       PTA's own book — a gift nobody can look up is the whole problem
+       this sheet exists to fix. So the name is here, and carries the
+       mark with it, because the mark has to survive a copy-paste. */
     const shy = rows.find((r) => r.gift_id === 'cs_shy');
-    expect(shy.donor).toBe('Anonymous');
-    // The page is behind one shared password; a donor who asked not to
-    // be listed isn't listed here either.
-    expect(JSON.stringify(rows)).not.toContain('Jane Doe');
+    expect(shy.donor).toBe('Jane Doe (anonymous)');
+    // The board still doesn't name them.
+    expect((await getJson('/api/board')).donors.every((d) => d.name !== 'Jane Doe')).toBe(true);
+    // And the email never leaves the backend, here or anywhere.
+    expect(JSON.stringify(await sheet())).not.toContain('example.com');
+  });
+
+  it('falls back to Anonymous when there is no name to show', async () => {
+    // Nothing typed in the name box: nothing for the book to print
+    // either, and no pretending otherwise.
+    await deliverWebhook(sessionEvent({
+      id: 'cs_blank', metadata: { visibility: 'anon', donor_name: '' },
+    }));
+    expect((await book())[0].donor).toBe('Anonymous');
+  });
+
+  it('does not mark a partner’s participation credit as a shy donor', async () => {
+    await SELF.fetch('https://rally.test/api/partner-credit', {
+      method: 'POST',
+      headers: { ...KEY, 'content-type': 'application/json' },
+      body: JSON.stringify({ business: 'CH Design', students: [{ c: ROOM_A, n: 'Oliver Hanhart' }] }),
+    });
+    const [row] = await book();
+    expect(row.source).toBe('credit');
+    expect(row.donor).toBe('CH Design');
   });
 
   it('carries the Stripe id in the download, so it reconciles line by line', async () => {

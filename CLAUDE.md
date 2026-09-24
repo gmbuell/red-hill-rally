@@ -23,7 +23,7 @@ two-sentence pointer; this file is the operating manual.
 | `npm install` | wrangler, vitest + workers pool, lighthouse |
 | `npx wrangler d1 migrations apply red-hill-rally --local` | once per clone: local D1 schema |
 | `npm run dev` | `wrangler dev` on http://localhost:8787 |
-| `npm test` | vitest (246 tests, ~5 s) |
+| `npm test` | vitest (248 tests, ~5 s) |
 | `npm run audit` | Lighthouse on every page but `/admin` (noindex), mobile + desktop (needs Chrome); defaults to the live site (`npm run audit -- --url http://localhost:8787` for local). `--runs 3 --min 98` reproduces the CI gate, `--form mobile` limits it to one form factor |
 | `npm run wcag` | WCAG 2.2 checks on every page, mobile + desktop (needs Chrome): text contrast, non-text contrast, focus rings, target size, body leading ≥ 1.5, body text ≥ 16px and labels ≥ 13px. Defaults to the live site (`npm run wcag -- --url http://localhost:8787` for local, `--page donate --form mobile` to narrow). Each cell shows how many elements the check examined |
 | `npm run deploy` | **Ships to production**: the worker and every file under `site/`. The `predeploy` step runs the tests, then applies pending D1 migrations to the remote database, so schema and code ship together. Every push to `main` runs this through Cloudflare Workers Builds (dashboard → the worker → Settings → Build), so merging a PR deploys it |
@@ -346,21 +346,31 @@ flip to live, in this order:
     `gift_id` is the Stripe session id, which makes the CSV reconcile
     line by line against the Stripe dashboard. The screen drops
     `gift_id` (long, unread) and keeps it in the download.
-    - A donor who chose not to be listed reads as **Anonymous here
-      too**, the same answer the hand-entered list has always given:
-      one shared password opens this page. A partner participation
-      credit (`pc_`) shows the business, since that name is on the
-      partner wall and the row is no honor-roll gift.
-    - An empty *classes* cell is the point of the sheet. Naming a
+    - A donor who chose not to be listed **is named here, marked
+      `(anonymous)`**. "Anonymous" on this site is a choice about the
+      Rally Board — the form asks for a name, then separately whether
+      to print it there — and a gift nobody can look up is the problem
+      this sheet exists to fix. The mark goes *inside* the donor cell,
+      not in a column of its own, so it survives a copy-paste; the
+      panel says in as many words to keep the name off anything
+      public. A partner participation credit (`pc_`) shows the
+      business unmarked: that name is on the partner wall, and the row
+      is no honor-roll gift.
+    - **Donor email is still nowhere.** It is stored for Stripe and
+      never selected into any response, this sheet included — the
+      oldest invariant in the schema (`migrations/0001_init.sql`), and
+      the reason is that one shared password opens this page, which
+      would make a full contact list one download away. Billing name
+      stays out for the same reason; the honor-roll name the donor
+      typed is the only name here.
+    - An empty *credited* cell is the point of the sheet. Naming a
       Rocket at checkout is optional, so an aunt giving from the home
       page lands counted for the school and for no class — invisible
       in every other sheet. The count line says how many, the filter
       narrows to them, and **"Put a gift on a Rocket"**
       (`POST /api/gift-rockets` → `creditGift`) attaches the one or
-      several it was meant for — including a gift already credited to
-      a class under no name, which the picker labels as such so that
-      credit isn't mistaken for nothing — whose dollars then split
-      the way checkout splits them (`test/api.spec.js` pins the paths
+      several it was meant for, whose dollars then split the way
+      checkout splits them (`test/api.spec.js` pins the two paths
       against one oracle). It replaces the gift's credits rather than
       adding to them, so it fixes a wrong Rocket too, and it refuses a
       **partnership** (money kept out of the race on purpose — use

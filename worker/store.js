@@ -570,15 +570,23 @@ export async function giftsReport(db) {
     const credit = isCreditOnly(g.id);
     const tier = partnerTierById(g.partner_tier);
     const priority = priorityById(g.priority);
-    /* A business's participation credit carries the business name, and
-       it is 'anon' only because it is no honor-roll gift. Everyone else
-       who asked not to be listed isn't listed here either — the same
-       answer the hand-entered list has always given. */
+    /* "Anonymous" on this site is a choice about the Rally Board: the
+       form asks for a name, then asks separately whether to print it
+       there. So the PTA's own book shows the name — otherwise a gift
+       can't be looked up at all, which is what this sheet is for — and
+       marks it, because the mark travels with the name wherever the
+       name gets copied. A column two cells away would not.
+
+       A business's participation credit carries the business name and
+       is 'anon' only because it is no honor-roll gift, so it isn't
+       marked. Donor **email** stays where it has always been: in the
+       backend, off every page. */
     const anon = g.visibility === 'anon' && !credit;
+    const named = (g.donor_name || '').trim();
     return [
       orderedAt(g.created),
       credit ? 'credit' : tier ? 'partner' : g.id.startsWith(OFFLINE_PREFIX) ? 'by hand' : 'card',
-      anon || !g.donor_name ? 'Anonymous' : g.donor_name,
+      named ? (anon ? `${named} (anonymous)` : named) : 'Anonymous',
       mine.map((c) => c.student_name.trim()).filter(Boolean).join(', '),
       [...new Set(mine.map((c) => (classroomById(c.classroom) || {}).teacher || c.classroom))].join(', '),
       tier ? tier.name : priority ? priority.name
