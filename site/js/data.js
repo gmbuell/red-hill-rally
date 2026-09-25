@@ -286,7 +286,7 @@ const PARTNER_TIERS = [
     'Logo on the Rocket Rally webpage',
   ] },
   { id: 'champion', name: 'Rally Champion', amount: 750, logo: true, benefits: [
-    'Logo on the Rocket Rally event shirt',
+    'Name on the Rocket Rally event shirt',
     'Featured Instagram post',
     'Mention in the Rally newsletter issue',
   ] },
