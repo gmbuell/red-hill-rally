@@ -141,9 +141,10 @@ secrets; the maintainer reviews and ships PRs.
     another shown at 80% has to have a visible reason. The tiebreak
     matters most at 100%, which every class can reach, where
     participation stops separating anyone.
-  - Two notes sit above the list because the board carries two
-    different races: the Golden Shoe, which **one** class wins on
-    dollars, and the participation prizes, which are thresholds
+  - Two of the four cards in the Prizes block above the list are the
+    classroom ones, because the board carries two different races: the
+    Golden Shoe, which **one** class wins on dollars, and the
+    participation prizes, which are thresholds
     **every** class can reach. The second is a count of classes at 80%
     and at 100%, never a leader, or the board would imply a prize for
     leading participation that the prizes page doesn't offer. Both
@@ -155,9 +156,10 @@ secrets; the maintainer reviews and ships PRs.
     do, so gifts that named no Rocket can't push the school over 100%.
     Still no gift or partner count up there: those invite arithmetic
     nobody should be doing, and read as bad news early in a campaign.
-  - The list says what it is ranked by, in copy directly above the
-    first row. It cannot move below the list: a family scanning for
-    their teacher reads row one within a second of arriving.
+  - The list says what it is ranked by, in copy directly **under** the
+    last row. A family scanning for their teacher reads row one within
+    a second of arriving, so nothing stands between the heading and
+    the first row; what the order means is what you check afterwards.
 - Money is decided server-side: the worker computes the fee cover from
   the `coverFees` boolean and prices shirts from `SHIRT` in `data.js`,
   and every stat counts `amount_cents` (the gift plus each shirt's
@@ -230,8 +232,9 @@ secrets; the maintainer reviews and ships PRs.
     line leaves the page rather than announcing that nobody has
     managed it. Both numbers come off one `tally` pass, so the page
     still costs a single D1 read.
-  - **The Rally Board carries both**, in a "Student Prizes" section
-    built in the same pair of shapes as the classroom race above it:
+  - **The Rally Board carries both**, as the second pair of cards in
+    the Prizes block, built in the same pair of shapes as the two
+    classroom cards beside them:
     Principal for the Day has one winner like the Golden Shoe, the
     lunch is a threshold like the participation prizes and so gets a
     count rather than a leader. A board showing only leaders teaches
@@ -252,9 +255,9 @@ secrets; the maintainer reviews and ships PRs.
   participation card, showing only once a class reached 80%. It also
   hid the line from `scripts/wcag.mjs`, which found it under both the
   16px and the 1.5 line-height floors the moment it was back inside
-  its card. Those cards are `<p class="shoe-note">`, so the line is a
-  `<span class="every">` with `display: block`; `test/views.spec.js`
-  refuses any block element in a shoe-note.
+  its card. Those cards are now `<div class="shoe-note">` holding
+  paragraphs, so neither line needs a rule from the stylesheet to sit
+  on its own; `test/views.spec.js` refuses a span or a div inside one.
 - The preview worker is the `preview` environment in `wrangler.jsonc`:
   same code, own bindings. It holds no secrets, so checkout answers
   503 and the export 401 there, and a preview reads the demo seed, not

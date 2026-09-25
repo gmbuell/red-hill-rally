@@ -1019,9 +1019,10 @@ select:focus-visible,
 @media (min-width: 46rem) {
   .race-prizes { grid-template-columns: repeat(2, 1fr); }
 }
-/* What the order means, directly above the order. A family scanning
+/* What the order means, directly under the order. A family scanning
    for their teacher reads the first row within a second of arriving,
-   so this cannot sit below the list. */
+   so nothing stands between the heading and that row; this is what
+   you read afterwards. */
 .race-rank {
   max-width: 40rem;
   margin: 0 0 1rem;
