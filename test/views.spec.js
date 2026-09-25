@@ -512,19 +512,38 @@ describe('the student prizes on the board', () => {
    reassurance line escaped its card and landed in the grid beside it
    as a third column. It shipped that way on the participation card
    and only showed once a class reached 80%. */
-describe('the reassurance lines stay inside their cards', () => {
-  it('uses no block element inside a shoe-note paragraph', () => {
-    const slots = boardSlots({
-      campaign: { raised: 5000, gifts: 9 },
-      classrooms: Object.fromEntries(data.CLASSROOMS.map((c) => [c.id, { rockets: c.students, raised: 500 }])),
-      donors: [], partners: [], prizes: { lead: 1200, lunch: 3 },
-    });
-    for (const id of ['shoe-note', 'prize-note', 'lead-note', 'lunch-note']) {
-      const markup = String(slots[id]);
-      expect(markup, id).not.toMatch(/<(div|p|ul|ol|li|section)\b/);
+/* These cards render correctly with no stylesheet at all, because a
+   stylesheet is a separate cache from the page. The first version put
+   a <div> inside a <p>, which the parser threw out of the card into
+   the grid beside it. The second used a <span> with display:block,
+   which ran the two lines together on any phone still holding
+   yesterday's CSS ("...earned a seat10 gifts of any size..."). Both
+   lines are paragraphs now: block with nothing loaded. */
+describe('the prize cards need no stylesheet to read right', () => {
+  const slots = () => boardSlots({
+    campaign: { raised: 5000, gifts: 9 },
+    classrooms: Object.fromEntries(data.CLASSROOMS.map((c) => [c.id, { rockets: c.students, raised: 500 }])),
+    donors: [], partners: [], prizes: { lead: 1200, lunch: 3 },
+  });
+  const CARDS = ['shoe-note', 'prize-note', 'lead-note', 'lunch-note'];
+
+  it('puts every line in a block element, and never a span', () => {
+    const all = slots();
+    for (const id of CARDS) {
+      const markup = String(all[id]);
+      expect(markup, id).toMatch(/<p[ >]/);
+      expect(markup, id).not.toMatch(/<span\b/);
+      // A <div> would be a block element in a <p> again if the card
+      // ever goes back to being a paragraph.
+      expect(markup, id).not.toMatch(/<div\b/);
     }
-    // And the line itself is still there on the card that carries it.
-    expect(String(slots['prize-note'])).toContain('Every class that gets there wins');
-    expect(String(slots['lunch-note'])).toContain('earns a seat, however many Rockets get there');
+  });
+
+  it('keeps the line that says a threshold prize is not a race', () => {
+    const all = slots();
+    expect(String(all['prize-note'])).toContain('Every class that gets there wins');
+    expect(String(all['lunch-note'])).toContain('earns a seat, however many Rockets get there');
+    // On its own paragraph, so it can never run on from the count.
+    expect(String(all['lunch-note'])).toMatch(/<p class="every">/);
   });
 });

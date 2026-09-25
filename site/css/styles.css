@@ -402,16 +402,19 @@ select:focus-visible,
 
 /* The reassurance under the counts: quieter than the figures, but not
    fine print — it is the line that stops a class reading the list as a
-   leaderboard. A span, because these cards are paragraphs and a <div>
-   inside a <p> is closed out of it by the parser: the line escaped its
-   card and landed in the grid beside it as a third column. */
+   leaderboard.
+
+   It is a paragraph, and so is the line above it, because the card is
+   a <div>. Neither needs a rule from this file to sit on its own
+   line, which matters: the page and this stylesheet are separate
+   caches, and a phone holding yesterday's CSS against today's markup
+   is the one browser guaranteed to see whatever depends on a rule
+   shipped today. */
+.shoe-note p { margin: 0; }
 .shoe-note .every {
-  display: block;
   /* Set apart by the gap above it, not by being smaller: the comment
      above says this is not fine print, and the WCAG gate agrees — body
-     text is 16px at 1.5. It had been shrinking below both, unnoticed,
-     because the parser was throwing it out of the card before anything
-     measured it. */
+     text is 16px at 1.5. */
   margin-top: 0.5rem;
   font-size: 1rem;
   line-height: 1.5;
@@ -1002,11 +1005,19 @@ select:focus-visible,
    on a phone. They are deliberately side by side: the whole point is
    that the dollars race and the participation prizes are different
    races, which is hard to see when one sits under the other. */
+/* Four cards, so two columns rather than auto-fit: at most desktop
+   widths auto-fit gave three and left the fourth alone on a row of
+   its own. Two by two also pairs them the way they are meant to be
+   read — a prize with one winner beside a prize anybody can reach,
+   for the classroom, then the same again for the student. */
 .race-prizes {
   display: grid;
   gap: 0.9rem;
-  grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+  grid-template-columns: 1fr;
   margin: 0 0 1.5rem;
+}
+@media (min-width: 46rem) {
+  .race-prizes { grid-template-columns: repeat(2, 1fr); }
 }
 /* What the order means, directly above the order. A family scanning
    for their teacher reads the first row within a second of arriving,

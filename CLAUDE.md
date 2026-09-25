@@ -23,7 +23,7 @@ two-sentence pointer; this file is the operating manual.
 | `npm install` | wrangler, vitest + workers pool, lighthouse |
 | `npx wrangler d1 migrations apply red-hill-rally --local` | once per clone: local D1 schema |
 | `npm run dev` | `wrangler dev` on http://localhost:8787 |
-| `npm test` | vitest (267 tests, ~5 s) |
+| `npm test` | vitest (269 tests, ~5 s) |
 | `npm run audit` | Lighthouse on every page but `/admin` (noindex), mobile + desktop (needs Chrome); defaults to the live site (`npm run audit -- --url http://localhost:8787` for local). `--runs 3 --min 98` reproduces the CI gate, `--form mobile` limits it to one form factor |
 | `npm run wcag` | WCAG 2.2 checks on every page, mobile + desktop (needs Chrome): text contrast, non-text contrast, focus rings, target size, body leading ≥ 1.5, body text ≥ 16px and labels ≥ 13px. Defaults to the live site (`npm run wcag -- --url http://localhost:8787` for local, `--page donate --form mobile` to narrow). Each cell shows how many elements the check examined |
 | `npm run deploy` | **Ships to production**: the worker and every file under `site/`. The `predeploy` step runs the tests, then applies pending D1 migrations to the remote database, so schema and code ship together. Every push to `main` runs this through Cloudflare Workers Builds (dashboard → the worker → Settings → Build), so merging a PR deploys it |
@@ -171,6 +171,22 @@ secrets; the maintainer reviews and ships PRs.
   are idempotent on the session id.
 - Partner rows count in campaign dollars but not the family-gift tally
   or the classroom race.
+- **The board leads with the prizes, then the standings, then what the
+  order means.** A plainly headed "Prizes" block carries all four cards
+  above the class list; the "Ordered by participation" paragraph sits
+  *under* the list. A family arrives looking for its teacher's row and
+  should reach it without reading a paragraph first — what the order
+  means is what you check afterwards. `test/pages.spec.js` pins that
+  order.
+  - A card is a **`<div class="shoe-note">` holding paragraphs**, built
+    by `card()` in `views.js`. It has been wrong twice: first a
+    `<div class="every">` inside a `<p>`, which the parser threw out
+    of the card into the grid beside it, then a `<span>` with
+    `display: block`, which ran the two lines together
+    ("…earned a seat10 gifts of any size…") on any phone still holding
+    yesterday's stylesheet. Pages and stylesheets are separate caches,
+    so a card must read correctly with **no CSS at all**; paragraphs
+    do. `test/views.spec.js` refuses a span or a div in these cards.
 - **The two classroom races are not the same shape, and the board has
   to say so.** The Golden Shoe has one winner, decided on dollars. The
   participation prizes are thresholds: every class that reaches 80%

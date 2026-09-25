@@ -375,6 +375,26 @@ describe('rendered pages', () => {
     }
   });
 
+  /* A family arrives at the board looking for its teacher's row. The
+     explanation of what the order means is what you read afterwards,
+     so it sits under the list; the prizes, which are the reason to
+     care about the order at all, sit above it. */
+  it('puts the prizes above the class list and the sorting note below it', async () => {
+    const { text } = await page('/rally-board');
+    const at = (needle) => text.indexOf(needle);
+    expect(at('id="prizes-head"')).toBeGreaterThan(-1);
+    expect(at('id="prizes-head"')).toBeLessThan(at('id="race"'));
+    expect(at('id="race"')).toBeLessThan(at('id="race-rank"'));
+    // All four prize cards are in the one block above the list.
+    for (const id of ['shoe-note', 'prize-note', 'lead-note', 'lunch-note']) {
+      expect(at(`id="${id}"`), id).toBeGreaterThan(-1);
+      expect(at(`id="${id}"`), id).toBeLessThan(at('id="race"'));
+    }
+    // A card is a div, so the lines inside it can be paragraphs.
+    expect(text).toContain('<div class="shoe-note" id="shoe-note">');
+    expect(text).not.toContain('<p class="shoe-note"');
+  });
+
   it('ranks the classroom and lists the donor on the board', async () => {
     await gift();
     const { text } = await page('/rally-board');

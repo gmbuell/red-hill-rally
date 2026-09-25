@@ -225,6 +225,22 @@ const mergedPartners = (online) => {
   });
 };
 
+/* One prize card on the board: what the prize is, where it stands,
+   and — on the two anybody can reach — the line that says so.
+
+   Both lines are real paragraphs inside a `<div class="shoe-note">`,
+   not a span inside a `<p>`. A block element cannot live in a `<p>`:
+   the parser closes the paragraph first and the line lands outside
+   the card, in the grid beside it. A span instead needs
+   `display: block` from the stylesheet, and pages and stylesheets are
+   separate caches — a phone holding yesterday's CSS against today's
+   markup ran the two lines together ("...earned a seat10 gifts of any
+   size..."). Paragraphs are block with no stylesheet at all. */
+const card = (label, line, note = '') => html`
+      <small class="label">${label}</small>
+      <p>${line}</p>${note ? html`
+      <p class="every">${note}</p>` : ''}`;
+
 /* Wall order: Apollo, then Orbit, then everyone else, so the
    year-round partners sit at the top at the size their level earns. */
 const wallRank = (p) => {
@@ -481,7 +497,7 @@ export const boardSlots = (live) => {
       : leaders.length <= 3
         ? html`<strong>${nameList(leaders.map((c) => `${c.teacher}’s`))} classes</strong>, tied at ${money(most)}`
         : html`<strong>${leaders.length} classes</strong> tied at ${money(most)}`;
-  const goldenShoe = html`<small class="label">Leading for the Golden Shoe &middot; dollars raised</small> ${shoeLine}`;
+  const goldenShoe = card('Leading for the Golden Shoe · dollars raised', shoeLine);
 
   /* The other race is nothing like the shoe: the participation prizes
      are thresholds, so every class that reaches one wins it and there
@@ -495,8 +511,9 @@ export const boardSlots = (live) => {
     ? html`Every class can earn funds for classroom supplies and needs. Reach 80% participation to earn $150 and 100% participation to earn $250. Every class that gets there wins, however many do.`
     : html`<strong>${classes(at80)}</strong> at 80% or more &middot; ${at100
       ? html`<strong>${at100}</strong> at 100%`
-      : html`<strong>none</strong> at 100% yet`}<span class="every">Every class that gets there wins: $150 at 80%, $250 at 100%, however many classes make it.</span>`;
-  const partNote = html`<small class="label">Classroom participation</small> ${partLine}`;
+      : html`<strong>none</strong> at 100% yet`}`;
+  const partNote = card('Classroom participation', partLine, at80
+    ? 'Every class that gets there wins: $150 at 80%, $250 at 100%, however many classes make it.' : '');
 
   /* The two student prizes, in the same pair of shapes as the two
      classroom ones above: Principal for the Day has a single winner
@@ -515,12 +532,13 @@ export const boardSlots = (live) => {
   const prizes = (live && live.prizes) || {};
   const lead = prizes.lead || 0;
   const lunch = prizes.lunch || 0;
-  const leadNote = html`<small class="label">Principal for the Day &middot; most raised</small> ${lead
+  const leadNote = card('Principal for the Day · most raised', lead
     ? html`<strong>More than ${money(lead)}</strong> in first place`
-    : html`Still anyone&rsquo;s. It goes to the Rocket who raises the most.`}`;
-  const lunchNote = html`<small class="label">Lunch with Ms. Malpass and Mr. Strong &middot; ${LUNCH.gifts} gifts</small> ${lunch
+    : html`Still anyone&rsquo;s. It goes to the Rocket who raises the most.`);
+  const lunchNote = card(`Lunch with Ms. Malpass and Mr. Strong · ${LUNCH.gifts} gifts`, lunch
     ? html`<strong>${lunch} Rocket${lunch === 1 ? '' : 's'}</strong> ${lunch === 1 ? 'has' : 'have'} earned a seat`
-    : html`Still open.`}<span class="every">${LUNCH.gifts} gifts of any size earns a seat, however many Rockets get there.</span>`;
+    : html`Still open.`,
+  `${LUNCH.gifts} gifts of any size earns a seat, however many Rockets get there.`);
 
   /* Named gifts newest first; anonymous gifts are tallied in one
      closing line so a busy campaign stays readable. */
