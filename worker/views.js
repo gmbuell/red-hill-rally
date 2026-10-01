@@ -7,12 +7,17 @@
 import data from '../site/js/data.js';
 import ui from '../site/js/ui.js';
 
-const { ORG, PRIORITIES, CAMPAIGN, ANNUAL_COST, SHIRT, LUNCH, CLASSROOMS, boardClassrooms, PARTNER_TIERS, PARTNERS, ANNUAL_LEVELS, SUPPORT_ALL, priorityById, partnerTierById, annualLevelById, gradeName, priorityTarget, presentingPartner, shirtsOpen } = data;
+const { ORG, PRIORITIES, CAMPAIGN, RALLY_DAY, ANNUAL_COST, SHIRT, LUNCH, CLASSROOMS, boardClassrooms, PARTNER_TIERS, PARTNERS, ANNUAL_LEVELS, SUPPORT_ALL, priorityById, partnerTierById, annualLevelById, gradeName, priorityTarget, presentingPartner, shirtsOpen, givingOpen, rallyAhead } = data;
 const { html, raw, money, nameList, studentRowsMarkup, LINK_ROWS, SHIRT_ROWS, dartUp } = ui;
 
 /* ---- motifs (from the brand guide's Spirit Kit) -------------------- */
 
 const STAR = 'M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z';
+
+/* The hand-drawn rule under a section heading. The home page's other
+   section heads carry it inline; a head the worker builds needs its
+   own copy of the same path. */
+const UNDERLINE = raw('<svg class="underline" viewBox="0 0 130 10" aria-hidden="true"><path d="M2 3.5 L6.5 3.9 L3.5 5 L7.5 5.4 L4.5 6.8 C20 8.8 42 9.2 64 8.6 C84 8 104 6.6 126 4.2 C127.5 4 127.5 3.4 126 3.3 C104 2.5 80 2.3 58 2.7 C38 3 18 3.2 2 3.5 Z" fill="#E31E24"/></svg>');
 
 // Red rocket pointing straight up (rotate it yourself), gold plume
 const redRocketUp = raw(`
@@ -332,6 +337,71 @@ export const schoolParticipation = (perClass) => {
 
 /* Home: the campaign meter, its raised/goal figures, and the six
    priority cards. */
+/* ---- Rally day ------------------------------------------------------
+   The whole section, heading and all, rather than a slot per line: the
+   section element itself is what gets removed when the morning is
+   over, and a slot nested inside a removed slot is a question about
+   HTMLRewriter nobody should have to answer. `null` here takes the
+   section out of the page.
+
+   Every time, corner and bell comes from RALLY_DAY. Two conditions
+   ride on top: the heat postponement, which has to read as moved
+   rather than cancelled, and the gift line, which stops pointing at a
+   form that closes the night before. */
+const rallyDaySection = () => {
+  if (!rallyAhead()) return null;
+  const { walk, pads, gathering, dismissal } = RALLY_DAY;
+  return html`
+    <div class="wrap-narrow">
+      <div class="section-head">
+        <span class="label">Rally day</span>
+        <h2>${RALLY_DAY.label}</h2>
+        ${UNDERLINE}
+        <p class="intro">Wear your Rally shirts and walk in with us for Walk to School Day.</p>
+      </div>
+
+      <ol class="plan">
+        <li>
+          <span class="when">${walk.meet}</span>
+          <div>
+            <h3>Meet at a Launch Pad</h3>
+            <p>Either corner &mdash; whichever one is on your way in.</p>
+            <ul class="pads">${pads.map((pad) => html`
+              <li>${pad}</li>`)}
+            </ul>
+          </div>
+        </li>
+        <li>
+          <span class="when">${walk.start}</span>
+          <div>
+            <h3>We start walking</h3>
+            <p>Not walking? Drop off like normal and meet us at the front gate.</p>
+          </div>
+        </li>
+        <li>
+          <span class="when">${gathering.start}</span>
+          <div>
+            <h3>Rocket Gathering: Rally Edition</h3>
+            <p>Until ${gathering.end} in ${gathering.place}. Prizes, lots of cheering, and the whole school together. <strong>Families are welcome.</strong></p>
+          </div>
+        </li>
+      </ol>
+
+      <div class="plan-aside">
+        <h3>It&rsquo;s a minimum day</h3>
+        <ul>${dismissal.map((d) => html`
+          <li>${d.who} dismiss at <strong>${d.time}</strong>.</li>`)}
+        </ul>
+      </div>${RALLY_DAY.fieldPostponed ? html`
+
+      <p class="plan-heat"><strong>One change:</strong> with the heat forecast the way it is, the student field sessions planned for later that morning are postponed to cooler days. Walk to School Day and the Rocket Gathering are happening exactly as planned.</p>` : ''}${givingOpen() ? html`
+
+      <p class="plan-give">Giving closes <strong>${CAMPAIGN.closeLabel}</strong>, the night before. <a href="/donate">There is still time to give</a>.</p>` : ''}
+
+      <p class="plan-close">This was our first-ever Rocket Rally, and you blew us away. Rally day is the celebration &mdash; see you there.</p>
+    </div>`;
+};
+
 export const homeSlots = (live) => {
   const raised = live ? live.campaign.raised : 0;
   const per = (live && live.priorities) || {};
@@ -353,6 +423,7 @@ export const homeSlots = (live) => {
     ...(shirtsOpen()
       ? { 'shirt-callout-note': html`Order a Rally shirt on its own &mdash; half of every shirt still counts toward your Rocket and their classroom. Ordering closes <strong>${SHIRT.deadlineLabel}</strong>.` }
       : { 'shirt-callout': null }),
+    'rally-day': rallyDaySection(),
     trajectory: trajectorySVG(raised / CAMPAIGN.goal),
     presented: presenter
       ? html`<p class="presented">The 2026 Rocket Rally is generously presented by our Annual Partner <strong>${presenter.name}</strong></p>`
@@ -573,6 +644,14 @@ export const boardSlots = (live) => {
 
   return {
     'board-totals': html`${totals}`,
+    /* Rally morning, in one line, because this is the page families
+       are already refreshing. The full schedule lives on the home
+       page; this says enough to get a family to the right corner at
+       the right time and links to the rest. Gone once the morning is
+       over, like the home page section it points at. */
+    'board-rally': rallyAhead()
+      ? html`<strong>Rally day is ${RALLY_DAY.label}.</strong> Wear your Rally shirts and walk in with us &mdash; Launch Pads at ${RALLY_DAY.walk.meet}, then the Rocket Gathering at ${RALLY_DAY.gathering.start} in ${RALLY_DAY.gathering.place}. <a href="/#rally-day">The whole morning</a>`
+      : null,
     /* The note under the figures explains what the Rally rewards. With
        the dollar goal met there is one race left to explain, so it
        stops splitting a family's attention two ways and points at the
@@ -627,7 +706,19 @@ export const partnersSlots = (live) => ({
 export const prizesSlots = (live) => {
   const lead = (live && live.lead) || 0;
   const lunch = (live && live.lunch) || 0;
+  const { gathering } = RALLY_DAY;
   return {
+    // Where and when a prize is actually handed to a child.
+    'prize-when': html`Prizes are handed out at the Rocket Gathering on ${RALLY_DAY.label}`,
+    /* Every Rocket's share of Rally morning. The Gathering is the part
+       that is certain, so it leads; the field sessions follow as a
+       postponement, named as moved and still coming. Saying only "the
+       Rally" would leave a family reading this on Tuesday night
+       expecting games on Wednesday. */
+    'every-rocket': html`
+        <p class="prize-body">The Rocket Gathering: Rally Edition on ${RALLY_DAY.label}, ${gathering.window} in ${gathering.place}. Prizes, cheering, and the whole school together. No donation needed.</p>${RALLY_DAY.fieldPostponed ? html`
+        <p class="prize-body">Your grade&rsquo;s mini field day &mdash; games, activities and a frozen treat &mdash; is <strong>postponed to a cooler day</strong> because of the heat forecast. It is still coming.</p>` : html`
+        <p class="prize-body">Plus a mini field day with your grade: games, activities and a frozen treat.</p>`}`,
     'prize-lead': lead < 100 ? null : html`
       <strong>Our current first place student has raised more than ${money(lead)} so far.</strong>
       <small>Updated as gifts come in.</small>`,

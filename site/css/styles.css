@@ -555,6 +555,108 @@ select:focus-visible,
   line-height: 1.5;
 }
 
+/* ---------- rally day (the plan for the morning) ----------
+   One ordered list of times, a minimum-day aside, and the heat note.
+   Built whole in worker/views.js, which also removes the section once
+   the morning has passed, so nothing here needs an off state.
+
+   The time column is set at 1.5rem for a reason beyond looks: the
+   WCAG gate reads a <span> inside a <li> as body text, and display
+   type is exempt only at 24px or more. Below that it would owe a
+   line-height of 1.5, which is wrong for condensed caps. */
+/* The Rally Board links straight here, and the header is sticky, so
+   the anchor needs to stop clear of it: the bar is 62px wide-screen
+   and wraps to 132px once the nav drops to its own row, at the same
+   56rem breakpoint the bar itself uses. */
+.rally-day { scroll-margin-top: 5rem; }
+@media (max-width: 56rem) { .rally-day { scroll-margin-top: 9.5rem; } }
+.rally-day .section-head { margin-bottom: 1.8rem; }
+.plan { list-style: none; margin: 0; padding: 0; }
+.plan > li {
+  display: grid;
+  grid-template-columns: 5.5rem 1fr;
+  gap: 0 1.2rem;
+  padding: 1.1rem 0;
+  border-top: 1px solid rgba(0, 0, 0, 0.14);
+}
+.plan > li:first-child { border-top: 3px solid var(--navy); }
+.plan > li:last-child { border-bottom: 1px solid rgba(0, 0, 0, 0.14); }
+.plan .when {
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 1.5rem;
+  line-height: 1.5;
+  letter-spacing: 0.02em;
+  color: var(--red-ink);
+}
+.plan h3 {
+  font-family: var(--display);
+  font-weight: 400;
+  text-transform: uppercase;
+  font-size: 1.15rem;
+  letter-spacing: 0.05em;
+  color: var(--navy);
+  margin-bottom: 0.3rem;
+}
+.plan p { margin: 0; font-size: 1rem; }
+/* The two Launch Pads: a choice of corner, not a route, so they are a
+   list rather than a sentence — a parent reads one of them and leaves.
+   Every grid and border rule from the row above is undone here. */
+.plan .pads { list-style: none; margin: 0.7rem 0 0; padding: 0; }
+.plan .pads li {
+  display: block;
+  padding: 0 0 0 1.4rem;
+  border: 0;
+  position: relative;
+  font-size: 1rem;
+  font-weight: 800;
+}
+.plan .pads li + li { margin-top: 0.3rem; }
+.plan .pads li::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 0.55em;
+  width: 0.6rem; height: 0.6rem;
+  background: var(--red);
+}
+/* When the bell rings, which is the one fact on this page a parent
+   cannot improvise around. Both grades, never averaged. */
+.plan-aside {
+  background: var(--sky);
+  padding: 1.2rem 1.4rem;
+  margin-top: 1.8rem;
+}
+.plan-aside h3 {
+  font-family: var(--display);
+  font-weight: 400;
+  text-transform: uppercase;
+  font-size: 1.15rem;
+  letter-spacing: 0.05em;
+  color: var(--navy);
+  margin-bottom: 0.4rem;
+}
+.plan-aside ul { list-style: none; margin: 0; padding: 0; }
+.plan-aside li { font-size: 1rem; }
+.plan-aside strong { color: var(--red-ink); }
+/* The postponement. A red rule rather than a warning box: this is a
+   change to one part of the morning, not a reason to stay home. */
+.plan-heat {
+  margin: 1.6rem 0 0;
+  padding-left: 1rem;
+  border-left: 4px solid var(--red);
+  font-size: 1rem;
+}
+.plan-heat strong { color: var(--red-ink); }
+.plan-give, .plan-close { margin: 1.2rem 0 0; font-size: 1rem; }
+.plan-give strong { color: var(--red-ink); }
+.plan-close { font-weight: 800; }
+
+/* A phone has no room for a time column beside the text, so the time
+   takes its own line above its heading. */
+@media (max-width: 30rem) {
+  .plan > li { grid-template-columns: 1fr; gap: 0.2rem; }
+}
+
 /* ---------- donate flow ---------- */
 
 .flow-header { text-align: center; padding: 2.5rem 0 0.5rem; }
@@ -883,6 +985,21 @@ select:focus-visible,
   max-width: 36rem;
   margin-bottom: 2rem;
 }
+/* Rally morning, on the page families refresh daily. The red rule
+   matches the postponement note on the home page's plan, which the
+   link at the end of it leads to. Removed server-side after the
+   morning, so there is no stale state to style. */
+.board-rally {
+  margin: -1rem 0 2rem;
+  padding: 0.9rem 1.1rem;
+  background: var(--sky);
+  border-left: 4px solid var(--red);
+  font-size: 1rem;
+}
+.board-rally strong { color: var(--red-ink); }
+.board-rally a { font-weight: 800; }
+.board-rally a::after { content: " →"; }
+
 /* Sits outside the wizard, since someone paying by check never starts
    it. The memo-line ask is the load-bearing part: nothing on a check
    says whose Rocket it belongs to. */

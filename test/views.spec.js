@@ -1,7 +1,7 @@
 import { env } from 'cloudflare:test';
 import { afterEach, describe, it, expect, vi } from 'vitest';
 import data from '../site/js/data.js';
-import { homeSlots, partnersSlots, boardSlots, donateSlots, shirtSlots, schoolParticipation } from '../worker/views.js';
+import { homeSlots, partnersSlots, boardSlots, donateSlots, shirtSlots, prizesSlots, schoolParticipation } from '../worker/views.js';
 import { PAGES } from '../worker/pages.js';
 import ui from '../site/js/ui.js';
 
@@ -545,5 +545,115 @@ describe('the prize cards need no stylesheet to read right', () => {
     expect(String(all['lunch-note'])).toContain('earns a seat, however many Rockets get there');
     // On its own paragraph, so it can never run on from the count.
     expect(String(all['lunch-note'])).toMatch(/<p class="every">/);
+  });
+});
+
+/* Rally day is a morning with corners on it and two bells, and the
+   pages describing it have already been wrong once: the prizes page
+   promised a Friday Gathering two days after the Rally. So every time,
+   corner and bell is read from one constant, and these check the pages
+   against that constant rather than against a sentence. */
+describe('the Rally day plan', () => {
+  const R = data.RALLY_DAY;
+  // Noon Pacific on Rally day, and noon Pacific the day after.
+  const RALLY_NOON = new Date('2026-10-07T19:00:00Z');
+  const DAY_AFTER = new Date('2026-10-08T19:00:00Z');
+  const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+  const plan = () => String(homeSlots(null)['rally-day']);
+
+  afterEach(() => vi.useRealTimers());
+
+  it('stands through Rally day itself and is gone the morning after', () => {
+    expect(R.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    // A family reading the plan at noon on the day is still reading it
+    // on the right day; the morning after, it is instructions for a
+    // morning that happened.
+    expect(data.rallyAhead(RALLY_NOON)).toBe(true);
+    expect(data.rallyAhead(DAY_AFTER)).toBe(false);
+  });
+
+  it('names both walk times, both Launch Pads and both bells', () => {
+    vi.setSystemTime(RALLY_NOON);
+    const text = plan();
+    expect(text).toContain(R.label);
+    // The meeting time and the step-off are five minutes apart and
+    // both have to be printed: a family reading only the later one
+    // arrives at an empty corner.
+    expect(text).toContain(R.walk.meet);
+    expect(text).toContain(R.walk.start);
+    expect(R.pads).toHaveLength(2);
+    for (const pad of R.pads) expect(text).toContain(esc(pad));
+    expect(text).toContain(R.gathering.start);
+    expect(text).toContain(R.gathering.end);
+    expect(text).toContain(R.gathering.place);
+    // Both dismissal times, never averaged into one line about early
+    // dismissal — a parent at the wrong bell is a child waiting.
+    expect(R.dismissal).toHaveLength(2);
+    for (const { who, time } of R.dismissal) {
+      expect(text).toContain(who);
+      expect(text).toContain(time);
+    }
+  });
+
+  it('tells a family who is not walking where to go instead', () => {
+    vi.setSystemTime(RALLY_NOON);
+    expect(plan()).toContain('meet us at the front gate');
+  });
+
+  it('says the field sessions moved, and that the rest is still on', () => {
+    vi.setSystemTime(RALLY_NOON);
+    expect(R.fieldPostponed).toBe(true);
+    /* The postponement has to read as moved rather than cancelled, on
+       both pages that mention the field sessions — and the two parts
+       of the morning that are unaffected have to say so, or a family
+       reading about a postponement stays home. */
+    for (const text of [plan(), String(prizesSlots(null)['every-rocket'])]) {
+      expect(text).toMatch(/postponed/i);
+      expect(text).not.toMatch(/cancel/i);
+    }
+    expect(plan()).toContain('happening exactly as planned');
+    expect(String(prizesSlots(null)['every-rocket'])).toContain('still coming');
+  });
+
+  it('hands the prizes out on Rally day, at the Gathering', () => {
+    vi.setSystemTime(RALLY_NOON);
+    const when = String(prizesSlots(null)['prize-when']);
+    expect(when).toContain('Rocket Gathering');
+    expect(when).toContain(R.label);
+    // The sentence this replaced named a Gathering two days later.
+    expect(when).not.toContain('October 9');
+    // And the card below it gives the whole slot, in one breath.
+    expect(String(prizesSlots(null)['every-rocket'])).toContain(R.gathering.window);
+  });
+
+  it('points at the gift form until giving closes, and then stops', () => {
+    // 6:59pm Pacific on the sixth, and 7:01pm the same evening.
+    vi.setSystemTime(new Date('2026-10-07T01:59:00Z'));
+    expect(data.givingOpen()).toBe(true);
+    expect(plan()).toContain('/donate');
+    expect(plan()).toContain(data.CAMPAIGN.closeLabel);
+
+    vi.setSystemTime(new Date('2026-10-07T02:01:00Z'));
+    expect(data.givingOpen()).toBe(false);
+    expect(plan()).not.toContain('/donate');
+    // The plan itself stands: the morning is still ahead of us.
+    expect(plan()).toContain(R.walk.meet);
+  });
+
+  it('carries one line on the board, pointing at the whole morning', () => {
+    vi.setSystemTime(RALLY_NOON);
+    const line = String(boardSlots(null)['board-rally']);
+    expect(line).toContain(R.label);
+    expect(line).toContain(R.walk.meet);
+    expect(line).toContain(R.gathering.start);
+    expect(line).toContain('href="/#rally-day"');
+  });
+
+  it('takes itself off both pages once the morning is over', () => {
+    vi.setSystemTime(DAY_AFTER);
+    // null is the signal pages.js removes the element on, so neither
+    // an empty section nor a stale instruction reaches the browser.
+    expect(homeSlots(null)['rally-day']).toBeNull();
+    expect(boardSlots(null)['board-rally']).toBeNull();
   });
 });

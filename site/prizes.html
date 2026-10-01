@@ -18,7 +18,11 @@
   <div class="flow-header wrap-narrow">
     <h1>Prizes &amp; the Classroom Race</h1>
     <span class="script">Every Rocket, every class.</span>
-    <small class="assurance">Prizes are handed out Friday, October 9 at the Rocket Gathering</small>
+    <!-- Filled from RALLY_DAY, because this line has already been
+         wrong once: it promised a Friday Gathering two days after the
+         Rally. A date typed into a page drifts; a date read from the
+         constant cannot. -->
+    <small class="assurance" id="prize-when"></small>
   </div>
 
   <div class="wrap-narrow">
@@ -55,7 +59,10 @@
         <div class="tier-head">
           <h3>Every Rocket</h3>
         </div>
-        <p class="prize-body">A mini field day with your grade at the Rally on October 7. Games, activities and a frozen treat. No donation needed.</p>
+        <!-- What Rally morning actually holds, and — while the field
+             sessions are postponed for the heat — that they are moved
+             rather than gone. Both come from RALLY_DAY. -->
+        <div id="every-rocket"></div>
       </div>
       <div class="tier-card">
         <div class="tier-head">

@@ -220,6 +220,53 @@ const CAMPAIGN = {
   closeDayLabel: 'October 6th',
 };
 
+/* Rally day itself: the morning the whole campaign has been pointing
+   at. Every time and place on it lives here because the home page,
+   the prizes page and the shirt copy each say some part of it, and a
+   time typed in three places is a time that drifts — which is exactly
+   how the prizes page came to promise a Friday.
+
+   `fieldPostponed` is October in Tustin. The grade-level field
+   sessions that were to follow the Gathering are moved to cooler
+   days, and the pages have to say so without reading as cancelled.
+   When they are rescheduled, clear this flag and name the new day. */
+const RALLY_DAY = {
+  date: '2026-10-07',
+  label: 'Wednesday, October 7',
+  // The same day inside a sentence, where the weekday is a mouthful.
+  dayLabel: 'October 7',
+  /* Walk to School Day. Families gather at a corner and walk in
+     together, so the meeting time and the step-off are five minutes
+     apart and both matter: a family reading only the later one
+     arrives to an empty corner. */
+  walk: { meet: '7:15am', start: '7:20am' },
+  // Two Launch Pads, either one. Not a route — a choice of corner.
+  pads: ['Red Hill Ave & Bullard Ln', 'La Loma Dr & Arroyo Ave'],
+  /* `window` is both ends in one breath, for a sentence that names the
+     whole slot; `start` and `end` are for the places that name one
+     edge — a schedule column, or "until 8:30am". Spelling the window
+     out beats deriving it: "8:00am to 8:30am" says the hour twice. */
+  gathering: { start: '8:00am', end: '8:30am', window: '8:00–8:30am', place: 'the quad' },
+  /* A minimum day, with two bells twenty-nine minutes apart. Parents
+     plan pickup around these, so both are named rather than rounded
+     into one line about "early dismissal". */
+  dismissal: [
+    { who: 'TK and Kindergarten', time: '12:45pm' },
+    { who: 'Grades 1–5', time: '1:14pm' },
+  ],
+  fieldPostponed: true,
+};
+
+/* Is giving still open? Same minute-inclusive rule as the shirts: a
+   family clicking Give at 7:00 on the sixth is in. */
+const givingOpen = (now = new Date()) => pacificAt(now) <= CAMPAIGN.close;
+
+/* Is Rally day still ahead of us, or happening today? The home page's
+   plan is a set of instructions for one morning, so it stands through
+   that morning and then takes itself out of the page rather than
+   telling November's visitors where to stand at 7:15. */
+const rallyAhead = (now = new Date()) => pacificAt(now).slice(0, 10) <= RALLY_DAY.date;
+
 /* A priority's share of the campaign goal, in proportion to its
    annual cost. A home card's trail runs toward this figure, which is
    never printed: the cards reach the star together when the Rally
@@ -357,12 +404,12 @@ const gradeName = (g) => GRADE_NAMES[g] || `${g} grade`;
    never defines `module`. */
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
-    ORG, PRIORITIES, SUPPORT_ALL, CAMPAIGN, CLASSROOMS, PARTNER_TIERS, PARTNERS,
+    ORG, PRIORITIES, SUPPORT_ALL, CAMPAIGN, RALLY_DAY, CLASSROOMS, PARTNER_TIERS, PARTNERS,
     ANNUAL_LEVELS,
     MAX_NAME, MAX_AMOUNT, MAX_STUDENTS, MAX_SHIRTS, SHIRT, STUDENT_GOAL, LUNCH, feeCoverCents,
     ANNUAL_COST,
     priorityById, classroomById, boardClassrooms, partnerTierById, annualLevelById, gradeName, shirtSizeById,
-    pacificAt, shirtsOpen,
+    pacificAt, shirtsOpen, givingOpen, rallyAhead,
     priorityTarget, presentingPartner,
   };
 }
