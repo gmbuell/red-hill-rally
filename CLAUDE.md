@@ -719,6 +719,26 @@ flip to live, in this order:
   - *`CAMPAIGN.close` / `closeLabel`* is when giving closes and the
     classroom race locks — the only deadline left once the goal is met.
     Same Pacific pattern as `SHIRT.deadline`; move the two together.
+  - *`RALLY_DAY`* is the morning itself: the date, both walk times, the
+    two Launch Pad corners, the Gathering's window and place, and both
+    minimum-day bells. Every page that names any of it reads from here
+    — the home page's `rally-day` section, one line on the Rally Board,
+    and the prizes page's `prize-when` and `every-rocket` slots —
+    because a time typed into three pages drifts, which is how the
+    prizes page came to promise a Friday Gathering two days after the
+    Rally. `rallyAhead` is the clock: the home section and the board
+    line return `null` from the morning after `RALLY_DAY.date`, so
+    nobody lands here in November and reads where to stand at 7:15,
+    and `givingOpen` drops the plan's gift line a day earlier when
+    `CAMPAIGN.close` passes. The prizes page keeps its two slots either
+    way — it is the page's own copy, not instructions for one morning.
+    - **`fieldPostponed`** is set today: the grade-level field sessions
+      are moved for the heat forecast, so both pages that mention them
+      say *moved* rather than cancelled and name Walk to School Day and
+      the Gathering as unaffected, or a family reading about a
+      postponement stays home. **Clear the flag once there are cooler
+      dates** and the ordinary copy comes back. `test/views.spec.js`
+      pins both states.
 - **Partner logos** — businesses upload a logo on the thank-you page
   right after paying; images **auto-publish** to /partners and the
   Rally Board (a PDF converts in the partner's browser, print original
