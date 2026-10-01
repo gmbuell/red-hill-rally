@@ -441,12 +441,22 @@ describe('rendered pages', () => {
   });
 
   it('renders the shirt page complete, with the price from data.js', async () => {
-    const { text } = await page('/shirt');
-    expect(text).toContain('id="shirt-name-0"');
-    expect(text).toContain(`<option value="${data.SHIRT.sizes[0].id}">`);
-    // The price and the credit are stated once, in data.js.
-    expect(text).toContain(`<strong>$${data.SHIRT.price}</strong>`);
-    expect(text).toContain(`<strong>$${data.SHIRT.credit}</strong>`);
+    /* The form is only on the page while ordering is open, so this has
+       to say when it is standing — the test below pins the closed case
+       and this one used to read the real clock, which made it fail the
+       morning after the deadline passed. Derived from the deadline,
+       half a day before it, so moving the cutoff can't stale it. */
+    try {
+      vi.setSystemTime(new Date(Date.parse(`${data.SHIRT.deadline.slice(0, 10)}T00:00:00Z`) - 12 * 3600 * 1000));
+      const { text } = await page('/shirt');
+      expect(text).toContain('id="shirt-name-0"');
+      expect(text).toContain(`<option value="${data.SHIRT.sizes[0].id}">`);
+      // The price and the credit are stated once, in data.js.
+      expect(text).toContain(`<strong>$${data.SHIRT.price}</strong>`);
+      expect(text).toContain(`<strong>$${data.SHIRT.credit}</strong>`);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('takes the shirt form off the page after the ordering deadline', async () => {

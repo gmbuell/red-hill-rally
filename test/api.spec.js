@@ -22,6 +22,23 @@ const SHIRT_CENTS = data.SHIRT.price * 100;
 const CREDIT_CENTS = data.SHIRT.credit * 100;
 const dollars = (cents) => (cents / 100).toFixed(2);
 
+/* A test that buys a shirt has to say when it is standing: ordering
+   closes at SHIRT.deadline, and the checkout refuses a shirt after it.
+   The tests below read the real clock instead, so they passed only
+   while the deadline was in the future and all went red the morning
+   after it passed — taking `npm test`, and with it `predeploy`, with
+   them. Derived from the deadline rather than typed, half a day before
+   it, so moving the cutoff cannot stale them again. */
+const SHIRTS_OPEN = new Date(Date.parse(`${data.SHIRT.deadline.slice(0, 10)}T00:00:00Z`) - 12 * 3600 * 1000);
+const whileOrdering = (fn) => async () => {
+  vi.setSystemTime(SHIRTS_OPEN);
+  try {
+    return await fn();
+  } finally {
+    vi.useRealTimers();
+  }
+};
+
 /* Checkout tests run the worker in this isolate so the outbound Stripe
    call can be stubbed at the fetch global. */
 const stubStripe = (reply = { id: 'cs_1', url: 'https://checkout.stripe.com/c/pay/cs_1' }) => {
@@ -322,7 +339,7 @@ describe('checkout', () => {
     expect(sent.get('metadata[fee_cents]')).toBe('0');
   });
 
-  it('adds a shirt line and stamps each Rocket’s sizes into metadata', async () => {
+  it('adds a shirt line and stamps each Rocket’s sizes into metadata', whileOrdering(async () => {
     const calls = stubStripe();
     const res = await checkoutDirect({ ...validCheckout, coverFees: false, students: [
       { c: ROOM_A, n: 'Mia Rodriguez', s: [SIZE_A, SIZE_B] }, { c: ROOM_B, n: 'Leo Park', s: [SIZE_A] },
@@ -339,18 +356,18 @@ describe('checkout', () => {
     expect(JSON.parse(sent.get('metadata[students]')))
       .toEqual([{ c: ROOM_A, n: 'Mia Rodriguez' }, { c: ROOM_B, n: 'Leo Park' }]);
     expect(sent.get('success_url')).toContain('shirts=3');
-  });
+  }));
 
-  it('covers the fee on the gift and the shirts together', async () => {
+  it('covers the fee on the gift and the shirts together', whileOrdering(async () => {
     const calls = stubStripe();
     await checkoutDirect({ ...validCheckout, coverFees: true, students: [{ c: ROOM_A, n: 'Mia Rodriguez', s: [SIZE_A] }] });
     const sent = new URLSearchParams(String(calls[0].body));
     // $120 charged needs $3.01 extra to net $120 after 2.2% + 30¢.
     expect(sent.get('line_items[2][price_data][unit_amount]')).toBe(String(data.feeCoverCents(10000 + SHIRT_CENTS)));
     expect(sent.get('metadata[fee_cents]')).toBe(String(data.feeCoverCents(10000 + SHIRT_CENTS)));
-  });
+  }));
 
-  it('itemizes the shirts’ fair-market value on the receipt', async () => {
+  it('itemizes the shirts’ fair-market value on the receipt', whileOrdering(async () => {
     const calls = stubStripe();
     await checkoutDirect({ ...validCheckout, amount: 50, coverFees: false, students: [{ c: ROOM_A, n: 'Mia Rodriguez', s: [SIZE_A] }] });
     const sent = new URLSearchParams(String(calls[0].body));
@@ -361,9 +378,9 @@ describe('checkout', () => {
     expect(desc).toContain(`$${dollars(value)} is the estimated fair market value of 1 Rocket Rally shirt`);
     expect(desc).toContain(`remaining $${dollars(5000 + SHIRT_CENTS - value)}`);
     expect(desc).toContain('no other goods or services were provided');
-  });
+  }));
 
-  it('lets a family buy just a shirt, which still credits the Rocket', async () => {
+  it('lets a family buy just a shirt, which still credits the Rocket', whileOrdering(async () => {
     const calls = stubStripe();
     const res = await checkoutDirect({ ...validCheckout, amount: 0, coverFees: false, students: [{ c: ROOM_A, n: 'Mia Rodriguez', s: [SIZE_A] }] });
     expect(res.status).toBe(200);
@@ -373,9 +390,9 @@ describe('checkout', () => {
     expect(sent.has('line_items[1][quantity]')).toBe(false);
     expect(sent.get('metadata[priority]')).toBe(P_MAIN.id);
     expect(sent.get('metadata[shirts]')).toBe(`0:${SIZE_A}`);
-  });
+  }));
 
-  it('sends a shirt-page order back to the shirt page, not the wizard', async () => {
+  it('sends a shirt-page order back to the shirt page, not the wizard', whileOrdering(async () => {
     const calls = stubStripe();
     const order = {
       ...validCheckout, amount: 0, back: 'shirt', priority: data.SUPPORT_ALL.id,
@@ -388,7 +405,7 @@ describe('checkout', () => {
     expect((await checkoutDirect({ ...order, back: '/evil.example' })).status).toBe(200);
     expect(new URLSearchParams(String(wizard[0].body)).get('cancel_url'))
       .toBe(`https://rally.test/donate?p=${data.SUPPORT_ALL.id}`);
-  });
+  }));
 
   it('rejects a shirt order missing what the printer needs', async () => {
     const bad = async (patch) => (await post('/api/checkout', { ...validCheckout, ...patch })).status;
@@ -420,7 +437,7 @@ describe('checkout', () => {
     }
   });
 
-  it('takes shirt sizes for a family link’s Rockets in link order', async () => {
+  it('takes shirt sizes for a family link’s Rockets in link order', whileOrdering(async () => {
     const { code } = await (await post('/api/link', {
       students: [{ n: 'Leo Park', c: ROOM_B }, { n: 'Ana Park', c: ROOM_C }],
     })).json();
@@ -430,7 +447,7 @@ describe('checkout', () => {
     expect(sent.get('metadata[shirts]')).toBe(`1:${SIZE_B}`);
     expect(JSON.parse(sent.get('metadata[students]')))
       .toEqual([{ c: ROOM_B, n: 'Leo Park' }, { c: ROOM_C, n: 'Ana Park' }]);
-  });
+  }));
 
   it('allows anonymous gifts without a donor name', async () => {
     stubStripe({ id: 'cs_3', url: 'https://checkout.stripe.com/c/pay/cs_3' });
