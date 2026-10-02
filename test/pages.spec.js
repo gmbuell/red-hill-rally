@@ -127,16 +127,26 @@ describe('rendered pages', () => {
       metadata: { students: JSON.stringify([{ c: ROOM_A, n: name }]) },
     }), 1756100000);
 
-    it('prints the leader’s total, rounded down to the hundred', async () => {
+    it('prints the leader’s own total, to the dollar', async () => {
       await forRocket('cs_a', 'Sammy Webber', 125000);   // $1,250, one gift
       await forRocket('cs_b', 'Sammy Webber', 4900);     // and $49 more
       await forRocket('cs_c', 'Leo Park', 40000);
       const { text } = await page('/prizes');
-      // $1,299 rounds down to $1,200: never up, and never the real
-      // figure, so matching it to the dollar doesn't take the lead.
-      expect(text).toContain('Our current first place student has raised more than $1,200 so far.');
-      expect(text).not.toContain('$1,299');
+      // $1,299 exactly. The figure was rounded to the hundred until the
+      // last week of the campaign; the note on `prizeNumbers` says why
+      // the PTA traded that protection for an answer families could use.
+      expect(text).toContain('Our current first place student has raised $1,299 so far.');
       expect(text).not.toContain('$1,300');
+      expect(text).not.toContain('more than');
+    });
+
+    it('never prints a figure above what the leader has raised', async () => {
+      // A split gift leaves fractional cents behind, and a published
+      // figure that rounded up would be a total no child has reached.
+      await forRocket('cs_a', 'Sammy Webber', 100050);   // $1,000.50
+      const { text } = await page('/prizes');
+      expect(text).toContain('raised $1,000 so far.');
+      expect(text).not.toContain('$1,001');
     });
 
     it('names nobody, and says nothing about anyone in second', async () => {
@@ -150,7 +160,7 @@ describe('rendered pages', () => {
       /* The dollar figure and nothing else about the leader — not how
          many gifts are behind it, not when the last one landed. Every
          extra fact is one more thing published about one child. */
-      expect(text).toMatch(/first place student has raised more than \$1,200 so far\.</);
+      expect(text).toMatch(/first place student has raised \$1,250 so far\.</);
     });
 
     it('counts a Rocket the way the PTA’s own sheet counts one', async () => {
@@ -166,7 +176,7 @@ describe('rendered pages', () => {
       const { text } = await page('/prizes');
       // Sammy's two spellings make $1,200; the split gift gives Leo
       // $500, so it is Sammy in front.
-      expect(text).toContain('more than $1,200 so far');
+      expect(text).toContain('$1,200 so far');
     });
 
     /* The lunch has no cap, so this one is a count of winners rather
@@ -212,7 +222,7 @@ describe('rendered pages', () => {
         }), 1756100000)));
 
       const board = await page('/rally-board');
-      expect(board.text).toContain('More than $1,200');
+      expect(board.text).toContain('$1,250');
       expect(board.text).toContain('<strong>1 Rocket</strong> has earned a seat');
       for (const needle of PII) expect(board.text).not.toContain(needle);
       expect(board.text).not.toContain('Sammy');
@@ -220,7 +230,7 @@ describe('rendered pages', () => {
 
       // And the prizes page agrees, to the dollar.
       const prizes = await page('/prizes');
-      expect(prizes.text).toContain('more than $1,200 so far');
+      expect(prizes.text).toContain('$1,250 so far');
       expect(prizes.text).toContain('1 Rocket has earned a seat so far.');
     });
 
@@ -255,7 +265,7 @@ describe('rendered pages', () => {
       }), 1756100000);
       await forRocket('cs_a', 'Sammy Webber', 30000);
       const { text } = await page('/prizes');
-      expect(text).toContain('more than $300 so far');
+      expect(text).toContain('$300 so far');
       expect(text).not.toContain('$5,000');
     });
   });

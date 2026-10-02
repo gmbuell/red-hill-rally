@@ -463,11 +463,14 @@ export async function classroomTotals(db) {
    - **No name leaves here.** It returns dollars. The per-Rocket names
      this reads are already backend-only and stay that way, which
      `test/pages.spec.js` probes the rendered page for.
-   - **Rounded down to the nearest $100**, so it doesn't twitch every
-     time someone gives $10, and so the published figure always sits
-     *under* the real leader. A family that matches the number to the
-     dollar has not taken the lead — which is what keeps this a
-     reason to give rather than a target to snipe.
+   - **The exact figure, to the dollar.** It was rounded down to the
+     nearest $100 for the first three weeks, so it would not twitch at
+     every $10 gift and so a family matching the printed number could
+     not have taken the lead. The PTA's call, in the last week, is that
+     the vagueness cost more than it protected: "more than $1,200" does
+     not answer the question families were asking, which is what it
+     would actually take. Cents are dropped downward, so the figure is
+     still never above what the leader has raised.
    - **Gifts that named no Rocket are not a Rocket.** They fold into
      one nameless bucket per classroom that can hold several families,
      so counting it as a contender would publish a number nobody
@@ -496,7 +499,7 @@ const prizeNumbers = (rooms) => {
       if (s.gifts >= LUNCH.gifts) lunch += 1;
     }
   }
-  return { lead: Math.floor(top / 10000) * 100, lunch };
+  return { lead: Math.floor(top / 100), lunch };
 };
 
 export async function prizeStats(db) {

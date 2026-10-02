@@ -469,7 +469,7 @@ describe('the student prizes on the board', () => {
 
   it('prints the first-place figure and the count who have earned the lunch', () => {
     const { lead, lunch } = notes({ lead: 1200, lunch: 3 });
-    expect(lead).toContain('More than $1,200');
+    expect(lead).toContain('$1,200');
     expect(lead).toContain('in first place');
     expect(lunch).toContain('<strong>3 Rockets</strong> have earned a seat');
   });

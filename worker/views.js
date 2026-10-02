@@ -597,14 +597,14 @@ export const boardSlots = (live) => {
      Both figures come off `boardStats`, which has already built the
      tally, so the board costs no extra read and cannot print a
      different leader than the prizes page. Neither carries a name:
-     the dollars are rounded down to the hundred in `store.js`, so
-     "more than" is literally true and matching the figure to the
-     dollar does not take the lead. */
+     the figure is the leader's own total to the dollar, which is what
+     the PTA decided families needed in the last week — see the note
+     on `prizeNumbers` in `store.js` for what that traded away. */
   const prizes = (live && live.prizes) || {};
   const lead = prizes.lead || 0;
   const lunch = prizes.lunch || 0;
   const leadNote = card('Principal for the Day · most raised', lead
-    ? html`<strong>More than ${money(lead)}</strong> in first place`
+    ? html`<strong>${money(lead)}</strong> in first place`
     : html`Still anyone&rsquo;s. It goes to the Rocket who raises the most.`);
   const lunchNote = card(`Lunch with Ms. Malpass and Mr. Strong · ${LUNCH.gifts} gifts`, lunch
     ? html`<strong>${lunch} Rocket${lunch === 1 ? '' : 's'}</strong> ${lunch === 1 ? 'has' : 'have'} earned a seat`
@@ -693,13 +693,14 @@ export const partnersSlots = (live) => ({
 
    A statement of fact rather than a challenge ("first place has
    raised…", not "it takes…"): the reader works out what they'd need,
-   and the page isn't daring anyone. `store.prizeStats` rounds down to
-   the nearest $100, so "more than" is the literal truth and the real
-   leader is always a little further off than the page admits.
+   and the page isn't daring anyone. `store.prizeStats` gives the
+   leader's own total to the dollar — it was rounded to the nearest
+   $100 until the last week of the campaign, and the note there says
+   why that changed and what it cost.
 
    Below $100 the slot returns null and the line leaves the page
    altogether — the same removal the shirt form uses. "First place has
-   raised more than $0" is not a fact worth publishing, and early in a
+   raised $0" is not a fact worth publishing, and early in a
    campaign it reads as a school nobody is giving to. The zero state
    (a failed D1 read) lands here too, so a page that couldn't count
    says nothing rather than something wrong. */
@@ -720,7 +721,7 @@ export const prizesSlots = (live) => {
         <p class="prize-body">Your grade&rsquo;s mini field day &mdash; games, activities and a frozen treat &mdash; is <strong>postponed to a cooler day</strong> because of the heat forecast. It is still coming.</p>` : html`
         <p class="prize-body">Plus a mini field day with your grade: games, activities and a frozen treat.</p>`}`,
     'prize-lead': lead < 100 ? null : html`
-      <strong>Our current first place student has raised more than ${money(lead)} so far.</strong>
+      <strong>Our current first place student has raised ${money(lead)} so far.</strong>
       <small>Updated as gifts come in.</small>`,
     /* The lunch has no cap, so this is a count of Rockets who have
        already won it, not a bar to clear. It is the evidence that ten

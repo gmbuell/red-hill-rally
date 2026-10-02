@@ -201,13 +201,18 @@ secrets; the maintainer reviews and ships PRs.
 - **The prizes page publishes two live numbers and no name.** Families
   kept asking the PTA what it would take to win Principal for the Day,
   so `prizeStats` in `store.js` feeds a line under the grand prize:
-  *"Our current first place student has raised more than $1,200
-  so far."* Four rules hold
-  it together, and `test/pages.spec.js` pins each one.
-  - **Rounded down to the nearest $100.** So it doesn't twitch at
-    every $10 gift, and so the published figure always sits *under*
-    the real leader — matching it to the dollar does not take the
-    lead. "More than" is therefore literally true.
+  *"Our current first place student has raised $1,299 so far."* Four
+  rules hold it together, and `test/pages.spec.js` pins each one.
+  - **The exact figure, to the dollar**, with cents dropped downward so
+    it is never above what the leader has actually raised. It was
+    **rounded down to the nearest $100** for the first three weeks, so
+    it would not twitch at every $10 gift and so a family matching the
+    printed number could not have taken the lead off a figure the site
+    handed them. The PTA changed it in the last week of the campaign,
+    judging that "more than $1,200" did not answer the question
+    families were actually asking. Worth re-reading that trade before
+    next year's Rally: the protection was real, and so was the
+    vagueness.
   - **A number, never a name.** It returns dollars and a gift count.
     The per-Rocket names it reads stay backend-only, and the page is
     probed for them like every other.
