@@ -284,21 +284,28 @@ const priorityTarget = (p) =>
 const ANNUAL_COST = PRIORITIES.filter((p) => !p.oneTime).reduce((s, p) => s + p.goal, 0);
 
 /* The classroom roster, keyed by teacher. `students` is the class
-   size and sets the participation denominator in the classroom race. */
+   size and sets the participation denominator in the classroom race.
+
+   Last checked against the office's own roster dated 1 October 2026,
+   which had 511 children to these numbers' 505: six rooms had gained
+   one since they were typed in. A class size that drifts low prints a
+   participation percentage that is too high and can hand a room a
+   prize it has not earned, so re-check these against a fresh roster
+   before prizes are awarded, not after. */
 const CLASSROOMS = [
   { id: 'hesseltine', teacher: 'Mrs. Hesseltine', grade: 'TK', students: 20 },
-  { id: 'wass', teacher: 'Mrs. Wass', grade: 'TK', students: 19 },
+  { id: 'wass', teacher: 'Mrs. Wass', grade: 'TK', students: 20 },
   { id: 'montgomery', teacher: 'Mrs. Montgomery', grade: 'TK', students: 20 },
   { id: 'michel', teacher: 'Mrs. Michel', grade: 'K', students: 27 },
-  { id: 'convery', teacher: 'Ms. Convery', grade: 'K', students: 27 },
+  { id: 'convery', teacher: 'Ms. Convery', grade: 'K', students: 28 },
   { id: 'marshall', teacher: 'Ms. Marshall', grade: 'K', students: 25 },
   { id: 'knott', teacher: 'Mrs. Knott', grade: '1st', students: 26 },
   { id: 'ludes', teacher: 'Mrs. Ludes', grade: '1st', students: 26 },
-  { id: 'miller', teacher: 'Ms. Miller', grade: '1st', students: 26 },
+  { id: 'miller', teacher: 'Ms. Miller', grade: '1st', students: 27 },
   { id: 'sharp', teacher: 'Mrs. Sharp', grade: '1st/2nd', students: 26 },
   { id: 'bryan', teacher: 'Mrs. Bryan', grade: '2nd', students: 26 },
-  { id: 'bowers', teacher: 'Mrs. Bowers', grade: '2nd', students: 26 },
-  { id: 'zweber', teacher: 'Mr. Zweber', grade: '3rd', students: 31 },
+  { id: 'bowers', teacher: 'Mrs. Bowers', grade: '2nd', students: 27 },
+  { id: 'zweber', teacher: 'Mr. Zweber', grade: '3rd', students: 32 },
   { id: 'harrison', teacher: 'Mrs. Harrison', grade: '3rd', students: 31 },
   { id: 'sianez', teacher: 'Mrs. Sianez', grade: '4th', students: 32 },
   { id: 'herman', teacher: 'Mrs. Herman', grade: '4th', students: 33 },
@@ -312,7 +319,7 @@ const CLASSROOMS = [
      can still earn them. Only the public per-class ranking is held
      back, and it is the PTA's call which rooms want that. */
   { id: 'bishop', teacher: 'Mr. Bishop', grade: 'SDC', students: 14 },
-  { id: 'smith', teacher: 'Mrs. Smith', grade: 'SDC', students: 12, offBoard: true },
+  { id: 'smith', teacher: 'Mrs. Smith', grade: 'SDC', students: 13, offBoard: true },
 ];
 
 /* The rooms the Rally Board ranks. Everything else in the site reads

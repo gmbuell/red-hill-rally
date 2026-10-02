@@ -684,6 +684,15 @@ flip to live, in this order:
   the ticker figure; a priority's goal is its annual program cost and
   only shapes copy and the card trails. An Annual Partner carries
   `annual`, and `presenting: true` names the one the home hero credits.
+  - *A classroom's `students`* is the participation denominator, so it
+    decides prizes. Check it against the office's own roster before
+    prizes are awarded, not after: in October 2026 six rooms had each
+    gained a child since the sizes were typed in (505 to 511), and a
+    class size that drifts low prints a percentage that reads high —
+    four of the six were showing 100%. The same denominator reaches
+    Mission Control's classroom sheet, which is what the 80% and 100%
+    prizes are awarded from, so the drift reaches the prize and not
+    just the page.
   - *Once `raised` reaches `CAMPAIGN.goal`* the home hero and the board
     change what they ask for, with **no second dollar target**: the
     goal stays met and celebrated, and the live ask becomes the one
