@@ -249,7 +249,13 @@ secrets; the maintainer reviews and ships PRs.
     pages cannot print different leaders — `test/pages.spec.js` checks
     them against each other. On the board, empty reads "Still
     anyone's" and "Still open" rather than vanishing: it is a live
-    scoreboard, and its other cards already do that.
+    scoreboard, and its other cards already do that. **Under $100 the
+    board reads "Still anyone's" too**, matching the floor the prizes
+    page drops its line at, so the two cannot disagree about whether
+    there is a leader to print. That used to come for free, since a
+    figure rounded down to the hundred reached the board as 0 below
+    $100; printing to the dollar it does not, so `boardSlots` checks
+    the hundred itself and `test/views.spec.js` pins it.
 
 ## Gotchas
 

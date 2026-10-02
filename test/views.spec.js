@@ -494,6 +494,18 @@ describe('the student prizes on the board', () => {
     expect(lunch).not.toContain('0 Rockets');
   });
 
+  /* Under $100 the prizes page drops its line altogether, so the board
+     must not print a figure the prizes page is withholding — the two
+     cannot show different leaders. While the figure was rounded down to
+     the hundred the two thresholds were the same test, because anything
+     under $100 arrived here as 0; printing to the dollar separates
+     them, so the board now checks the hundred for itself. */
+  it('holds the first-place figure back below $100, as the prizes page does', () => {
+    const { lead } = notes({ lead: 50, lunch: 0 });
+    expect(lead).toContain('Still anyone');
+    expect(lead).not.toContain('$50');
+  });
+
   it('survives a board with no stats at all', () => {
     const slots = boardSlots(null);
     expect(String(slots['lead-note'])).toContain('Still anyone');

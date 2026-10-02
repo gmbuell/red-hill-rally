@@ -599,11 +599,18 @@ export const boardSlots = (live) => {
      different leader than the prizes page. Neither carries a name:
      the figure is the leader's own total to the dollar, which is what
      the PTA decided families needed in the last week — see the note
-     on `prizeNumbers` in `store.js` for what that traded away. */
+     on `prizeNumbers` in `store.js` for what that traded away.
+
+     Under $100 this card reads "Still anyone's", the same floor the
+     prizes page drops its line at: the two must not disagree about
+     whether there is a leader to print. That floor used to come for
+     free, because a figure rounded down to the hundred arrived here as
+     0 below $100; to the dollar it does not, so the hundred is checked
+     here explicitly. */
   const prizes = (live && live.prizes) || {};
   const lead = prizes.lead || 0;
   const lunch = prizes.lunch || 0;
-  const leadNote = card('Principal for the Day · most raised', lead
+  const leadNote = card('Principal for the Day · most raised', lead >= 100
     ? html`<strong>${money(lead)}</strong> in first place`
     : html`Still anyone&rsquo;s. It goes to the Rocket who raises the most.`);
   const lunchNote = card(`Lunch with Ms. Malpass and Mr. Strong · ${LUNCH.gifts} gifts`, lunch
