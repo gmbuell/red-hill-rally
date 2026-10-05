@@ -6,6 +6,20 @@ import { header, footer } from '../worker/views.js';
 import data from '../site/js/data.js';
 import { paidSession, paidPartnership, PII, PAGE_PATHS } from './fixtures.js';
 
+/* Giving closes at CAMPAIGN.close and the donate form leaves the served
+   HTML with it, so a test that asks the donate page for a radio button
+   has to say when it is standing. These two read the real clock and went
+   red the evening the close passed. Half a day before it, derived rather
+   than typed, the same shape the shirt-deadline tests below use. */
+const whileGiving = (fn) => async () => {
+  vi.setSystemTime(new Date(Date.parse(`${data.CAMPAIGN.close.slice(0, 10)}T00:00:00Z`) - 12 * 3600 * 1000));
+  try {
+    return await fn();
+  } finally {
+    vi.useRealTimers();
+  }
+};
+
 const [P_MAIN] = data.PRIORITIES;
 const [ROOM_A, ROOM_B] = data.CLASSROOMS.map((c) => c.id);
 
@@ -304,11 +318,11 @@ describe('rendered pages', () => {
     expect(text).toContain('id="stat-raised">$100</span>');
   });
 
-  it('offers Support It All as a seventh choice on the donate form', async () => {
+  it('offers Support It All as a seventh choice on the donate form', whileGiving(async () => {
     const { text } = await page('/donate');
     expect(text).toContain(`<input type="radio" name="priority" value="${data.SUPPORT_ALL.id}">`);
     expect(text).toContain(data.SUPPORT_ALL.name);
-  });
+  }));
 
   it('names the grand prize and how participation is counted on prizes', async () => {
     const { text } = await page('/prizes');
@@ -442,13 +456,13 @@ describe('rendered pages', () => {
     }
   });
 
-  it('renders the donate priorities and the first student-link row', async () => {
+  it('renders the donate priorities and the first student-link row', whileGiving(async () => {
     const donate = (await page('/donate')).text;
     for (const p of data.PRIORITIES) expect(donate).toContain(`<input type="radio" name="priority" value="${p.id}">`);
     const link = (await page('/student-link')).text;
     expect(link).toContain('id="sibling-name-0"');
     for (const c of data.CLASSROOMS) expect(link).toContain(`<option value="${c.id}">`);
-  });
+  }));
 
   it('renders the shirt page complete, with the price from data.js', async () => {
     /* The form is only on the page while ordering is open, so this has

@@ -1,5 +1,5 @@
 import { env, SELF, createExecutionContext, reset } from 'cloudflare:test';
-import { afterEach, describe, it, expect, vi } from 'vitest';
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 import worker from '../worker/index.js';
 import data from '../site/js/data.js';
 import { recordDonation, campaignStats, boardStats } from '../worker/store.js';
@@ -29,7 +29,18 @@ const dollars = (cents) => (cents / 100).toFixed(2);
    after it passed — taking `npm test`, and with it `predeploy`, with
    them. Derived from the deadline rather than typed, half a day before
    it, so moving the cutoff cannot stale them again. */
+const CAMPAIGN_CLOSE_DAY = data.CAMPAIGN.close.slice(0, 10);
 const SHIRTS_OPEN = new Date(Date.parse(`${data.SHIRT.deadline.slice(0, 10)}T00:00:00Z`) - 12 * 3600 * 1000);
+/* Giving has its own stated moment, and the checkout refuses a gift
+   after it. Same trap as the shirt deadline above, one deadline later:
+   every test in `checkout` that reads the real clock passed only while
+   CAMPAIGN.close was in the future, and all eleven went red the evening
+   it passed, taking `npm test` and `predeploy` with them. The describe
+   below stands half a day before the close, derived from it rather than
+   typed; the two tests that are about the close itself set their own
+   moment and override this. */
+const GIVING_OPEN = new Date(Date.parse(`${CAMPAIGN_CLOSE_DAY}T00:00:00Z`) - 12 * 3600 * 1000);
+
 const whileOrdering = (fn) => async () => {
   vi.setSystemTime(SHIRTS_OPEN);
   try {
@@ -203,6 +214,9 @@ describe('student links', () => {
 /* ---- checkout ---- */
 
 describe('checkout', () => {
+  beforeEach(() => { vi.setSystemTime(GIVING_OPEN); });
+  afterEach(() => { vi.useRealTimers(); });
+
   it('accepts Support It All as a choice and names it on the charge', async () => {
     const calls = stubStripe();
     const res = await checkoutDirect({ ...validCheckout, priority: data.SUPPORT_ALL.id });
@@ -432,6 +446,40 @@ describe('checkout', () => {
       vi.setSystemTime(new Date('2026-09-26T02:00:00Z'));
       stubStripe();
       expect((await checkoutDirect(shirtOrder)).status).toBe(200);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  /* Giving has its own stated moment, and the classroom race locks with
+     it. The donate page drops the form, so this covers the tab that was
+     already open when the clock ran out. */
+  it('refuses a gift once giving has closed, and takes one a minute earlier', async () => {
+    try {
+      // 7:01pm Pacific on the sixth, then 7:00pm — the stated minute is
+      // still giving time, the same rule the shirt deadline follows.
+      vi.setSystemTime(new Date('2026-10-07T02:01:00Z'));
+      const late = await post('/api/checkout', validCheckout);
+      expect(late.status).toBe(400);
+      expect((await late.json()).error).toContain(data.CAMPAIGN.closeLabel);
+
+      vi.setSystemTime(new Date('2026-10-07T02:00:00Z'));
+      stubStripe();
+      expect((await checkoutDirect(validCheckout)).status).toBe(200);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  /* A business partnership is not a family gift and does not touch the
+     classroom race, and the ladder runs September to October, so a
+     partner paying after the campaign's own close is not late. */
+  it('still takes a business partnership after giving has closed', async () => {
+    try {
+      vi.setSystemTime(new Date('2026-10-07T02:01:00Z'));
+      stubStripe();
+      const res = await partnerDirect({ tier: data.PARTNER_TIERS[0].id, business: 'Galaxy Automotive & Tire' });
+      expect(res.status).toBe(200);
     } finally {
       vi.useRealTimers();
     }

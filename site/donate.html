@@ -21,7 +21,7 @@
     <small class="assurance">Donations are tax-deductible &middot; 501(c)(3) nonprofit &middot; EIN 33-0973857</small>
   </div>
 
-  <ol class="stepper wrap-narrow" aria-label="Donation steps">
+  <ol class="stepper wrap-narrow" id="donate-steps" aria-label="Donation steps">
     <li data-step="1"><span class="dot"></span><small class="s-label">Priority</small></li>
     <li data-step="2"><span class="dot"></span><small class="s-label">Your Rocket</small></li>
     <li data-step="3"><span class="dot"></span><small class="s-label">Amount</small></li>
@@ -106,6 +106,10 @@
     </div>
     <p class="form-error" id="checkout-error" role="alert" hidden></p>
   </form>
+
+  <!-- Past CAMPAIGN.close the form is removed and this carries the
+       page instead, the same swap /shirt makes at its own deadline. -->
+  <p class="closed-note wrap-narrow" id="donate-closed"></p>
 
   <p class="check-note wrap-narrow">Rather write a check? Make it out to <strong>Red Hill Elementary PTA</strong> and leave it in the front office. Put your student&rsquo;s name and teacher on the memo line so we can credit their classroom.</p>
 </main>

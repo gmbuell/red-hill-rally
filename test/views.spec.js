@@ -841,3 +841,53 @@ describe('the countdown to next year', () => {
     expect(homeSlots(null)['rally-day']).toBeNull();
   });
 });
+
+/* Giving closes at a stated moment and the classroom race locks with
+   it. The donate page has to stop offering a form that can no longer
+   do anything, the same way the shirt page does at its own deadline. */
+describe('the giving deadline', () => {
+  // 7pm Pacific on the sixth is 02:00 UTC the next morning.
+  const AT = new Date('2026-10-07T02:00:00Z');
+  const BEFORE = new Date('2026-10-07T01:59:00Z');
+  const AFTER = new Date('2026-10-07T02:01:00Z');
+
+  afterEach(() => vi.useRealTimers());
+
+  it('stays open through the stated minute and shuts the one after', () => {
+    expect(data.CAMPAIGN.close).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/);
+    expect(data.givingOpen(BEFORE)).toBe(true);
+    // The minute itself is still giving time, like the shirt deadline.
+    expect(data.givingOpen(AT)).toBe(true);
+    expect(data.givingOpen(AFTER)).toBe(false);
+  });
+
+  it('reads the clock in Pacific, so an afternoon gift is not closed by UTC', () => {
+    // 1pm Pacific on the sixth is already 20:00 UTC. Comparing UTC
+    // would shut giving six hours early on its busiest afternoon.
+    const afternoon = new Date('2026-10-06T20:00:00Z');
+    expect(data.pacificAt(afternoon)).toBe('2026-10-06 13:00');
+    expect(data.givingOpen(afternoon)).toBe(true);
+  });
+
+  it('serves the wizard while giving is open', () => {
+    vi.setSystemTime(BEFORE);
+    const slots = donateSlots();
+    expect(String(slots['priority-options'])).toContain('name="priority"');
+    // Removed, not emptied: nothing to style around or read out.
+    expect(slots['donate-closed']).toBeNull();
+    expect(slots['donate-form']).toBeUndefined();
+  });
+
+  it('takes the form off the page once giving has closed', () => {
+    vi.setSystemTime(AFTER);
+    const slots = donateSlots();
+    // null is the signal pages.js removes the element on, so a stale
+    // tab can't post from a form that was never served.
+    expect(slots['donate-form']).toBeNull();
+    expect(slots['donate-steps']).toBeNull();
+    expect(slots['priority-options']).toBeUndefined();
+    const closed = String(slots['donate-closed']);
+    expect(closed).toContain(data.CAMPAIGN.closeLabel);
+    expect(closed).toContain('/rally-board');
+  });
+});

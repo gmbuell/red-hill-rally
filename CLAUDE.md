@@ -743,7 +743,22 @@ flip to live, in this order:
       board to the same number.
   - *`CAMPAIGN.close` / `closeLabel`* is when giving closes and the
     classroom race locks — the only deadline left once the goal is met.
-    Same Pacific pattern as `SHIRT.deadline`; move the two together.
+    Same Pacific pattern as `SHIRT.deadline`; move the two together,
+    and the stated minute is still giving time.
+    - It is **enforced the way the shirt deadline is**, which it was
+      not for most of the campaign: past it `donateSlots` removes the
+      wizard and its stepper and the page carries a closed note
+      pointing at the Rally Board, and `/api/checkout` refuses a gift
+      outright, which is the backstop for a tab left open through
+      Tuesday evening. Money taken after the race locked would credit
+      a class that can no longer move.
+    - **Partnerships are not held to it.** `/api/partner/checkout` is
+      its own handler and stays open: the ladder runs September to
+      October, partner money is deliberately outside the classroom
+      race, and a business paying on Wednesday is not late.
+    - Recording a check in Mission Control is not held to it either,
+      for the same reason the shirt deadline isn't — by then it is the
+      PTA entering something it has already received.
   - *`RALLY_DAY`* is the morning itself: the date, both walk times, the
     two Launch Pad corners, the Gathering's window and place, and both
     minimum-day bells. Every page that names any of it reads from here

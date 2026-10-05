@@ -20,7 +20,7 @@ import data from '../site/js/data.js';
 import ui from '../site/js/ui.js';
 
 const { moneyCents } = ui;
-const { ORG, MAX_NAME, MAX_AMOUNT, SHIRT, STUDENT_GOAL, feeCoverCents, priorityById, partnerTierById, classroomById, CLASSROOMS, shirtsOpen, shirtSizeById } = data;
+const { ORG, MAX_NAME, MAX_AMOUNT, SHIRT, CAMPAIGN, STUDENT_GOAL, feeCoverCents, priorityById, partnerTierById, classroomById, CLASSROOMS, shirtsOpen, givingOpen, shirtSizeById } = data;
 
 /* The charge description prints on every Stripe receipt, making it the
    donor's IRS written acknowledgment (Pub 1771): org name, and either
@@ -108,6 +108,19 @@ const startCheckout = async (env, { amountCents, shirts = 0, coverFees, productN
 async function handleCheckout(request, env, url) {
   const body = await request.json().catch(() => null);
   if (!body) return json({ error: 'Please try that again.' }, 400);
+
+  /* Giving closes at a stated moment and the classroom race locks with
+     it. The donate page stops offering the form, so this is the
+     backstop for a tab left open through Tuesday evening — the same
+     job the shirt deadline's check does further down. Taking the money
+     after the race locked would credit a class that can no longer
+     move, which is worse than refusing the charge. Partnerships go
+     through their own handler and are not held to this: the ladder
+     runs September to October, and a business paying on Wednesday is
+     not late. */
+  if (!givingOpen()) {
+    return json({ error: `Giving closed ${CAMPAIGN.closeLabel}. Thank you for being part of the Rocket Rally — please refresh the page.` }, 400);
+  }
 
   const priority = priorityById(body.priority);
   if (!priority) return json({ error: 'Please pick a priority to fund.' }, 400);

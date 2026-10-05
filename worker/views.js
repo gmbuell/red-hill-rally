@@ -527,8 +527,15 @@ export const homeSlots = (live) => {
 
 /* Donate, step 1: one radio card per priority. Step 2 mentions the
    shirt add-on, so it carries the deadline and then stops mentioning
-   shirts at all once they can't be ordered. */
-export const donateSlots = () => ({
+   shirts at all once they can't be ordered.
+
+   Past CAMPAIGN.close the wizard goes rather than greys out, the way
+   the shirt form does at its own deadline: `null` removes the element,
+   so a closed form never reaches the browser to be submitted from. The
+   page then says what happened and points at the thing there still is
+   to look at. `/api/checkout` refuses as well, for the tab that was
+   already open. */
+export const donateSlots = () => (givingOpen() ? {
   'rocket-hint': shirtsOpen()
     ? html`Every gift counts for your Rocket and their class &mdash; and a Rally shirt does too, through <strong>${SHIRT.deadlineLabel}</strong>.`
     : html`Every gift counts for your Rocket and their class.`,
@@ -545,6 +552,11 @@ export const donateSlots = () => ({
         <span class="name">${SUPPORT_ALL.name}</span>
         <small class="desc">${SUPPORT_ALL.blurb}</small>
       </label>`,
+  'donate-closed': null,
+} : {
+  'donate-steps': null,
+  'donate-form': null,
+  'donate-closed': html`Giving closed <strong>${CAMPAIGN.closeLabel}</strong> and the classroom race is locked. Thank you to every family who gave &mdash; see how it finished on the <a href="/rally-board">Rally Board</a>.`,
 });
 
 /* Rally Board: campaign totals, the classroom race (ranked by
