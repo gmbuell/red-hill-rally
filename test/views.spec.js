@@ -661,11 +661,170 @@ describe('the Rally day plan', () => {
     expect(line).toContain('href="/#rally-day"');
   });
 
-  it('takes itself off both pages once the morning is over', () => {
+  it('takes the morning’s instructions off both pages once it is over', () => {
     vi.setSystemTime(DAY_AFTER);
-    // null is the signal pages.js removes the element on, so neither
-    // an empty section nor a stale instruction reaches the browser.
-    expect(homeSlots(null)['rally-day']).toBeNull();
+    // The board line goes outright; null is the signal pages.js removes
+    // the element on, so no stale instruction reaches the browser.
     expect(boardSlots(null)['board-rally']).toBeNull();
+    // Home keeps the strip and hands it to next year's countdown, so
+    // the page is never left with a gap where the plan was.
+    const home = String(homeSlots(null)['rally-day']);
+    expect(home).not.toContain('Meet at a Launch Pad');
+    expect(home).toContain('Rocket Rally 2027');
+  });
+});
+
+/* The morning after Rally day the home page stops giving instructions
+   for a morning that happened and starts counting down to the next
+   one. Months and days only: that page is rendered on the server and
+   cached for five minutes, so anything finer would print stale. */
+describe('the countdown to next year', () => {
+  const N = data.NEXT_RALLY;
+  const plan = () => String(homeSlots(null)['rally-day']);
+  const at = (day) => new Date(`${day}T19:00:00Z`);   // noon Pacific
+
+  afterEach(() => vi.useRealTimers());
+
+  it('counts whole months and the days left over', () => {
+    expect(N.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    // The morning after this year's Rally, to the day before next.
+    expect(data.untilNextRally(at('2026-10-08'))).toEqual({ months: 11, days: 9 });
+    expect(data.untilNextRally(at('2027-09-16'))).toEqual({ months: 0, days: 1 });
+    expect(data.untilNextRally(at('2027-09-17'))).toEqual({ months: 0, days: 0 });
+    // And it leaves the page rather than counting backwards.
+    expect(data.untilNextRally(at('2027-09-18'))).toBeNull();
+  });
+
+  it('borrows the right number of days from a short month', () => {
+    // Past the 17th of a month the days go negative and a month is
+    // borrowed. 25 March to 17 September is 5 months and 23 days, which
+    // only comes out right if the borrow takes August's 31 days rather
+    // than a flat 30.
+    expect(data.untilNextRally(at('2027-03-25'))).toEqual({ months: 5, days: 23 });
+    expect(data.untilNextRally(at('2027-03-01'))).toEqual({ months: 6, days: 16 });
+    expect(data.untilNextRally(at('2027-09-30'))).toBeNull();
+  });
+
+  it('turns the rocket over at Pacific midnight, not UTC', () => {
+    // 5pm Pacific on the 7th is already the 8th in UTC. Counting in UTC
+    // would drop a day off the figure every afternoon.
+    const evening = new Date('2026-10-08T00:00:00Z');
+    expect(data.pacificAt(evening).slice(0, 10)).toBe('2026-10-07');
+    expect(data.untilNextRally(evening)).toEqual({ months: 11, days: 10 });
+  });
+
+  it('hands the page over from the plan to the countdown', () => {
+    vi.setSystemTime(at('2026-10-07'));
+    expect(plan()).toContain('Meet at a Launch Pad');
+    expect(plan()).not.toContain('Rocket Rally 2027');
+
+    vi.setSystemTime(at('2026-10-08'));
+    const next = plan();
+    expect(next).toContain('Rocket Rally 2027');
+    // The date sits on its own line under the year.
+    expect(next).toContain(`<strong>Rocket Rally 2027</strong><br>${N.shortLabel}`);
+    expect(next).toContain('11');
+    expect(next).toContain('months');
+    expect(next).toContain('9');
+    expect(next).toContain('days');
+    // The morning's instructions are gone with it.
+    expect(next).not.toContain('Meet at a Launch Pad');
+    expect(next).not.toContain('7:15am');
+  });
+
+  /* The total is what all of it was for, so it leads — but only when
+     there is one. After a finished campaign a zero means the D1 read
+     failed, and thanking the school for $0 is worse than saying
+     nothing about the money at all. */
+  it('leads with the total and names the goal beneath it', () => {
+    vi.setSystemTime(at('2026-10-08'));
+    const live = { campaign: { raised: 71645, gifts: 1 }, priorities: {}, classrooms: {} };
+    const text = String(homeSlots(live)['rally-day']);
+    expect(text).toContain('<span>$71,645</span>');
+    // The goal, the first-ever Rally and where the money stays are one
+    // paragraph, not three stacked lines of their own.
+    expect(text).toContain(`<p class="intro">Our goal was ${money(data.CAMPAIGN.goal)}, and this was our first-ever Rocket Rally. Every dollar you gave stays right here at Red Hill.</p>`);
+    // The thanks and the feeling behind it lead, above the figure.
+    expect(text).toContain('<span class="label">Thank you, Red Hill. You blew us away.</span>');
+  });
+
+  /* Said once. The heading carries the total and the line under it
+     carries the goal; the overage is the reader's subtraction, not a
+     third printing of the same money. */
+  it('prints the total once and never works out the difference', () => {
+    vi.setSystemTime(at('2026-10-08'));
+    const live = { campaign: { raised: 71645, gifts: 1 }, priorities: {}, classrooms: {} };
+    const text = String(homeSlots(live)['rally-day']);
+    expect(text.split('$71,645')).toHaveLength(2);
+    expect(text).not.toContain('$21,645');
+  });
+
+  /* One word to a line, both ways the heading can read. */
+  it('stacks the heading one word to a line', () => {
+    vi.setSystemTime(at('2026-10-08'));
+    const live = { campaign: { raised: 71645, gifts: 1 }, priorities: {}, classrooms: {} };
+    expect(String(homeSlots(live)['rally-day']))
+      .toContain('<h2 class="stacked"><span>We</span><span>raised</span><span>$71,645</span></h2>');
+    expect(String(homeSlots(null)['rally-day']))
+      .toContain('<h2 class="stacked"><span>Rocket</span><span>Rally</span><span>2026</span></h2>');
+  });
+
+  it('says nothing about money when the figure could not be read', () => {
+    vi.setSystemTime(at('2026-10-08'));
+    const text = String(homeSlots(null)['rally-day']);
+    expect(text).not.toContain('$0');
+    expect(text).not.toContain('>raised<');
+    expect(text).not.toContain('Our goal was');
+    // The thank-you and the countdown still stand without it.
+    expect(text).toContain('first-ever Rocket Rally');
+    expect(text).toContain('Rocket Rally 2027');
+  });
+
+  /* Landing exactly on the goal still reads as met: the heading prints
+     the figure and the line under it prints the same one as the goal,
+     which is the plainest way to say so and needs no special case. */
+  it('reads as met when it landed exactly on the goal', () => {
+    vi.setSystemTime(at('2026-10-08'));
+    const live = { campaign: { raised: data.CAMPAIGN.goal, gifts: 1 }, priorities: {}, classrooms: {} };
+    const text = String(homeSlots(live)['rally-day']);
+    expect(text).toContain(`<span>${money(data.CAMPAIGN.goal)}</span>`);
+    expect(text).toContain(`Our goal was ${money(data.CAMPAIGN.goal)}`);
+    expect(text).not.toContain('$0');
+  });
+
+  /* The handover line sits above next year's date, and goes away on
+     the day itself, where "next year" would be wrong. */
+  it('hands the page from one Rally to the next, except on the day', () => {
+    vi.setSystemTime(at('2026-10-08'));
+    const next = plan();
+    expect(next).toContain('See you next year.');
+    // Said once, above the countdown, not again under it.
+    expect(next.split('See you next year.')).toHaveLength(2);
+
+    vi.setSystemTime(at(N.date));
+    const day = plan();
+    expect(day).not.toContain('next year');
+    expect(day).toContain('It&rsquo;s today.');
+  });
+
+  it('says one month and one day in the singular', () => {
+    vi.setSystemTime(at('2027-08-16'));
+    const text = plan();
+    expect(text).toContain('<small>month</small>');
+    expect(text).toContain('<small>day</small>');
+    expect(text).not.toContain('months');
+  });
+
+  it('drops the months once there are none, and says so on the day', () => {
+    vi.setSystemTime(at('2027-09-10'));
+    expect(plan()).not.toContain('month');
+
+    vi.setSystemTime(at('2027-09-17'));
+    expect(plan()).toContain('It&rsquo;s today');
+    expect(plan()).not.toContain('class="countdown"');
+
+    // And the day after, the whole section goes.
+    vi.setSystemTime(at('2027-09-18'));
+    expect(homeSlots(null)['rally-day']).toBeNull();
   });
 });

@@ -267,6 +267,54 @@ const givingOpen = (now = new Date()) => pacificAt(now) <= CAMPAIGN.close;
    telling November's visitors where to stand at 7:15. */
 const rallyAhead = (now = new Date()) => pacificAt(now).slice(0, 10) <= RALLY_DAY.date;
 
+/* Next year's Rally, which the home page counts down to from the
+   morning after this one. A date and the words for it; the counting
+   happens at render time.
+
+   Set in October 2026, so check it against the school calendar before
+   next fall rather than trusting it: this is a date typed a year
+   early, which is the kind that drifts. */
+const NEXT_RALLY = {
+  date: '2027-09-17',
+  label: 'Friday, September 17, 2027',
+  shortLabel: 'Friday, September 17',
+};
+
+/* How far off the next Rally is, in whole months and the days left
+   over — "11 months, 10 days". Months first because a year is a long
+   way to count in days, and nothing finer than a day because the home
+   page is rendered on the server and held in a cache for five minutes,
+   so an hour would be printed stale and a minute would be a lie.
+
+   Date-only arithmetic in Pacific, so the number turns over at
+   midnight here rather than at 5pm the day before, which is when a UTC
+   clock would turn it. `null` once the day arrives, so the slot that
+   prints this can take itself off the page. */
+const untilNextRally = (now = new Date()) => {
+  const [y, m, d] = pacificAt(now).slice(0, 10).split('-').map(Number);
+  const [ty, tm, td] = NEXT_RALLY.date.split('-').map(Number);
+  let months = (ty - y) * 12 + (tm - m);
+  let days = td - d;
+  if (days < 0) {
+    // Borrow from the month before the target, whatever its length.
+    days += new Date(Date.UTC(ty, tm - 1, 0)).getUTCDate();
+    months -= 1;
+  }
+  if (months < 0 || (months === 0 && days < 0)) return null;
+  return { months, days };
+};
+
+/* How much of the wait is behind us, 0 to 1, for the rocket that
+   crosses the trail as the year goes by. Measured between the two
+   Rally days, so it starts at the left the morning after one and
+   reaches the star on the morning of the next. */
+const nextRallyProgress = (now = new Date()) => {
+  const from = Date.parse(`${RALLY_DAY.date}T00:00:00Z`);
+  const to = Date.parse(`${NEXT_RALLY.date}T00:00:00Z`);
+  const at = Date.parse(`${pacificAt(now).slice(0, 10)}T00:00:00Z`);
+  return Math.max(0, Math.min((at - from) / (to - from), 1));
+};
+
 /* A priority's share of the campaign goal, in proportion to its
    annual cost. A home card's trail runs toward this figure, which is
    never printed: the cards reach the star together when the Rally
@@ -411,12 +459,12 @@ const gradeName = (g) => GRADE_NAMES[g] || `${g} grade`;
    never defines `module`. */
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
-    ORG, PRIORITIES, SUPPORT_ALL, CAMPAIGN, RALLY_DAY, CLASSROOMS, PARTNER_TIERS, PARTNERS,
+    ORG, PRIORITIES, SUPPORT_ALL, CAMPAIGN, RALLY_DAY, NEXT_RALLY, CLASSROOMS, PARTNER_TIERS, PARTNERS,
     ANNUAL_LEVELS,
     MAX_NAME, MAX_AMOUNT, MAX_STUDENTS, MAX_SHIRTS, SHIRT, STUDENT_GOAL, LUNCH, feeCoverCents,
     ANNUAL_COST,
     priorityById, classroomById, boardClassrooms, partnerTierById, annualLevelById, gradeName, shirtSizeById,
-    pacificAt, shirtsOpen, givingOpen, rallyAhead,
+    pacificAt, shirtsOpen, givingOpen, rallyAhead, untilNextRally, nextRallyProgress,
     priorityTarget, presentingPartner,
   };
 }

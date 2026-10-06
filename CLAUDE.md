@@ -752,6 +752,19 @@ flip to live, in this order:
     and `givingOpen` drops the plan's gift line a day earlier when
     `CAMPAIGN.close` passes. The prizes page keeps its two slots either
     way — it is the page's own copy, not instructions for one morning.
+    - *`NEXT_RALLY`* is next year's date, and the morning after this
+      Rally the same strip of home page stops giving instructions and
+      starts counting down to it: months and days, with the rocket
+      crossing the trail as the year goes by. **Months and days and
+      nothing finer** — home is rendered on the server and held in a
+      cache for five minutes, so an hour would print stale and a minute
+      would be wrong before anybody read it; a live ticker would mean
+      putting a script on a page that ships none. `untilNextRally`
+      returns `null` the day after, so the section takes itself off
+      rather than counting backwards, and `test/views.spec.js` pins the
+      handover, the singular forms and the month borrow. The date was
+      typed a year early, so **check it against the school calendar
+      before next fall** rather than trusting it.
     - **`fieldPostponed`** is set today: the grade-level field sessions
       are moved for the heat forecast, so both pages that mention them
       say *moved* rather than cancelled and name Walk to School Day and

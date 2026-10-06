@@ -7,7 +7,7 @@
 import data from '../site/js/data.js';
 import ui from '../site/js/ui.js';
 
-const { ORG, PRIORITIES, CAMPAIGN, RALLY_DAY, ANNUAL_COST, SHIRT, LUNCH, CLASSROOMS, boardClassrooms, PARTNER_TIERS, PARTNERS, ANNUAL_LEVELS, SUPPORT_ALL, priorityById, partnerTierById, annualLevelById, gradeName, priorityTarget, presentingPartner, shirtsOpen, givingOpen, rallyAhead } = data;
+const { ORG, PRIORITIES, CAMPAIGN, RALLY_DAY, NEXT_RALLY, ANNUAL_COST, SHIRT, LUNCH, CLASSROOMS, boardClassrooms, PARTNER_TIERS, PARTNERS, ANNUAL_LEVELS, SUPPORT_ALL, priorityById, partnerTierById, annualLevelById, gradeName, priorityTarget, presentingPartner, shirtsOpen, givingOpen, rallyAhead, untilNextRally, nextRallyProgress } = data;
 const { html, raw, money, nameList, studentRowsMarkup, LINK_ROWS, SHIRT_ROWS, dartUp } = ui;
 
 /* ---- motifs (from the brand guide's Spirit Kit) -------------------- */
@@ -348,8 +348,70 @@ export const schoolParticipation = (perClass) => {
    ride on top: the heat postponement, which has to read as moved
    rather than cancelled, and the gift line, which stops pointing at a
    form that closes the night before. */
-const rallyDaySection = () => {
-  if (!rallyAhead()) return null;
+/* The morning after, the same strip of page stops giving instructions
+   for a morning that happened and becomes two things at once: what the
+   Rally raised, and the wait for the next one.
+
+   The total leads, because it is the answer to what all of this was
+   for, and it is read live off the same figure the hero counts with.
+   It is said once: the heading carries it, and the paragraph under it
+   names the goal and leaves the arithmetic to the reader rather than
+   printing the same money twice in three sentences. Below the goal —
+   which after a finished campaign means the D1 read failed and
+   `raised` came back 0 — that one sentence drops out and the rest of
+   the paragraph stands on its own, rather than thanking the school
+   for $0.
+
+   The thanks and the feeling behind it both sit above the figure, in
+   the label, so the first thing read is addressed to the families
+   rather than to the number.
+
+   One word per line in that heading, which is why it is built from
+   spans rather than typed as a sentence. It is the only number on the
+   page anybody will repeat, and stacked it is read rather than
+   skimmed. The wcag gate skips everything inside a heading, so the
+   spans cost nothing there.
+
+   A line hands the page from one Rally to the next rather than
+   dropping straight from a total into a date, and it is said once —
+   above the countdown, not again under it. On the day itself it goes
+   away, where "next year" would be wrong.
+
+   Months and days and nothing finer on the countdown: this page is
+   rendered on the server and held in a cache for five minutes, so an
+   hour would print stale and a minute would be wrong before anybody
+   read it. */
+const nextRallySection = (raised) => {
+  const left = untilNextRally();
+  if (!left) return null;
+  const { months, days } = left;
+  const today = months === 0 && days === 0;
+  const met = raised >= CAMPAIGN.goal;
+  const unit = (n, word) => html`
+          <div class="count"><span class="num">${n}</span><small>${word}${n === 1 ? '' : 's'}</small></div>`;
+  const stacked = (words) => words.map((w) => html`<span>${w}</span>`);
+  return html`
+    <div class="wrap-narrow">
+      <div class="section-head">
+        <span class="label">Thank you, Red Hill. You blew us away.</span>
+        <h2 class="stacked">${stacked(met ? ['We', 'raised', money(raised)] : ['Rocket', 'Rally', '2026'])}</h2>
+        ${UNDERLINE}
+        <p class="intro">${met ? html`Our goal was ${money(CAMPAIGN.goal)}, and this` : html`This`} was our first-ever Rocket Rally. Every dollar you gave stays right here at Red Hill.</p>
+      </div>
+
+      <div class="next-up">${today ? '' : html`
+        <p class="count-lead">See you next year.</p>`}
+        <p class="count-head"><strong>Rocket Rally 2027</strong><br>${NEXT_RALLY.shortLabel}</p>${today ? html`
+        <p class="count-today"><strong>It&rsquo;s today.</strong> Wear your Rally shirts and walk in with us.</p>` : html`
+        <div class="countdown">${months ? unit(months, 'month') : ''}${unit(days, 'day')}
+        </div>
+        <div class="countdown-trail">${trailSVG(nextRallyProgress())}</div>`}
+      </div>
+    </div>`;
+};
+
+const rallyDaySection = (raised) => {
+  if (!rallyAhead()) return nextRallySection(raised);
   const { walk, pads, gathering, dismissal } = RALLY_DAY;
   return html`
     <div class="wrap-narrow">
@@ -423,7 +485,7 @@ export const homeSlots = (live) => {
     ...(shirtsOpen()
       ? { 'shirt-callout-note': html`Order a Rally shirt on its own &mdash; half of every shirt still counts toward your Rocket and their classroom. Ordering closes <strong>${SHIRT.deadlineLabel}</strong>.` }
       : { 'shirt-callout': null }),
-    'rally-day': rallyDaySection(),
+    'rally-day': rallyDaySection(raised),
     trajectory: trajectorySVG(raised / CAMPAIGN.goal),
     presented: presenter
       ? html`<p class="presented">The 2026 Rocket Rally is generously presented by our Annual Partner <strong>${presenter.name}</strong></p>`
