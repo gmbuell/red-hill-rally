@@ -339,10 +339,12 @@ export const schoolParticipation = (perClass) => {
    priority cards. */
 /* ---- Rally day ------------------------------------------------------
    The whole section, heading and all, rather than a slot per line: the
-   section element itself is what gets removed when the morning is
+   section element itself is what gets replaced when the morning is
    over, and a slot nested inside a removed slot is a question about
    HTMLRewriter nobody should have to answer. `null` here takes the
-   section out of the page.
+   section out of the page, which now happens only after next year's
+   Rally — the morning after this one the strip is handed to
+   `nextRallySection` rather than emptied.
 
    Every time, corner and bell comes from RALLY_DAY. Two conditions
    ride on top: the heat postponement, which has to read as moved
@@ -717,7 +719,9 @@ export const boardSlots = (live) => {
        are already refreshing. The full schedule lives on the home
        page; this says enough to get a family to the right corner at
        the right time and links to the rest. Gone once the morning is
-       over, like the home page section it points at. */
+       over: the home page section it points at stays, but as the
+       thank-you and next year's countdown, which is not what this line
+       is for. */
     'board-rally': rallyAhead()
       ? html`<strong>Rally day is ${RALLY_DAY.label}.</strong> Wear your Rally shirts and walk in with us &mdash; Launch Pads at ${RALLY_DAY.walk.meet}, then the Rocket Gathering at ${RALLY_DAY.gathering.start} in ${RALLY_DAY.gathering.place}. <a href="/#rally-day">The whole morning</a>`
       : null,

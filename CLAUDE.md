@@ -746,11 +746,12 @@ flip to live, in this order:
     and the prizes page's `prize-when` and `every-rocket` slots —
     because a time typed into three pages drifts, which is how the
     prizes page came to promise a Friday Gathering two days after the
-    Rally. `rallyAhead` is the clock: the home section and the board
-    line return `null` from the morning after `RALLY_DAY.date`, so
-    nobody lands here in November and reads where to stand at 7:15,
-    and `givingOpen` drops the plan's gift line a day earlier when
-    `CAMPAIGN.close` passes. The prizes page keeps its two slots either
+    Rally. `rallyAhead` is the clock: from the morning after
+    `RALLY_DAY.date` the board line returns `null` and the home
+    section hands its strip of page to the `NEXT_RALLY` countdown
+    below, so nobody lands here in November and reads where to stand
+    at 7:15, and `givingOpen` drops the plan's gift line a day earlier
+    when `CAMPAIGN.close` passes. The prizes page keeps its two slots either
     way — it is the page's own copy, not instructions for one morning.
     - *`NEXT_RALLY`* is next year's date, and the morning after this
       Rally the same strip of home page stops giving instructions and
