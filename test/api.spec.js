@@ -1380,11 +1380,15 @@ describe('admin reports', () => {
      classroom sheet is where prizes are awarded from, so leaving it out
      here would quietly disqualify those children. */
   it('lists a classroom kept off the Rally Board like any other', async () => {
-    const off = data.CLASSROOMS.filter((c) => c.offBoard);
-    expect(off.length).toBeGreaterThan(0);
-    const rows = await report('classrooms');
-    for (const c of off) {
-      expect(rows.some((r) => r.includes(c.teacher)), c.teacher).toBe(true);
+    // No room ships with the flag this year, so raise one for this test.
+    const room = data.CLASSROOMS[data.CLASSROOMS.length - 1];
+    room.offBoard = true;
+    try {
+      expect(data.boardClassrooms()).not.toContain(room);
+      const rows = await report('classrooms');
+      expect(rows.some((r) => r.includes(room.teacher)), room.teacher).toBe(true);
+    } finally {
+      delete room.offBoard;
     }
   });
 });

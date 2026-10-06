@@ -128,8 +128,13 @@ secrets; the maintainer reviews and ships PRs.
   at. Which rooms carry the flag is the PTA's call, not a rule about a
   kind of class: in a small room a published percentage moves a long way
   on one child, so the flag exists, but whether that trade is worth
-  making belongs to the people who know the families. Mrs. Smith's room
-  carries it today.
+  making belongs to the people who know the families. **No room carries
+  it this year** — Mrs. Smith's did until the PTA asked for her class
+  back on the board. The flag and its tests stay: `test/views.spec.js`
+  and `test/api.spec.js` raise one on a room for the duration of those
+  tests and drop it after, so the behaviour is pinned whether or not
+  anybody is using it, and putting a room back off the board is one
+  line in `data.js`.
 - The classroom race ranks by participation (Rockets ÷ class size),
   never dollars. Each row also shows what the class has raised, for the
   Top Class prize, and a line above the list names whoever is leading

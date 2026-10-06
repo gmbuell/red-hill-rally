@@ -1,5 +1,5 @@
 import { env } from 'cloudflare:test';
-import { afterEach, describe, it, expect, vi } from 'vitest';
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 import data from '../site/js/data.js';
 import { homeSlots, partnersSlots, boardSlots, donateSlots, shirtSlots, prizesSlots, schoolParticipation } from '../worker/views.js';
 import { PAGES } from '../worker/pages.js';
@@ -292,11 +292,23 @@ describe('page views', () => {
     expect(order.indexOf(a.teacher)).toBeLessThan(order.indexOf(b.teacher));
   });
 
-  /* Two rooms are kept off the public race. Everything else about them
-     carries on, which is the whole point of the flag. */
+  /* A room kept off the public race carries on in every other way,
+     which is the whole point of the flag.
+
+     No room ships with it this year, so these raise one for the
+     duration and drop it after — the same push/pop the partner cards
+     use below. The flag outlives whichever rooms want it, so its
+     behaviour is pinned whether or not anybody is using it today. */
   describe('a classroom kept off the board', () => {
-    const off = data.CLASSROOMS.filter((c) => c.offBoard);
-    const on = data.CLASSROOMS.filter((c) => !c.offBoard);
+    const room = data.CLASSROOMS[data.CLASSROOMS.length - 1];
+    let off = [];
+    let on = [];
+    beforeEach(() => {
+      room.offBoard = true;
+      off = data.CLASSROOMS.filter((c) => c.offBoard);
+      on = data.CLASSROOMS.filter((c) => !c.offBoard);
+    });
+    afterEach(() => { delete room.offBoard; });
 
     const boardWith = (rooms) => {
       const classrooms = {};
@@ -314,9 +326,10 @@ describe('page views', () => {
       };
     };
 
-    it('is configured, or none of the rest of this means anything', () => {
-      expect(off.length).toBeGreaterThan(0);
+    it('is the only thing boardClassrooms() holds back', () => {
+      expect(off).toEqual([room]);
       expect(data.boardClassrooms()).toEqual(on);
+      expect(data.boardClassrooms()).not.toContain(room);
     });
 
     it('never appears as a row in the race', () => {

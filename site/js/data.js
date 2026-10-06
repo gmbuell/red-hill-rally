@@ -365,9 +365,13 @@ const CLASSROOMS = [
      email, and it appears in every Mission Control sheet — which is
      where the PTA awards classroom prizes from, so a room carrying it
      can still earn them. Only the public per-class ranking is held
-     back, and it is the PTA's call which rooms want that. */
+     back, and it is the PTA's call which rooms want that.
+
+     No room carries it this year. Mrs. Smith's did until the PTA asked
+     for her class back on the board; the flag and its tests stay,
+     because the question it answers comes round every year. */
   { id: 'bishop', teacher: 'Mr. Bishop', grade: 'SDC', students: 14 },
-  { id: 'smith', teacher: 'Mrs. Smith', grade: 'SDC', students: 13, offBoard: true },
+  { id: 'smith', teacher: 'Mrs. Smith', grade: 'SDC', students: 13 },
 ];
 
 /* The rooms the Rally Board ranks. Everything else in the site reads
