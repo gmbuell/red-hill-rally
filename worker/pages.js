@@ -4,8 +4,9 @@
    (campaign totals, the classroom race, the partner wall). A stats
    failure renders the zero state, never an error page. */
 
+import data from '../site/js/data.js';
 import { campaignStats, boardStats, prizeStats } from './store.js';
-import { header, footer, homeSlots, donateSlots, boardSlots, partnersSlots, linkSlots, shirtSlots, prizesSlots } from './views.js';
+import { finalePage, header, footer, homeSlots, donateSlots, boardSlots, partnersSlots, linkSlots, shirtSlots, prizesSlots } from './views.js';
 
 /* The pages with something to render beyond the chrome: a D1 read
    (`live`) and a slot builder. A page in site/ with neither needs no
@@ -29,9 +30,58 @@ const fill = (fragment) => (fragment === null
   ? { element(el) { el.remove(); } }
   : { element(el) { el.setInnerContent(String(fragment), { html: true }); } });
 
+const { siteWrapped } = data;
+
 export async function renderPage(request, env, ctx) {
   const url = new URL(request.url);
   const path = url.pathname;
+
+  /* Once the Rally is wrapped, every public page serves the one page
+     that says what the school did. Mission Control is exempt, because
+     the PTA is still working in it.
+
+     `/robots.txt` is exempt for the reason the holding notice exempts
+     it: there isn't one, so it 404s, and a 404 means "no rules, crawl
+     away". Answering it with HTML is a malformed robots.txt, which
+     crawlers may read as rules they cannot parse -- and which drops the
+     Lighthouse SEO score to 92 on *every* path, since every path is now
+     this page. That failed the repo's own gate, which is how it was
+     caught.
+
+     It borrows the real page pipeline rather than short-circuiting the
+     way the holding notice does: `/` is fetched from the assets binding
+     for its security headers, its body is replaced, and the result goes
+     in the same five-minute cache under one key, so every path costs a
+     single D1 read between refreshes rather than one each. The total is
+     live for exactly that reason -- a refunded gift corrects the page
+     without anybody editing it. */
+  const exemptFromFinale = path === '/admin' || path === '/robots.txt';
+  if (siteWrapped() && request.method === 'GET' && !exemptFromFinale) {
+    const key = new Request(`${url.origin}/__wrapped`);
+    const hit = await caches.default.match(key);
+    if (hit) return hit;
+    let raised = 0; let partners = []; let failed = false;
+    try {
+      const live = await campaignStats(env.DB);
+      raised = (live && live.campaign && live.campaign.raised) || 0;
+      /* The same payload already carries the uploaded partner logos, so
+         the closing page's wall costs nothing beyond the total's read. */
+      partners = (live && live.partners) || [];
+    } catch (err) {
+      failed = true;
+      console.error(JSON.stringify({ event: 'api_error', route: `GET ${path}`, message: err && err.message }));
+    }
+    const shell = await env.ASSETS.fetch(new Request(`${url.origin}/`));
+    const headers = new Headers(shell.headers);
+    headers.delete('etag');
+    headers.delete('content-length');
+    headers.set('content-type', 'text/html; charset=utf-8');
+    headers.set('cache-control', failed ? 'no-store' : 'public, max-age=300');
+    headers.set('link', '</css/styles.css>; rel=preload; as=style');
+    const res = new Response(finalePage(raised, partners), { status: 200, headers });
+    if (!failed) ctx.waitUntil(caches.default.put(key, res.clone()).catch(() => {}));
+    return res;
+  }
   const page = PAGES[path] || {};
   // A page that reads D1 is served from this location's cache for the
   // five minutes the browser is told to keep it, so a crawl or a

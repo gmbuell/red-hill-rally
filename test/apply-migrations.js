@@ -14,3 +14,8 @@ beforeEach(async () => {
    that are about it set their own window and put this back. */
 import data from '../site/js/data.js';
 data.PAUSED.until = '';
+
+/* The Rally's closing page replaces every public page once FINALE.on is
+   set, which is every page test in this suite. The tests stand outside
+   it; the ones that are about it turn it on and put this back. */
+data.FINALE.on = false;

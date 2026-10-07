@@ -7,7 +7,7 @@
 import data from '../site/js/data.js';
 import ui from '../site/js/ui.js';
 
-const { ORG, PRIORITIES, CAMPAIGN, RALLY_DAY, NEXT_RALLY, PAUSED, ANNUAL_COST, SHIRT, LUNCH, CLASSROOMS, boardClassrooms, PARTNER_TIERS, PARTNERS, ANNUAL_LEVELS, SUPPORT_ALL, priorityById, partnerTierById, annualLevelById, gradeName, priorityTarget, presentingPartner, shirtsOpen, givingOpen, rallyAhead, untilNextRally, nextRallyProgress } = data;
+const { ORG, PRIORITIES, CAMPAIGN, RALLY_DAY, NEXT_RALLY, PAUSED, FINALE, ANNUAL_COST, SHIRT, LUNCH, CLASSROOMS, boardClassrooms, PARTNER_TIERS, PARTNERS, ANNUAL_LEVELS, SUPPORT_ALL, priorityById, partnerTierById, annualLevelById, gradeName, priorityTarget, presentingPartner, shirtsOpen, givingOpen, rallyAhead, untilNextRally, nextRallyProgress } = data;
 const { html, raw, money, nameList, studentRowsMarkup, LINK_ROWS, SHIRT_ROWS, dartUp } = ui;
 
 /* ---- motifs (from the brand guide's Spirit Kit) -------------------- */
@@ -298,6 +298,100 @@ const current = (path, here) => (path === here ? raw(' aria-current="page"') : '
    the worker never sees, so they still load and this still looks like
    the Rally rather than a server error. The copy comes from data.js so
    it can be reworded without touching the worker. */
+/* The page the Rally leaves behind. Every public path serves this once
+   FINALE.on is set, so an old link lands on the result rather than on a
+   form that refuses or a race that has locked.
+
+   Its own whole document, like 404.html and the holding notice: there
+   is nothing left to navigate to, so a header full of links to this
+   same page would be furniture rather than help. The footer stays,
+   because the EIN and the contact address still matter to a family
+   filing taxes on a gift they made in September.
+
+   `raised` is the only live figure. Below the goal it reads as a failed
+   D1 read rather than a campaign that fell short — the campaign is over
+   and met — so the money drops out and the page keeps everything else,
+   the same rule the home page's thank-you used.
+
+   The money reads as one sentence running into the figure — "We raised
+   roughly / $101,000" — with the goal line under it. The figure is
+   **floored** to `FINALE.roundDown` so "roughly" is true of the ledger
+   behind it. It rounds down and never up, for the same reason the prizes
+   page's leader figure did: a number on a public page must never be
+   above what was actually raised, and refunds only ever move this one
+   down.
+
+   `partners` is the same D1 shape the wall takes everywhere else, and
+   it rides along on the `campaignStats` read the total already costs.
+   It sits in the full-width `.wrap` rather than the narrow column the
+   rest of the page reads in: two columns of logo cards would run this
+   page another screen and a half, and the grid is the one thing here
+   that is not meant to be read a line at a time. */
+export const finalePage = (raised, partners) => {
+  const met = raised >= CAMPAIGN.goal;
+  const step = FINALE.roundDown || 0;
+  const shown = step > 0 ? Math.floor(raised / step) * step : raised;
+  const over = shown - CAMPAIGN.goal;
+  const wall = mergedPartners(partners);
+  return String(html`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${FINALE.heading} \u00b7 ${ORG.name}</title>
+<meta name="description" content="${FINALE.blurb}">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preload" href="/fonts/montserrat-var.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/bebasneue-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+<main class="wrapped">
+  <section class="section">
+    <div class="wrap-narrow">
+      <div class="section-head">
+        <span class="label">${FINALE.label}</span>
+        <h1>${FINALE.heading}</h1>
+        ${UNDERLINE}
+      </div>
+
+${met ? html`
+      <div class="wrap-total">
+        <p class="wrap-lead">${FINALE.raisedLead}</p>
+        <p class="wrap-figure">${money(shown)}</p>${over > 0 ? html`
+        <p class="wrap-goal">${FINALE.goalLine} ${money(CAMPAIGN.goal)}</p>` : ''}
+      </div>` : ''}
+      <p class="wrap-stays">${FINALE.stays}</p>
+
+      <div class="wrap-cheers">
+        <p>${FINALE.winners}</p>
+        <p>${FINALE.everyone}</p>
+      </div>
+
+      <div class="wrap-next">
+        <p class="count-lead">${FINALE.signoff}</p>
+        <p class="count-head"><strong>Rocket Rally 2027</strong><br>${NEXT_RALLY.shortLabel}</p>
+      </div>
+    </div>${wall.length ? html`
+
+    <div class="wrap wrap-partners">
+      <h2>${FINALE.partners.head}</h2>
+      <p class="intro">${FINALE.partners.lead}</p>
+      ${partnerWall(wall, '')}
+    </div>` : ''}
+
+    <div class="wrap-narrow wrap-signoff">
+      <p class="wrap-note">${FINALE.note.body}</p>
+      <p class="wrap-sign"><strong>${FINALE.note.from}</strong></p>
+    </div>
+  </section>
+</main>
+<footer class="site-footer on-navy">${footerPlain()}</footer>
+</body>
+</html>
+`);
+};
+
 export const pausedPage = () => String(html`<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -338,6 +432,15 @@ export const header = (here) => html`
     </nav>
     <a class="btn secondary small donate-cta" href="/donate"${current('/donate', here)}>Donate <span class="arrow" aria-hidden="true">→</span></a>
   </div>`;
+
+/* The closing page keeps the footer for the EIN and the matching-gift
+   link, which a family filing taxes on a September gift still needs,
+   but not its nav: every one of those nine links now leads back to the
+   page the reader is already on. */
+export const footerPlain = () => html`
+  <span class="script">Thank you for investing in our students, staff &amp; school.</span>
+  <p>${ORG.name} &middot; Home of the Rockets &middot; Tustin Unified School District</p>
+  <p>Red Hill PTA is a 501(c)(3) nonprofit, EIN ${ORG.ein} &mdash; donations are tax-deductible. Many employers match gifts &mdash; <a href="/matching">here&rsquo;s how</a>.</p>`;
 
 export const footer = () => html`
   <span class="script">Thank you for investing in our students, staff &amp; school.</span>

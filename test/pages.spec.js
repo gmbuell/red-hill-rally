@@ -683,3 +683,121 @@ describe('the site held behind a notice', () => {
     expect((await page('/rally-board')).res.status).toBe(200);
   });
 });
+
+/* After the Rally: one page at every public path. */
+describe('the page the Rally leaves behind', () => {
+  afterEach(() => { data.FINALE.on = false; });
+  const wrapped = () => { data.FINALE.on = true; };
+
+  it('serves the same closing page at every public path', async () => {
+    await gift({ amount_total: 10114300 });
+    wrapped();
+    for (const path of ['/', '/rally-board', '/prizes', '/partners', '/donate', '/shirt', '/student-link']) {
+      const { res, text } = await page(path);
+      expect(res.status, path).toBe(200);
+      expect(text, path).toContain(data.FINALE.heading);
+      expect(text, path).toContain(data.FINALE.stays);
+      expect(text, path).toContain(data.FINALE.winners);
+      expect(text, path).toContain(data.FINALE.everyone);
+      // The signed note closes the page, under the partner wall.
+      expect(text, path).toContain(data.FINALE.note.body);
+      expect(text, path).toContain(data.FINALE.note.from);
+      // Nothing left to navigate into: no nav, and no form to submit.
+      expect(text, path).not.toContain('class="site-header"');
+      expect(text, path).not.toContain('<form');
+    }
+  });
+
+  /* The one figure that is not typed into data.js. A refund has to
+     correct this page without anybody editing it. */
+  it('reads the total live, so a refund corrects the page by itself', async () => {
+    // Deliberately not the real campaign figure: a page that hardcoded
+    // the total would still pass against it.
+    await gift({ amount_total: 8765400 });
+    wrapped();
+    expect((await page('/')).text).toContain('$87,000');
+  });
+
+  /* "More than" is a promise about the ledger, so the figure has to be
+     floored. Printing the nearest thousand would put $87,654 on the page
+     as $88,000 — money the PTA does not have, which is the one thing
+     this page must never claim. */
+  it('rounds the total down, never up, so "roughly" stays true', async () => {
+    await gift({ amount_total: 8765400 });
+    wrapped();
+    const { text } = await page('/');
+    expect(text).toContain(data.FINALE.raisedLead);
+    expect(text).not.toContain('$88,000');
+    expect(text).not.toContain('$87,654');
+  });
+
+  it('says nothing about money when the figure cannot be read', async () => {
+    wrapped();
+    const { text } = await page('/');
+    expect(text).not.toContain('$0');
+    expect(text).not.toContain(data.FINALE.goalLine);
+    expect(text).not.toContain(data.FINALE.raisedLead);
+    // Everything else still stands, the line about where the money goes
+    // included: it is true whether or not the total can be read.
+    expect(text).toContain(data.FINALE.stays);
+    expect(text).toContain(data.FINALE.everyone);
+    expect(text).toContain(data.FINALE.signoff);
+  });
+
+  it('names next year and leaves Mission Control alone', async () => {
+    wrapped();
+    const { text } = await page('/');
+    expect(text).toContain(data.NEXT_RALLY.shortLabel);
+    /* The save-the-date reads before the partner wall, not after it.
+       Under sixteen logo cards it sat six phone screens down, which is
+       no place for the line the page is meant to leave somebody with. */
+    expect(text.indexOf(data.FINALE.signoff)).toBeLessThan(text.indexOf(data.FINALE.partners.head));
+    // 200 is not enough: the closing page is a 200 too. Mission Control
+    // has to still be Mission Control.
+    const admin = await page('/admin');
+    expect(admin.res.status).toBe(200);
+    expect(admin.text).toContain('data-panel');
+    expect(admin.text).not.toContain(data.FINALE.heading);
+  });
+
+  /* A partnership runs the year, not the Rally. Collapsing the site to
+     one page must not quietly take away the logo a business paid for a
+     month into it, so the wall comes along -- the merged one, so a logo
+     uploaded through checkout is there beside the roster's. */
+  it('keeps the partner wall, logos and all', async () => {
+    const annual = data.PARTNERS.find((p) => p.annual && p.logo);
+    // A name with no ampersand or apostrophe, so this asserts on the
+    // wall and not on the escaping (which has its own test).
+    const nameOnly = data.PARTNERS.find((p) => !p.logo && !/[&<>']/.test(p.name));
+    await partner('Galaxy Automotive');
+    wrapped();
+    const { text } = await page('/');
+    expect(text).toContain(data.FINALE.partners.head);
+    expect(text).toContain(`/img/partners/${annual.logo}`);
+    expect(text).toContain(data.annualLevelById(annual.annual).name);
+    expect(text).toContain(nameOnly.name);
+    expect(text).toContain('Galaxy Automotive');
+    // None of the wall's sales copy: it asks for something nobody can
+    // do now, and the Rally it names is over.
+    expect(text).not.toContain('Your business could be');
+    expect(text).not.toContain('the Rally runs September');
+  });
+
+  /* Answering robots.txt with HTML is a malformed robots.txt. The
+     holding notice already exempts it; this page has to as well, and the
+     cost of getting it wrong is the SEO score on every path at once,
+     because every path is this page. */
+  it('leaves robots.txt alone', async () => {
+    wrapped();
+    const { res, text } = await page('/robots.txt');
+    expect(res.status).toBe(404);
+    expect(text).not.toContain(data.FINALE.heading);
+  });
+
+  it('keeps the security headers the asset layer sets', async () => {
+    wrapped();
+    const { res } = await page('/rally-board');
+    expect(res.headers.get('x-frame-options')).toBe('DENY');
+    expect(res.headers.get('cache-control')).toContain('max-age=300');
+  });
+});

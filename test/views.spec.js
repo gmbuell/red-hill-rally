@@ -731,32 +731,55 @@ describe('the countdown to next year', () => {
 
   afterEach(() => vi.useRealTimers());
 
+  /* Derived from NEXT_RALLY rather than typed, because the date moved
+     once already and literals here went red the moment it did. */
+  const day = (offset) => {
+    const d = new Date(`${N.date}T00:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + offset);
+    return d.toISOString().slice(0, 10);
+  };
+
+  const dayBefore = (months, days) => {
+    const [y, m, d] = N.date.split('-').map(Number);
+    const t = new Date(Date.UTC(y, m - 1 - months, d - days));
+    return t.toISOString().slice(0, 10);
+  };
+
   it('counts whole months and the days left over', () => {
     expect(N.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-    // The morning after this year's Rally, to the day before next.
-    expect(data.untilNextRally(at('2026-10-08'))).toEqual({ months: 11, days: 9 });
-    expect(data.untilNextRally(at('2027-09-16'))).toEqual({ months: 0, days: 1 });
-    expect(data.untilNextRally(at('2027-09-17'))).toEqual({ months: 0, days: 0 });
+    expect(data.untilNextRally(at(day(-1)))).toEqual({ months: 0, days: 1 });
+    expect(data.untilNextRally(at(day(0)))).toEqual({ months: 0, days: 0 });
     // And it leaves the page rather than counting backwards.
-    expect(data.untilNextRally(at('2027-09-18'))).toBeNull();
+    expect(data.untilNextRally(at(day(1)))).toBeNull();
+    // A whole month out is one month and no days.
+    const [y, m, d] = N.date.split('-').map(Number);
+    const monthBefore = `${y}-${String(m - 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    expect(data.untilNextRally(at(monthBefore))).toEqual({ months: 1, days: 0 });
   });
 
   it('borrows the right number of days from a short month', () => {
-    // Past the 17th of a month the days go negative and a month is
-    // borrowed. 25 March to 17 September is 5 months and 23 days, which
-    // only comes out right if the borrow takes August's 31 days rather
-    // than a flat 30.
-    expect(data.untilNextRally(at('2027-03-25'))).toEqual({ months: 5, days: 23 });
-    expect(data.untilNextRally(at('2027-03-01'))).toEqual({ months: 6, days: 16 });
-    expect(data.untilNextRally(at('2027-09-30'))).toBeNull();
+    /* A start date past NEXT_RALLY's day of the month sends the days
+       negative and borrows a month, and the borrow has to take the real
+       length of the month it borrows from rather than a flat 30. Counted
+       back from the date and asserted forward again, so this says the
+       same thing whatever the date is — these two were 25 March and
+       1 March when the Rally was on 17 September 2027. */
+    for (const [months, days] of [[5, 23], [6, 16]]) {
+      expect(data.untilNextRally(at(dayBefore(months, days))), `${months}m ${days}d`)
+        .toEqual({ months, days });
+    }
+    expect(data.untilNextRally(at(day(13)))).toBeNull();
   });
 
   it('turns the rocket over at Pacific midnight, not UTC', () => {
     // 5pm Pacific on the 7th is already the 8th in UTC. Counting in UTC
-    // would drop a day off the figure every afternoon.
+    // would drop a day off the figure every afternoon — so this asks for
+    // the answer the 7th gives, and not the one the 8th gives, rather
+    // than a figure that has to be retyped when the date moves.
     const evening = new Date('2026-10-08T00:00:00Z');
     expect(data.pacificAt(evening).slice(0, 10)).toBe('2026-10-07');
-    expect(data.untilNextRally(evening)).toEqual({ months: 11, days: 10 });
+    expect(data.untilNextRally(evening)).toEqual(data.untilNextRally(at('2026-10-07')));
+    expect(data.untilNextRally(evening)).not.toEqual(data.untilNextRally(at('2026-10-08')));
   });
 
   it('hands the page over from the plan to the countdown', () => {
@@ -854,7 +877,8 @@ describe('the countdown to next year', () => {
   });
 
   it('says one month and one day in the singular', () => {
-    vi.setSystemTime(at('2027-08-16'));
+    // One month and one day before the Rally, derived from its date.
+    vi.setSystemTime(at(dayBefore(1, 1)));
     const text = plan();
     expect(text).toContain('<small>month</small>');
     expect(text).toContain('<small>day</small>');
@@ -862,15 +886,15 @@ describe('the countdown to next year', () => {
   });
 
   it('drops the months once there are none, and says so on the day', () => {
-    vi.setSystemTime(at('2027-09-10'));
+    vi.setSystemTime(at(day(-5)));
     expect(plan()).not.toContain('month');
 
-    vi.setSystemTime(at('2027-09-17'));
+    vi.setSystemTime(at(day(0)));
     expect(plan()).toContain('It&rsquo;s today');
-    expect(plan()).not.toContain('class="countdown"');
+    expect(plan()).not.toContain('class=\"countdown\"');
 
     // And the day after, the whole section goes.
-    vi.setSystemTime(at('2027-09-18'));
+    vi.setSystemTime(at(day(1)));
     expect(homeSlots(null)['rally-day']).toBeNull();
   });
 });

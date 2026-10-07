@@ -293,6 +293,79 @@ const rallyAhead = (now = new Date()) => pacificAt(now).slice(0, 10) <= RALLY_DA
    The copy names a time, so `until` should outlast it by a little and
    no more: a page still promising an announcement that has already
    happened is worse than no page. */
+/* The Rally is over, and the site becomes one page: what the school
+   did, and when the next one is. Every public path serves it, so a
+   link off a flyer or last month's email still lands somewhere warm
+   rather than on a donate form that refuses or a race that has locked.
+
+   `on` is the whole switch.
+
+   One figure, two congratulations, next year's date. The campaign's
+   other numbers (gift counts, medians, how many grandparents) belong in
+   the recap email and the assembly, not here: a page somebody lands on
+   from an old flyer in February needs the result, not the analysis.
+
+   The total is read live from the database, so a refunded gift corrects
+   the page by itself rather than leaving the site claiming money the
+   PTA has handed back. `roundDown` is why the sentence can say
+   "roughly" and stay true: the figure is floored to the nearest
+   thousand, so it is never above what is actually in the ledger, and
+   the refunds still being processed walk it down instead of making it a
+   lie. Floored rather than rounded to nearest, which "roughly" would
+   also allow: understating is the safer way for this page to be wrong.
+   Set it to 0 to print the total to the dollar.
+
+   `raisedLead` runs into the figure as one sentence — "We raised
+   roughly / $101,000" — with the goal line under it.
+
+   Mission Control stays reachable, since the PTA is still working. */
+const FINALE = {
+  on: true,
+  /* The label names which Rally this was, which is the one thing a page
+     that outlives its campaign owes somebody arriving in February off an
+     old flyer. "You blew us away" sat here with "thank you for rallying
+     with us" under it, saying the same thing twice. */
+  label: 'Rocket Rally 2026',
+  heading: 'Thank you for rallying with us',
+  blurb: 'Rocket Rally 2026 is over. Thank you for rallying with us.',
+  goalLine: 'past our goal of',
+  roundDown: 1000,
+  raisedLead: 'We raised roughly',
+  /* Sits under the figure rather than inside it, so it still stands if
+     the total cannot be read. The claim is about where the money goes —
+     no national organisation and no fundraising company takes a cut of
+     this — not about payment processing, which donors are separately
+     offered the chance to cover. */
+  stays: 'Every dollar raised stays right here at Red Hill.',
+  /* Named at the assembly before they were named here, and only the two
+     prizes with a single winner — the site's standing rule is that no
+     student name reaches a public page, and this is the PTA deciding to
+     make an exception for its own winners, not the rule going away.
+     This string also lands in a public repo; think before adding a
+     second child to it. */
+  winners: 'Congratulations to Caden McGee and Mrs. Herman’s class, our big winners.',
+  everyone: 'And congratulations to the ENTIRE SCHOOL for reaching 100%.',
+  /* The partner wall outlives the Rally. A business bought a logo on
+     this site, and taking the site down to one page would quietly take
+     that away a month into a partnership that runs the whole year —
+     the Annual Partners here are backing July through next September.
+     So the closing page carries the same wall /partners and the Rally
+     Board carry, built from the same merged list, logos and all. */
+  partners: {
+    head: 'Thank you to our business partners',
+    lead: 'These local businesses stood behind our school this year. Please go see them.',
+  },
+  signoff: 'See you next year.',
+  /* Signed by the PTA rather than by whoever is running it, so it does
+     not need rewriting when the board turns over. "Us" and not "me" for
+     the same reason: an organisation cannot say "me". */
+  note: {
+    body: 'Our first ever Rocket Rally was an overwhelming success. Thank you for letting us be part of it.',
+    from: ORG.name,
+  },
+};
+const siteWrapped = () => FINALE.on;
+
 const PAUSED = {
   until: '2026-10-07 09:00',
   heading: 'Final tallies coming in',
@@ -494,12 +567,12 @@ const gradeName = (g) => GRADE_NAMES[g] || `${g} grade`;
    never defines `module`. */
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
-    ORG, PRIORITIES, SUPPORT_ALL, CAMPAIGN, RALLY_DAY, NEXT_RALLY, PAUSED, CLASSROOMS, PARTNER_TIERS, PARTNERS,
+    ORG, PRIORITIES, SUPPORT_ALL, CAMPAIGN, RALLY_DAY, NEXT_RALLY, PAUSED, FINALE, CLASSROOMS, PARTNER_TIERS, PARTNERS,
     ANNUAL_LEVELS,
     MAX_NAME, MAX_AMOUNT, MAX_STUDENTS, MAX_SHIRTS, SHIRT, STUDENT_GOAL, LUNCH, feeCoverCents,
     ANNUAL_COST,
     priorityById, classroomById, boardClassrooms, partnerTierById, annualLevelById, gradeName, shirtSizeById,
-    pacificAt, shirtsOpen, givingOpen, rallyAhead, sitePaused, untilNextRally, nextRallyProgress,
+    pacificAt, shirtsOpen, givingOpen, rallyAhead, sitePaused, siteWrapped, untilNextRally, nextRallyProgress,
     priorityTarget, presentingPartner,
   };
 }

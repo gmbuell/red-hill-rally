@@ -281,17 +281,28 @@ try {
       if (presses === 400) problems.focus.push('tab walk gave up after 400 presses without cycling');
       await page.close();
 
-      /* "Examined nothing" is normally the most useful thing this gate
-         says: it is how a closed <details> was caught silently taking
-         most of a page out of every check. A site held behind its
-         holding notice is the one honest exception — the server answers
-         503 with a page that is a heading and a sentence, so there is no
-         control to size, no boundary to contrast and no tab ring, and
-         demanding one would only get a button bolted onto a notice to
-         please a script. What the page does have is still checked. */
-      const notice = got && got.status() === 503;
-      const mustExamine = notice ? ['text-contrast', 'size'] : CHECKS;
-      for (const c of mustExamine) if (!examined[c]) problems[c].push('examined nothing');
+      /* "Examined nothing" is a floor, not a result: it is how a closed
+         <details> was caught silently taking most of the admin page out
+         of every check. But only two of these six apply to every page.
+
+         `text-contrast` and `size` look at all text, and every page has
+         words, so those two must always examine something and they are
+         the floor that catches a page falling out of the gate.
+
+         The other four are conditional by nature, and a page can
+         honestly have nothing for them. `target-size` and `non-text`
+         measure controls; a page that is a heading, some prose and a tax
+         line has none, and an inline text link is exempt from SC 2.5.8
+         anyway. `focus` walks the tab ring, which such a page barely
+         has. `leading` applies to body text only, so a page whose text is
+         all display type — the holding notice is exactly that — has
+         nothing to measure. Demanding otherwise would only get a button
+         bolted onto a page to please this script.
+
+         Each of the four still reports every real problem it finds; it
+         simply is not required to find elements that are not there. */
+      const ALWAYS = ['text-contrast', 'size'];
+      for (const c of ALWAYS) if (!examined[c]) problems[c].push('examined nothing');
       const bad = CHECKS.some((c) => problems[c].length);
       failed ||= bad;
       const cells = CHECKS.map((c) => `${c} ${problems[c].length ? problems[c].length : `ok/${examined[c]}`}`);

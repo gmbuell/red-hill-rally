@@ -1971,3 +1971,117 @@ select:focus-visible,
   max-width: 26rem;
 }
 #digest-table td { white-space: normal; }
+
+/* ---------- the page the Rally leaves behind ------------------------ */
+/* One page, so it carries its own rhythm: the figure large enough to be
+   the point, then four short lists somebody can read standing up. */
+/* Wraps on its own rather than a word to a line. Stacking suited a
+   three-word headline and nothing longer; a sentence broken one word per
+   line reads as a ransom note. */
+.wrapped .section-head h1 {
+  font-family: var(--display);
+  font-weight: 400;
+  text-transform: uppercase;
+  color: var(--navy);
+  font-size: clamp(2.2rem, 9vw, 3.6rem);
+  line-height: 1;
+  letter-spacing: 0.03em;
+  text-wrap: balance;
+}
+.wrap-total { text-align: center; margin: 2.6rem 0 0.5rem; }
+/* The sentence runs into the figure from above rather than beside it:
+   on a 375px phone the figure is already most of the line's width. */
+.wrap-lead {
+  font-size: 1rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 800;
+  color: var(--navy);
+  margin: 0 0 0.3rem;
+}
+.wrap-figure {
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: clamp(3.4rem, 15vw, 6rem);
+  line-height: 1;
+  color: var(--red-ink);
+  margin: 0;
+}
+.wrap-goal {
+  font-size: 1rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--grey);
+  margin: 0.6rem 0 0;
+}
+/* Belongs to the figure above it, so it sits close to it and stays
+   lighter than the congratulations below. */
+.wrap-stays {
+  font-family: var(--serif);
+  font-size: 1.0625rem;
+  line-height: 1.5;
+  color: var(--navy);
+  text-align: center;
+  margin: 1.1rem auto 0;
+  max-width: 24rem;
+  text-wrap: balance;
+}
+/* The two congratulations. Serif and a size up from body copy, because
+   they are the only thing on this page a family is looking for. */
+.wrap-cheers { margin-top: 2.8rem; text-align: center; }
+.wrap-cheers p {
+  font-family: var(--serif);
+  font-weight: 800;
+  font-size: 1.25rem;
+  line-height: 1.5;
+  color: var(--navy);
+  margin: 0 auto 0.9rem;
+  max-width: 30rem;
+}
+.wrap-cheers p:last-child { margin-bottom: 0; }
+/* The wall sits in the wide wrap so the grid gets three or four
+   columns instead of two; its own heading is centred over it rather
+   than reading as another item in the narrow column above. */
+.wrap-partners { margin-top: 3.4rem; text-align: center; }
+.wrap-partners h2 {
+  font-family: var(--serif);
+  font-weight: 800;
+  font-size: 1.3rem;
+  margin: 0 0 0.5rem;
+  color: var(--navy);
+}
+.wrap-partners .intro { margin: 0 auto; max-width: 32rem; }
+/* The last thing on the page, and the only line on it in one person's
+   voice, so it is set apart and signed. */
+.wrap-signoff {
+  margin-top: 3.2rem;
+  padding-top: 1.8rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.14);
+  text-align: center;
+}
+.wrap-note {
+  font-family: var(--serif);
+  font-size: 1.1rem;
+  line-height: 1.6;
+  color: var(--navy);
+  margin: 0 auto;
+  max-width: 30rem;
+  text-wrap: balance;
+}
+.wrap-sign { font-size: 1rem; line-height: 1.5; margin: 1.1rem 0 0; }
+.wrap-sign strong {
+  color: var(--navy);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+/* The save-the-date sits between this year's result and the partner
+   wall, not under the wall: there it was six phone screens down, which
+   is no place for the line somebody is meant to leave with. The rule
+   above it closes off the result. */
+.wrap-next {
+  margin-top: 2.8rem;
+  padding-top: 1.8rem;
+  border-top: 3px solid var(--navy);
+  text-align: center;
+}
+.wrap-next .count-head { margin-bottom: 0; }

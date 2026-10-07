@@ -25,7 +25,7 @@ two-sentence pointer; this file is the operating manual.
 | `npm run dev` | `wrangler dev` on http://localhost:8787 |
 | `npm test` | vitest (269 tests, ~5 s) |
 | `npm run audit` | Lighthouse on every page but `/admin` (noindex), mobile + desktop (needs Chrome); defaults to the live site (`npm run audit -- --url http://localhost:8787` for local). `--runs 3 --min 98` reproduces the CI gate, `--form mobile` limits it to one form factor |
-| `npm run wcag` | WCAG 2.2 checks on every page, mobile + desktop (needs Chrome): text contrast, non-text contrast, focus rings, target size, body leading ≥ 1.5, body text ≥ 16px and labels ≥ 13px. Defaults to the live site (`npm run wcag -- --url http://localhost:8787` for local, `--page donate --form mobile` to narrow). Each cell shows how many elements the check examined |
+| `npm run wcag` | WCAG 2.2 checks on every page, mobile + desktop (needs Chrome): text contrast, non-text contrast, focus rings, target size, body leading ≥ 1.5, body text ≥ 16px and labels ≥ 13px. Only **text contrast and size** must examine something on every page — they are the floor that catches a page falling out of the gate. The other four are conditional by nature (controls, a tab ring, body text that is not display type) and a page can honestly have none. Defaults to the live site (`npm run wcag -- --url http://localhost:8787` for local, `--page donate --form mobile` to narrow). Each cell shows how many elements the check examined |
 | `npm run deploy` | **Ships to production**: the worker and every file under `site/`. The `predeploy` step runs the tests, then applies pending D1 migrations to the remote database, so schema and code ship together. Every push to `main` runs this through Cloudflare Workers Builds (dashboard → the worker → Settings → Build), so merging a PR deploys it |
 | `npm run preview` | What Workers Builds runs for every branch except `main` (the preview worker's Settings → Build holds the two triggers): applies pending migrations to the preview database, then uploads a version of the preview worker; the PR's "Workers Builds" check carries the preview URL, and `<branch>-red-hill-rally-preview.gmbuell.workers.dev` follows the branch. `npm run preview:deploy` is the `main` counterpart, a full deploy of the preview worker. Both need a Cloudflare login and touch only the preview worker |
 | `npx wrangler tail red-hill-rally` | Production logs (`--env preview` for the preview worker) |
@@ -695,6 +695,76 @@ flip to live, in this order:
     printer sheet's clock. Never compare UTC: 1pm Pacific on deadline
     day is already past 7pm in UTC, which would shut ordering six hours
     early, and `test/views.spec.js` pins that case.
+- **The page the Rally leaves behind** — `FINALE` in `data.js`. With
+  `on` set, every public page serves one closing page: the total, the
+  two congratulations, the partner wall, and when the next Rally is. An
+  old link off a flyer or a September email lands on the result rather
+  than a donate form that refuses or a race that has locked. **Mission
+  Control and `/robots.txt` are exempt.**
+  - **It is short on purpose.** It carried four blocks of campaign
+    statistics for about an hour before the PTA cut them: the gift
+    counts, the medians, the grandparents belong in the recap email and
+    the assembly, where somebody is there to say them. A page a family
+    lands on from a flyer in February wants the result.
+  - **The total is the only live figure**, read from D1 so a refunded
+    gift corrects the page by itself. That matters while refunds are
+    still being processed: the site must never claim money the PTA has
+    handed back. Below the goal the money drops out rather than printing
+    `$0`, the same rule the home page's thank-you used.
+    - The money reads as one sentence running into the figure —
+      *We raised roughly / **$101,000** / past our goal of $50,000* —
+      and the figure is **floored to `FINALE.roundDown`** (a thousand) so
+      "roughly" is true of the ledger behind it. Down and never up, for
+      the reason the prizes page rounded its leader figure down: a number
+      on a public page must never be above what was actually raised.
+      "Roughly" would also permit rounding to nearest; the floor stands
+      because understating is the safer way for this page to be wrong.
+      The refunds in flight walk this number down, so **$101,000 becomes
+      $99,000 if enough of them land** — which is the page being honest,
+      not a bug. `0` turns the rounding off and prints to the dollar.
+  - **It names two prize winners**, which is the one place a student
+    name reaches a public page. Every other page is probed to make sure
+    none does, and `FINALE.winners` is typed copy rather than anything
+    read from D1, so the invariant and its tests are untouched: this is
+    the PTA choosing to publish the winners it had already announced at
+    the assembly. First names only. Note that it also puts that name in
+    a **public repo**. Think before adding a second one.
+  - **It closes with a signed note** (`FINALE.note`), under the partner
+    wall. Signed by the PTA rather than by whoever is running it, so a
+    board turning over does not leave a stale name on the page, and
+    written as "us" rather than "me" to match.
+  - **`/robots.txt` is exempt** for the reason the holding notice
+    exempts it: there isn't one, so it 404s, and a 404 means "no rules,
+    crawl away". Serving HTML there is a malformed robots.txt — and
+    because every path is this page, it drops Lighthouse SEO to 92 on
+    *every* page at once and fails CI. That is how it was caught.
+  - It borrows the real page pipeline rather than short-circuiting the
+    way the holding notice does: `/` is fetched from the assets binding
+    for its security headers, its body is replaced, and the result is
+    cached under **one** key, so every path costs one D1 read per five
+    minutes between them rather than one each.
+  - **No header, and a footer with no nav** (`footerPlain`). Every one
+    of the footer's nine links would lead back to the page the reader is
+    already on. The EIN and the matching-gift link stay, because a
+    family filing taxes on a September gift still needs them.
+  - **The partner wall comes along**, the same `mergedPartners` wall
+    /partners and the Rally Board carry, logos and all, in the wide
+    `.wrap` rather than the narrow column so the grid gets more than two
+    columns. A partnership runs the year — the Annual Partners are
+    backing July through next September — so collapsing the site to one
+    page a month in must not quietly take away the logo a business paid
+    for. It rides on the `campaignStats` read the total already costs,
+    and the roster half of the wall survives even a failed D1 read,
+    since `mergedPartners` seeds from `data.js`. The empty state is
+    skipped: its copy sells a Rally that is over.
+  - `test/pages.spec.js` pins the page at every public path, the live
+    total (with a figure deliberately unlike the real one, so a
+    hardcoded total fails), the flooring (that $87,654 never prints as
+    $88,000), the partner wall, the robots.txt exemption, the Mission
+    Control exemption (asserting it is still Mission Control, not merely
+    a 200), and the security
+    headers. The suite otherwise stands outside it, cleared once in
+    `test/apply-migrations.js`.
 - **Holding the site behind a notice** — `PAUSED` in `data.js` replaces
   every public page with one notice while the PTA corrects numbers
   nobody should be reading as final. `until` is a Pacific moment, not a
