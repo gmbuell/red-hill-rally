@@ -579,3 +579,73 @@ describe('rendered pages', () => {
     }
   });
 });
+
+/* The hours between the last gift and the announcement, when the PTA is
+   correcting numbers and nothing public should be read as final. */
+describe('the site held behind a notice', () => {
+  const WHILE = new Date('2026-10-07T14:00:00Z');   // 7am Pacific, before the Gathering
+  const AFTER = new Date('2026-10-07T16:01:00Z');   // 9:01am Pacific, after it
+
+  afterEach(() => { data.PAUSED.until = ''; vi.useRealTimers(); });
+  const hold = (at) => {
+    data.PAUSED.until = '2026-10-07 09:00';
+    vi.setSystemTime(at);
+  };
+
+  it('answers every public page with the notice and nothing else', async () => {
+    hold(WHILE);
+    for (const path of ['/', '/rally-board', '/prizes', '/partners', '/donate', '/shirt', '/why-we-rally']) {
+      const { res, text } = await page(path);
+      expect(res.status, path).toBe(503);
+      expect(text, path).toContain(data.PAUSED.heading);
+      // No way back into the pages the notice exists to hold shut.
+      expect(text, path).not.toContain('class="site-header"');
+      expect(text, path).not.toContain('href="/rally-board"');
+    }
+  });
+
+  /* The whole point is that nothing being corrected is readable, so the
+     figures the board and the prizes page publish must be gone — not
+     merely unlinked. */
+  it('publishes none of the numbers it is holding back', async () => {
+    await gift({ amount_cents: 123400 });
+    hold(WHILE);
+    for (const path of ['/', '/rally-board', '/prizes']) {
+      const { text } = await page(path);
+      expect(text, path).not.toContain('1,234');
+      expect(text, path).not.toContain('participation');
+    }
+  });
+
+  /* Mission Control is where the PTA is fixing those numbers, so a
+     blackout that locked them out would be the one thing it must not
+     do. It still answers its own 401 without the key. */
+  it('leaves Mission Control and the API reachable', async () => {
+    hold(WHILE);
+    expect((await page('/admin')).res.status).toBe(200);
+    const api = await SELF.fetch('https://rally.test/api/students.csv');
+    expect(api.status).toBe(401);
+  });
+
+  it('is never cached, so lifting it is immediate', async () => {
+    hold(WHILE);
+    const { res } = await page('/rally-board');
+    expect(res.headers.get('cache-control')).toContain('no-store');
+  });
+
+  /* A switch like this is remembered going on and forgotten coming off,
+     so it carries its own end rather than a flag somebody has to clear. */
+  it('lifts itself once the moment passes', async () => {
+    hold(AFTER);
+    const { res, text } = await page('/rally-board');
+    expect(res.status).toBe(200);
+    expect(text).not.toContain(data.PAUSED.heading);
+    expect(text).toContain('class="site-header"');
+  });
+
+  it('is lifted outright by an empty until', async () => {
+    vi.setSystemTime(WHILE);
+    data.PAUSED.until = '';
+    expect((await page('/rally-board')).res.status).toBe(200);
+  });
+});

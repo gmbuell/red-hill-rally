@@ -236,7 +236,7 @@ try {
     for (const [name, path] of PAGES) {
       const page = await browser.newPage();
       await page.setViewport(VIEWPORTS[form]);
-      await page.goto(`${base}${path}`, { waitUntil: 'networkidle0' });
+      const got = await page.goto(`${base}${path}`, { waitUntil: 'networkidle0' });
       await page.evaluate(() => document.fonts.ready);
       await page.evaluate(() => {
         for (const el of document.querySelectorAll('[hidden]')) el.hidden = false;
@@ -281,7 +281,17 @@ try {
       if (presses === 400) problems.focus.push('tab walk gave up after 400 presses without cycling');
       await page.close();
 
-      for (const c of CHECKS) if (!examined[c]) problems[c].push('examined nothing');
+      /* "Examined nothing" is normally the most useful thing this gate
+         says: it is how a closed <details> was caught silently taking
+         most of a page out of every check. A site held behind its
+         holding notice is the one honest exception — the server answers
+         503 with a page that is a heading and a sentence, so there is no
+         control to size, no boundary to contrast and no tab ring, and
+         demanding one would only get a button bolted onto a notice to
+         please a script. What the page does have is still checked. */
+      const notice = got && got.status() === 503;
+      const mustExamine = notice ? ['text-contrast', 'size'] : CHECKS;
+      for (const c of mustExamine) if (!examined[c]) problems[c].push('examined nothing');
       const bad = CHECKS.some((c) => problems[c].length);
       failed ||= bad;
       const cells = CHECKS.map((c) => `${c} ${problems[c].length ? problems[c].length : `ok/${examined[c]}`}`);

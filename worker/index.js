@@ -16,11 +16,12 @@ import { recordDonation, campaignStats, boardStats, studentsReport, shirtsReport
 import { buildDigests, recapSheets } from './digest.js';
 import { sendEmail, mailConfigured } from './mail.js';
 import { renderPage } from './pages.js';
+import { pausedPage } from './views.js';
 import data from '../site/js/data.js';
 import ui from '../site/js/ui.js';
 
 const { moneyCents } = ui;
-const { ORG, MAX_NAME, MAX_AMOUNT, SHIRT, CAMPAIGN, STUDENT_GOAL, feeCoverCents, priorityById, partnerTierById, classroomById, CLASSROOMS, shirtsOpen, givingOpen, shirtSizeById } = data;
+const { ORG, MAX_NAME, MAX_AMOUNT, SHIRT, CAMPAIGN, STUDENT_GOAL, sitePaused, feeCoverCents, priorityById, partnerTierById, classroomById, CLASSROOMS, shirtsOpen, givingOpen, shirtSizeById } = data;
 
 /* The charge description prints on every Stripe receipt, making it the
    donor's IRS written acknowledgment (Pub 1771): org name, and either
@@ -773,6 +774,31 @@ export default {
       url.hostname = 'rocketrally.org';
       return Response.redirect(url.toString(), 301);
     }
+    /* The blackout, ahead of everything a visitor can reach. It stands
+       in front of the page cache rather than behind it, so both raising
+       it and its lifting take effect on the next request instead of
+       five minutes later, and `no-store` means the notice itself is never
+       what a browser holds on to once it is lifted.
+
+       Mission Control is exempt: the PTA is in there correcting the
+       numbers this notice exists to stop publishing. /api is exempt
+       too, which keeps the Stripe webhook recording anything already
+       in flight and leaves every admin route working — they carry
+       their own key.
+
+       503, not 200: this is temporary, and a crawler should come back
+       rather than replace what it has indexed with this. */
+    if (sitePaused() && !url.pathname.startsWith('/api/') && url.pathname !== '/admin') {
+      return new Response(pausedPage(), {
+        status: 503,
+        headers: {
+          'content-type': 'text/html; charset=utf-8',
+          'cache-control': 'no-store',
+          'retry-after': '3600',
+        },
+      });
+    }
+
     if (!url.pathname.startsWith('/api/')) {
       // The typeable short link off flyers and handouts: /l/sunny-otter.
       // Published partner logos, addressed by opaque public id only.

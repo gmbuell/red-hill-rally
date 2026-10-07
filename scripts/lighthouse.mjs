@@ -50,6 +50,18 @@ let failed = false;
 try {
   for (const form of forms) {
     for (const [name, path] of PAGES) {
+      /* A site held behind its holding notice answers 503 on every
+         public page, and every one of them is then the same handful of
+         elements. Auditing twelve copies of one notice says nothing,
+         and scoring an outage as though it were the site would block a
+         merge on the state the merge is trying to ship. Skipped and
+         named, so a surprise 503 is still visible in the output. */
+      const status = await fetch(`${base}${path}`, { redirect: 'manual' })
+        .then((r) => r.status, () => 0);
+      if (status === 503) {
+        console.log(`${name}-${form}`.padEnd(20) + 'held behind the holding notice — skipped');
+        continue;
+      }
       const results = [];
       for (let i = 0; i < runs; i++) {
         const { lhr, report } = await lighthouse(`${base}${path}`, {

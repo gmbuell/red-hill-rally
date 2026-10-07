@@ -695,6 +695,37 @@ flip to live, in this order:
     printer sheet's clock. Never compare UTC: 1pm Pacific on deadline
     day is already past 7pm in UTC, which would shut ordering six hours
     early, and `test/views.spec.js` pins that case.
+- **Holding the site behind a notice** — `PAUSED` in `data.js` replaces
+  every public page with one notice while the PTA corrects numbers
+  nobody should be reading as final. `until` is a Pacific moment, not a
+  boolean, on purpose: a switch like this is remembered going on and
+  forgotten coming off, so the site brings itself back. Empty lifts it
+  now. The copy names a time, so set `until` to outlast that time by a
+  little and no more — a page still promising an announcement that
+  already happened is worse than no page.
+  - **Mission Control and `/api` are exempt.** The PTA is inside /admin
+    fixing the very numbers the notice is holding back, and leaving
+    `/api` alone keeps the Stripe webhook recording anything in flight.
+    Every admin route carries its own key, so none of this opens
+    anything up.
+  - The check sits **in front of the page cache**, so raising it and its
+    lifting both take effect on the next request rather than five
+    minutes later, and the notice is `no-store` so no browser holds on
+    to it afterwards. **503, not 200**: temporary, so a crawler comes
+    back instead of replacing what it has indexed. No `noindex` meta —
+    the 503 already says it, and the meta is the stronger signal that
+    outlives the outage.
+  - It is its own whole document, like `404.html`, with no header or
+    footer: a nav would only lead back to pages serving this same
+    notice.
+  - **Both gate scripts know about it**, or shipping the state would
+    block the merge that ships it. `scripts/wcag.mjs` still checks what
+    the notice has and drops only its "examined nothing" rule for the
+    categories a notice cannot have; `scripts/lighthouse.mjs` skips a
+    page answering 503 and says so in its output. `test/pages.spec.js`
+    pins the blackout, the exemptions and the self-lift; the suite
+    otherwise stands outside it, cleared once in
+    `test/apply-migrations.js`.
 - **Goals, copy, tiers, roster, partners** — edit `site/js/data.js`
   (page copy lives in the HTML files); redeploy. The campaign goal is
   the ticker figure; a priority's goal is its annual program cost and

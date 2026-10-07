@@ -274,6 +274,33 @@ const rallyAhead = (now = new Date()) => pacificAt(now).slice(0, 10) <= RALLY_DA
    Set in October 2026, so check it against the school calendar before
    next fall rather than trusting it: this is a date typed a year
    early, which is the kind that drifts. */
+/* A blackout for the hours between the last gift and the
+   announcement. While it stands, every public page is replaced by one
+   holding notice, so nobody reads a standing off a board whose numbers
+   the PTA is still correcting, and nobody has to guess whether what
+   they are looking at is final.
+
+   `until` is a moment, not a boolean, and that is the point: this kind
+   of switch is remembered when it goes on and forgotten when it should
+   come off. The site brings itself back. Pacific and the same shape as
+   CAMPAIGN.close, because comparing UTC would lift it at one in the
+   morning. Empty lifts it now.
+
+   Mission Control is exempt — the PTA is in there fixing the numbers —
+   and so is /api, which keeps the Stripe webhook recording anything
+   already in flight.
+
+   The copy names a time, so `until` should outlast it by a little and
+   no more: a page still promising an announcement that has already
+   happened is worse than no page. */
+const PAUSED = {
+  until: '2026-10-07 09:00',
+  heading: 'Final tallies coming in',
+  line: 'Winners are announced at the Gathering tomorrow at 8:00am in the quad.',
+  thanks: 'Thank you, Red Hill. You blew us away.',
+};
+const sitePaused = (now = new Date()) => !!PAUSED.until && pacificAt(now) < PAUSED.until;
+
 const NEXT_RALLY = {
   date: '2027-09-17',
   label: 'Friday, September 17, 2027',
@@ -463,12 +490,12 @@ const gradeName = (g) => GRADE_NAMES[g] || `${g} grade`;
    never defines `module`. */
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
-    ORG, PRIORITIES, SUPPORT_ALL, CAMPAIGN, RALLY_DAY, NEXT_RALLY, CLASSROOMS, PARTNER_TIERS, PARTNERS,
+    ORG, PRIORITIES, SUPPORT_ALL, CAMPAIGN, RALLY_DAY, NEXT_RALLY, PAUSED, CLASSROOMS, PARTNER_TIERS, PARTNERS,
     ANNUAL_LEVELS,
     MAX_NAME, MAX_AMOUNT, MAX_STUDENTS, MAX_SHIRTS, SHIRT, STUDENT_GOAL, LUNCH, feeCoverCents,
     ANNUAL_COST,
     priorityById, classroomById, boardClassrooms, partnerTierById, annualLevelById, gradeName, shirtSizeById,
-    pacificAt, shirtsOpen, givingOpen, rallyAhead, untilNextRally, nextRallyProgress,
+    pacificAt, shirtsOpen, givingOpen, rallyAhead, sitePaused, untilNextRally, nextRallyProgress,
     priorityTarget, presentingPartner,
   };
 }

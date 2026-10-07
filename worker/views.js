@@ -7,7 +7,7 @@
 import data from '../site/js/data.js';
 import ui from '../site/js/ui.js';
 
-const { ORG, PRIORITIES, CAMPAIGN, RALLY_DAY, NEXT_RALLY, ANNUAL_COST, SHIRT, LUNCH, CLASSROOMS, boardClassrooms, PARTNER_TIERS, PARTNERS, ANNUAL_LEVELS, SUPPORT_ALL, priorityById, partnerTierById, annualLevelById, gradeName, priorityTarget, presentingPartner, shirtsOpen, givingOpen, rallyAhead, untilNextRally, nextRallyProgress } = data;
+const { ORG, PRIORITIES, CAMPAIGN, RALLY_DAY, NEXT_RALLY, PAUSED, ANNUAL_COST, SHIRT, LUNCH, CLASSROOMS, boardClassrooms, PARTNER_TIERS, PARTNERS, ANNUAL_LEVELS, SUPPORT_ALL, priorityById, partnerTierById, annualLevelById, gradeName, priorityTarget, presentingPartner, shirtsOpen, givingOpen, rallyAhead, untilNextRally, nextRallyProgress } = data;
 const { html, raw, money, nameList, studentRowsMarkup, LINK_ROWS, SHIRT_ROWS, dartUp } = ui;
 
 /* ---- motifs (from the brand guide's Spirit Kit) -------------------- */
@@ -286,6 +286,46 @@ const NAV = [
   ['/prizes', 'Prizes'], ['/why-we-rally', 'Why We Rally'],
 ];
 const current = (path, here) => (path === here ? raw(' aria-current="page"') : '');
+
+/* The holding page, for the hours between the last gift and the
+   announcement. It replaces every public page rather than sitting in
+   front of one, so there is no nav to wander back into a board whose
+   numbers are being corrected, and no header or footer linking to
+   pages that would only serve this same notice.
+
+   Its own whole document, like 404.html: here the chrome is the page,
+   not decoration on it. The stylesheet and fonts are static folders
+   the worker never sees, so they still load and this still looks like
+   the Rally rather than a server error. The copy comes from data.js so
+   it can be reworded without touching the worker. */
+export const pausedPage = () => String(html`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${PAUSED.heading} \u00b7 ${ORG.name}</title>
+<meta name="description" content="${PAUSED.line}">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preload" href="/fonts/montserrat-var.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/bebasneue-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+<main>
+  <section class="section">
+    <div class="wrap-narrow">
+      <div class="section-head">
+        <span class="label">${PAUSED.thanks}</span>
+        <h2>${PAUSED.heading}</h2>
+        ${UNDERLINE}
+        <p class="intro">${PAUSED.line}</p>
+      </div>
+    </div>
+  </section>
+</main>
+</body>
+</html>
+`);
 
 export const header = (here) => html`
   <div class="wrap bar">
