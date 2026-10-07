@@ -623,8 +623,42 @@ describe('the site held behind a notice', () => {
   it('leaves Mission Control and the API reachable', async () => {
     hold(WHILE);
     expect((await page('/admin')).res.status).toBe(200);
+    // A bookmark with the trailing slash is the same door.
+    expect((await page('/admin/')).res.status).toBe(200);
     const api = await SELF.fetch('https://rally.test/api/students.csv');
     expect(api.status).toBe(401);
+  });
+
+  /* Giving is closed but partnerships are not, and /thanks is where
+     Stripe returns a business after it pays — and the only page its
+     logo can be uploaded from. Holding it would take a sponsor's money
+     and answer with a server error. */
+  it('leaves the thank-you page reachable for partners still paying', async () => {
+    hold(WHILE);
+    const { res, text } = await page('/thanks');
+    expect(res.status).toBe(200);
+    expect(text).not.toContain(data.PAUSED.heading);
+  });
+
+  /* A 503 on robots.txt tells crawlers to stop crawling the whole host,
+     which is the one effect here that could outlive the notice. There is
+     no robots.txt, and a 404 is the "no rules" answer we want them to
+     keep getting. */
+  it('does not answer robots.txt with a server error', async () => {
+    hold(WHILE);
+    const { res, text } = await page('/robots.txt');
+    expect(res.status).not.toBe(503);
+    expect(text).not.toContain(data.PAUSED.heading);
+  });
+
+  /* The notice is on screen into the morning it is describing, so a
+     relative day would be wrong for most of the hours it is shown and
+     would promise an announcement that had already happened. */
+  it('names the day of the Gathering rather than saying tomorrow', async () => {
+    hold(WHILE);
+    const { text } = await page('/');
+    expect(text).not.toMatch(/tomorrow/i);
+    expect(text).toContain(data.RALLY_DAY.label);
   });
 
   it('is never cached, so lifting it is immediate', async () => {

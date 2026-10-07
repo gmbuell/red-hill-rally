@@ -703,11 +703,19 @@ flip to live, in this order:
   now. The copy names a time, so set `until` to outlast that time by a
   little and no more — a page still promising an announcement that
   already happened is worse than no page.
-  - **Mission Control and `/api` are exempt.** The PTA is inside /admin
-    fixing the very numbers the notice is holding back, and leaving
-    `/api` alone keeps the Stripe webhook recording anything in flight.
-    Every admin route carries its own key, so none of this opens
-    anything up.
+  - **Mission Control, `/api` and `/thanks` are exempt.** The PTA is
+    inside /admin fixing the very numbers the notice is holding back,
+    and leaving `/api` alone keeps the Stripe webhook recording anything
+    in flight. `/thanks` is exempt because giving closing does not close
+    partnerships: it is where Stripe returns a business after it pays
+    and the only page its logo uploads from, so holding it would take a
+    sponsor's money and answer with a server error. `/admin` is exempt
+    with or without its trailing slash, because a bookmark carrying one
+    is exactly the lockout this must not cause. `/robots.txt` is exempt
+    too: there isn't one, so it 404s, and a 404 means "no rules, crawl
+    away" while a 503 on that one file means "stop crawling this host" —
+    the only effect here that could outlast the notice. Every admin route
+    carries its own key, so none of this opens anything up.
   - The check sits **in front of the page cache**, so raising it and its
     lifting both take effect on the next request rather than five
     minutes later, and the notice is `no-store` so no browser holds on

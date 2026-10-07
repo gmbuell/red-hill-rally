@@ -788,7 +788,23 @@ export default {
 
        503, not 200: this is temporary, and a crawler should come back
        rather than replace what it has indexed with this. */
-    if (sitePaused() && !url.pathname.startsWith('/api/') && url.pathname !== '/admin') {
+    /* /thanks is exempt for the same reason /api is. Giving is closed
+       but partnerships are not, and /thanks is where Stripe sends a
+       business after it pays — and the only place it can upload its
+       logo. Holding it would charge a sponsor and hand them a server
+       error. /admin keeps its trailing slash, because a bookmark with
+       one is exactly the lockout this must not cause.
+
+       /robots.txt is exempt because there isn't one: it 404s, and a 404
+       means "no rules, crawl away", while a 503 on that one file means
+       "stop crawling this host entirely" — a far bigger hammer than
+       503ing the pages, and the one thing here that could outlast the
+       notice by dropping the site out of the index. */
+    const reachable = url.pathname.startsWith('/api/')
+      || url.pathname === '/admin' || url.pathname === '/admin/'
+      || url.pathname === '/thanks'
+      || url.pathname === '/robots.txt';
+    if (sitePaused() && !reachable) {
       return new Response(pausedPage(), {
         status: 503,
         headers: {

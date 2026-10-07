@@ -296,7 +296,11 @@ const rallyAhead = (now = new Date()) => pacificAt(now).slice(0, 10) <= RALLY_DA
 const PAUSED = {
   until: '2026-10-07 09:00',
   heading: 'Final tallies coming in',
-  line: 'Winners are announced at the Gathering tomorrow at 8:00am in the quad.',
+  /* Named rather than "tomorrow": the notice stands into the morning it
+     is talking about, so a relative day is wrong for most of the hours
+     it is on screen, and wrong in the direction the paragraph above
+     warns against. */
+  line: `Winners are announced at the Gathering on ${RALLY_DAY.label} at 8:00am in the quad.`,
   thanks: 'Thank you, Red Hill. You blew us away.',
 };
 const sitePaused = (now = new Date()) => !!PAUSED.until && pacificAt(now) < PAUSED.until;
