@@ -63,17 +63,50 @@ describe('once the dollar goal is met', () => {
       .toBe(String(money(data.CAMPAIGN.goal + 2500)));
   });
 
+  /* The gap is only a reason to keep going while the checkout will
+     still take a gift, so this has to say when it is standing — half a
+     day before the close, derived from it rather than typed, the same
+     pin the giving-deadline tests use. */
+  const GIVING_OPEN = new Date(Date.parse(`${data.CAMPAIGN.close.slice(0, 10)}T00:00:00Z`) - 12 * 3600 * 1000);
+  const GIVING_CLOSED = new Date(Date.parse(`${data.CAMPAIGN.close.slice(0, 10)}T00:00:00Z`) + 36 * 3600 * 1000);
+
   it('says the goal is met and gives the gap as the reason to keep going', () => {
-    const banner = String(homeSlots(live(data.CAMPAIGN.goal))['goal-met']);
-    expect(banner).toContain(String(money(data.CAMPAIGN.goal)));
-    expect(banner).toContain(data.CAMPAIGN.closeDayLabel);
-    // The year's cost is the ask now, and both halves of the claim are
-    // links to the page that itemises it, rather than a number with
-    // nothing behind it.
-    expect(banner).toContain(String(money(data.ANNUAL_COST)));
-    expect(banner.match(/href="\/why-we-rally"/g) || []).toHaveLength(2);
-    // Nothing that reads as a fresh target to chase.
-    expect(banner).not.toMatch(/stretch|new goal|next goal/i);
+    vi.setSystemTime(GIVING_OPEN);
+    try {
+      const banner = String(homeSlots(live(data.CAMPAIGN.goal))['goal-met']);
+      expect(banner).toContain(String(money(data.CAMPAIGN.goal)));
+      expect(banner).toContain(data.CAMPAIGN.closeDayLabel);
+      // The year's cost is the ask now, and both halves of the claim are
+      // links to the page that itemises it, rather than a number with
+      // nothing behind it.
+      expect(banner).toContain(String(money(data.ANNUAL_COST)));
+      expect(banner.match(/href="\/why-we-rally"/g) || []).toHaveLength(2);
+      // Nothing that reads as a fresh target to chase.
+      expect(banner).not.toMatch(/stretch|new goal|next goal/i);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  /* Past the close it still celebrates, but it stops asking: a gift
+     /api/checkout now refuses cannot be the reason to keep going, and
+     the donate page it would send a family to no longer has a form. */
+  it('stops asking for gifts once giving has closed', () => {
+    vi.setSystemTime(GIVING_CLOSED);
+    try {
+      const banner = String(homeSlots(live(data.CAMPAIGN.goal))['goal-met']);
+      expect(banner).toContain('We did it!');
+      expect(banner).toContain(data.CAMPAIGN.closeLabel);
+      expect(banner).toContain('/rally-board');
+      expect(banner).not.toMatch(/from now until|still racing/i);
+
+      const note = String(boardSlots(live(data.CAMPAIGN.goal + 2775))['totals-note']);
+      expect(note).toContain(data.CAMPAIGN.closeLabel);
+      expect(note).toMatch(/Giving closed/);
+      expect(note).not.toMatch(/every gift helps fund them|Giving closes/);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('leaves the one-time campus work out of the year\'s cost', () => {

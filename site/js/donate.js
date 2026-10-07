@@ -18,6 +18,11 @@
   };
 
   const form = RH.qs('#donate-form');
+  // Past CAMPAIGN.close the worker drops the wizard and leaves the
+  // closed notice in its place; there is nothing here to wire up. Same
+  // guard shirt.js keeps for its own deadline.
+  if (!form) return;
+
   const backBtn = RH.qs('#back-btn');
   const nextBtn = RH.qs('#next-btn');
   const errorEl = RH.qs('#checkout-error');

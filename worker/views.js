@@ -497,7 +497,9 @@ export const homeSlots = (live) => {
        card all along. A gap to close is a reason; a bigger goal would
        have been a moved finish line. */
     'goal-met': met
-      ? html`<p class="goal-met"><strong>We did it!</strong> The Red Hill community passed our ${money(CAMPAIGN.goal)} goal. The <a href="/why-we-rally">six</a> programs and priorities supported by the Red Hill PTA cost about <a href="/why-we-rally">${money(ANNUAL_COST)} each year</a>. Every gift from now until ${CAMPAIGN.closeDayLabel} helps fund them, and every class is still racing to 100% participation until giving closes.</p>`
+      ? html`<p class="goal-met"><strong>We did it!</strong> The Red Hill community passed our ${money(CAMPAIGN.goal)} goal. The <a href="/why-we-rally">six</a> programs and priorities supported by the Red Hill PTA cost about <a href="/why-we-rally">${money(ANNUAL_COST)} each year</a>. ${givingOpen()
+          ? html`Every gift from now until ${CAMPAIGN.closeDayLabel} helps fund them, and every class is still racing to 100% participation until giving closes.`
+          : html`Giving closed ${CAMPAIGN.closeLabel} and the classroom race is locked &mdash; see how it finished on the <a href="/rally-board">Rally Board</a>.`}</p>`
       : null,
     'stat-raised': html`${money(raised)}`,
     // Second figure: the goal while it is still ahead, and once it is
@@ -740,9 +742,13 @@ export const boardSlots = (live) => {
     /* The note under the figures explains what the Rally rewards. With
        the dollar goal met there is one race left to explain, so it
        stops splitting a family's attention two ways and points at the
-       one thing still open, with the date it closes. */
+       one thing still open, with the date it closes — and once that
+       date has passed it stops asking, because the checkout now
+       refuses what it would be asking for. */
     'totals-note': met
-      ? html`We passed our ${money(CAMPAIGN.goal)} goal. The <a href="/why-we-rally">six</a> programs and priorities supported by the Red Hill PTA cost about <a href="/why-we-rally">${money(ANNUAL_COST)} each year</a>, so every gift helps fund them. Giving closes <strong>${CAMPAIGN.closeLabel}</strong>.`
+      ? (givingOpen()
+        ? html`We passed our ${money(CAMPAIGN.goal)} goal. The <a href="/why-we-rally">six</a> programs and priorities supported by the Red Hill PTA cost about <a href="/why-we-rally">${money(ANNUAL_COST)} each year</a>, so every gift helps fund them. Giving closes <strong>${CAMPAIGN.closeLabel}</strong>.`
+        : html`We passed our ${money(CAMPAIGN.goal)} goal. The <a href="/why-we-rally">six</a> programs and priorities supported by the Red Hill PTA cost about <a href="/why-we-rally">${money(ANNUAL_COST)} each year</a>, and what this Rally raised helps fund them. Giving closed <strong>${CAMPAIGN.closeLabel}</strong> and the classroom race is final.`)
       : html`We&rsquo;re rewarding two things: total dollars raised and participation. The ask is $100 a Rocket, but for participation any gift counts the same, whether it&rsquo;s $1 or $100. This is a school-wide effort.`,
     race: html`${race}`,
     /* Two races, and only one of them has a loser. Saying so under the
