@@ -794,6 +794,43 @@ describe('the page the Rally leaves behind', () => {
     expect(text).not.toContain(data.FINALE.heading);
   });
 
+  /* A bookmark with the trailing slash is the same door, and the one
+     the holding notice had to be taught about too. Swallowing it locks
+     the PTA out of the numbers with no way back in. */
+  it('leaves Mission Control reachable with its trailing slash', async () => {
+    wrapped();
+    const { res, text } = await page('/admin/');
+    expect(res.status).toBe(200);
+    expect(text).not.toContain(data.FINALE.heading);
+  });
+
+  /* Partnerships are deliberately not held to the giving close -- the
+     ladder runs September to October and a business paying on Thursday
+     is not late -- so /thanks is still where Stripe returns one, and
+     still the only place it can upload the logo. The wall on this page
+     promises that logo a spot; swallowing the page it arrives through
+     would be taking the money and quietly dropping the thing paid for. */
+  it('leaves the thank-you page reachable for partners still paying', async () => {
+    wrapped();
+    const { res, text } = await page('/thanks');
+    expect(res.status).toBe(200);
+    expect(text).not.toContain(data.FINALE.heading);
+    expect(text).toContain('id="logo-panel"');
+  });
+
+  /* The footer on this page keeps the matching-gift link, because a
+     family filing taxes on a September gift still needs it. A link that
+     lands back on the page you are reading is not a link. */
+  it('leaves the page its own footer links to reachable', async () => {
+    wrapped();
+    const { text } = await page('/');
+    expect(text).toContain('href="/matching"');
+    const matching = await page('/matching');
+    expect(matching.res.status).toBe(200);
+    expect(matching.text).toContain('Double Your Gift');
+    expect(matching.text).not.toContain(data.FINALE.heading);
+  });
+
   it('keeps the security headers the asset layer sets', async () => {
     wrapped();
     const { res } = await page('/rally-board');

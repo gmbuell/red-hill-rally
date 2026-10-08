@@ -55,7 +55,19 @@ export async function renderPage(request, env, ctx) {
      single D1 read between refreshes rather than one each. The total is
      live for exactly that reason -- a refunded gift corrects the page
      without anybody editing it. */
-  const exemptFromFinale = path === '/admin' || path === '/robots.txt';
+  /* The same four paths the holding notice lets through, for the same
+     reasons: Mission Control with or without its trailing slash (a
+     bookmark carrying one is exactly the lockout this must not cause);
+     robots.txt, which has to keep 404ing rather than answer HTML; and
+     /thanks, because partnerships are not held to the giving close --
+     a business paying in October lands there from Stripe, and it is the
+     only place it can upload the logo the wall below promises it.
+     /matching stays reachable for the same reason the footer still
+     links to it: a family filing taxes on a September gift needs it,
+     and a link that lands back on the page you are reading is not a
+     link. */
+  const exemptFromFinale = path === '/admin' || path === '/admin/'
+    || path === '/robots.txt' || path === '/thanks' || path === '/matching';
   if (siteWrapped() && request.method === 'GET' && !exemptFromFinale) {
     const key = new Request(`${url.origin}/__wrapped`);
     const hit = await caches.default.match(key);

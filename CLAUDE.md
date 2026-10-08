@@ -700,7 +700,9 @@ flip to live, in this order:
   two congratulations, the partner wall, and when the next Rally is. An
   old link off a flyer or a September email lands on the result rather
   than a donate form that refuses or a race that has locked. **Mission
-  Control and `/robots.txt` are exempt.**
+  Control (with or without its trailing slash), `/robots.txt`,
+  `/thanks` and `/matching` are exempt** — the same list the holding
+  notice lets through, for the same reasons.
   - **It is short on purpose.** It carried four blocks of campaign
     statistics for about an hour before the PTA cut them: the gift
     counts, the medians, the grandparents belong in the recap email and
@@ -738,6 +740,15 @@ flip to live, in this order:
     crawl away". Serving HTML there is a malformed robots.txt — and
     because every path is this page, it drops Lighthouse SEO to 92 on
     *every* page at once and fails CI. That is how it was caught.
+  - **`/thanks` is exempt**, and `/admin/` with it, for the reasons the
+    holding notice spells out three lines away in `worker/index.js`.
+    Partnerships are deliberately not held to the giving close, so a
+    business paying in October still comes back from Stripe to
+    `/thanks?partner=…&sid=…`, and that page is the only place it can
+    upload its logo. Swallowing it would take a sponsor's money and
+    answer with the closing page — while the wall below promises that
+    logo a spot. A bookmark carrying `/admin/` is the Mission Control
+    lockout, same as under the notice.
   - It borrows the real page pipeline rather than short-circuiting the
     way the holding notice does: `/` is fetched from the assets binding
     for its security headers, its body is replaced, and the result is
@@ -746,7 +757,9 @@ flip to live, in this order:
   - **No header, and a footer with no nav** (`footerPlain`). Every one
     of the footer's nine links would lead back to the page the reader is
     already on. The EIN and the matching-gift link stay, because a
-    family filing taxes on a September gift still needs them.
+    family filing taxes on a September gift still needs them — which is
+    why `/matching` is exempt too. A link that lands back on the page
+    you are reading is not a link, and it is the only one left.
   - **The partner wall comes along**, the same `mergedPartners` wall
     /partners and the Rally Board carry, logos and all, in the wide
     `.wrap` rather than the narrow column so the grid gets more than two
@@ -760,9 +773,11 @@ flip to live, in this order:
   - `test/pages.spec.js` pins the page at every public path, the live
     total (with a figure deliberately unlike the real one, so a
     hardcoded total fails), the flooring (that $87,654 never prints as
-    $88,000), the partner wall, the robots.txt exemption, the Mission
-    Control exemption (asserting it is still Mission Control, not merely
-    a 200), and the security
+    $88,000), the partner wall, every one of the exemptions — robots.txt,
+    Mission Control with and without its slash (asserting it is still
+    Mission Control, not merely a 200), `/thanks` still carrying its
+    logo panel, `/matching` still answering the footer link that points
+    at it — and the security
     headers. The suite otherwise stands outside it, cleared once in
     `test/apply-migrations.js`.
 - **Holding the site behind a notice** — `PAUSED` in `data.js` replaces
