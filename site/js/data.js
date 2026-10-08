@@ -330,6 +330,20 @@ const FINALE = {
   blurb: 'Rocket Rally 2026 is over. Thank you for rallying with us.',
   goalLine: 'past our goal of',
   roundDown: 1000,
+  /* A ceiling on the live figure, in dollars: the page prints the lower
+     of what the database holds and this. The ledger still carries the
+     gifts that arrived after giving closed at 7:00pm, which the PTA is
+     refunding, so a bare live read says more than the Rally actually
+     raised on the basis every prize was awarded on. Capping rather than
+     typing the number outright keeps the one property that matters —
+     the page can never claim money the PTA does not have. Refunds walk
+     the live figure down past the cap and the page follows them down.
+
+     Not a cutoff on `created` instead, which would look more
+     principled and be wrong: a check the PTA records by hand next week
+     is stamped the day it is typed in, so a date filter would quietly
+     drop real gifts as the office works through the backlog. */
+  cap: 101143,
   raisedLead: 'We raised roughly',
   /* Sits under the figure rather than inside it, so it still stands if
      the total cannot be read. The claim is about where the money goes —

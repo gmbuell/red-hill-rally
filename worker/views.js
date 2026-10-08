@@ -315,11 +315,13 @@ const current = (path, here) => (path === here ? raw(' aria-current="page"') : '
 
    The money reads as one sentence running into the figure — "We raised
    roughly / $101,000" — with the goal line under it. The figure is
-   **floored** to `FINALE.roundDown` so "roughly" is true of the ledger
-   behind it. It rounds down and never up, for the same reason the prizes
-   page's leader figure did: a number on a public page must never be
-   above what was actually raised, and refunds only ever move this one
-   down.
+   held to the lower of the live total and `FINALE.cap`, then **floored**
+   to `FINALE.roundDown`. Both only ever push it down, for the same
+   reason the prizes page rounded its leader figure down: a number on a
+   public page must never be above what was actually raised. The cap
+   holds off the gifts that arrived after giving closed and are being
+   refunded; the floor makes "roughly" true; and a refund walks the live
+   total down past the cap, where the page follows it.
 
    `partners` is the same D1 shape the wall takes everywhere else, and
    it rides along on the `campaignStats` read the total already costs.
@@ -328,9 +330,10 @@ const current = (path, here) => (path === here ? raw(' aria-current="page"') : '
    page another screen and a half, and the grid is the one thing here
    that is not meant to be read a line at a time. */
 export const finalePage = (raised, partners) => {
-  const met = raised >= CAMPAIGN.goal;
   const step = FINALE.roundDown || 0;
-  const shown = step > 0 ? Math.floor(raised / step) * step : raised;
+  const held = FINALE.cap > 0 ? Math.min(raised, FINALE.cap) : raised;
+  const shown = step > 0 ? Math.floor(held / step) * step : held;
+  const met = shown >= CAMPAIGN.goal;
   const over = shown - CAMPAIGN.goal;
   const wall = mergedPartners(partners);
   return String(html`<!DOCTYPE html>

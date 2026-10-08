@@ -722,6 +722,30 @@ describe('the page the Rally leaves behind', () => {
      floored. Printing the nearest thousand would put $87,654 on the page
      as $88,000 — money the PTA does not have, which is the one thing
      this page must never claim. */
+  const floorTo = (n) => Math.floor(n / data.FINALE.roundDown) * data.FINALE.roundDown;
+  const shown = (n) => `$${floorTo(n).toLocaleString('en-US')}`;
+
+  /* The ledger still holds the gifts that arrived after giving closed,
+     which the PTA is refunding, so the page prints the lower of what it
+     reads and FINALE.cap. */
+  it('never prints more than the cap', async () => {
+    await gift({ amount_total: (data.FINALE.cap + 4000) * 100 });
+    wrapped();
+    const { text } = await page('/');
+    expect(text).toContain(shown(data.FINALE.cap));
+    expect(text).not.toContain(shown(data.FINALE.cap + 4000));
+  });
+
+  /* The half that matters: capping must not quietly freeze the figure,
+     or a refunded gift would stay on the page forever. */
+  it('still follows a refund down below the cap', async () => {
+    await gift({ amount_total: (data.FINALE.cap - 3000) * 100 });
+    wrapped();
+    const { text } = await page('/');
+    expect(text).toContain(shown(data.FINALE.cap - 3000));
+    expect(text).not.toContain(shown(data.FINALE.cap));
+  });
+
   it('rounds the total down, never up, so "roughly" stays true', async () => {
     await gift({ amount_total: 8765400 });
     wrapped();

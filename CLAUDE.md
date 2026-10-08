@@ -714,16 +714,31 @@ flip to live, in this order:
     handed back. Below the goal the money drops out rather than printing
     `$0`, the same rule the home page's thank-you used.
     - The money reads as one sentence running into the figure —
-      *We raised roughly / **$101,000** / past our goal of $50,000* —
-      and the figure is **floored to `FINALE.roundDown`** (a thousand) so
-      "roughly" is true of the ledger behind it. Down and never up, for
-      the reason the prizes page rounded its leader figure down: a number
-      on a public page must never be above what was actually raised.
-      "Roughly" would also permit rounding to nearest; the floor stands
-      because understating is the safer way for this page to be wrong.
-      The refunds in flight walk this number down, so **$101,000 becomes
-      $99,000 if enough of them land** — which is the page being honest,
-      not a bug. `0` turns the rounding off and prints to the dollar.
+      *We raised roughly / **$101,000** / past our goal of $50,000* — and
+      the figure is the live total held down twice: to **`FINALE.cap`**
+      (dollars) and then **floored to `FINALE.roundDown`** (a thousand).
+      Both only ever push it down, for the reason the prizes page rounded
+      its leader figure down: a number on a public page must never be
+      above what was actually raised. "Roughly" would also permit
+      rounding to nearest; the floor stands because understating is the
+      safer way for this page to be wrong.
+      - **The cap exists because the ledger overstates the Rally.** It
+        still holds the gifts that arrived after giving closed at 7:00pm,
+        which the PTA is refunding, so a bare live read says more than
+        the Rally raised on the basis every prize was awarded on. Capping
+        rather than typing the number outright keeps the property that
+        matters: the page prints the *lower* of the two, so refunds still
+        walk it down past the cap and the page follows them
+        (**$101,000 becomes $99,000 if enough of them land** — the page
+        being honest, not a bug). `test/pages.spec.js` pins both
+        directions; the second is the one worth keeping, since a cap that
+        froze the figure would leave refunded money on the page forever.
+      - **Not a cutoff on `created`**, which looks more principled and is
+        wrong: `recordOfflineGift` stamps a check with the moment it is
+        typed into Mission Control, not when the family handed it over,
+        so a date filter would quietly drop real gifts as the office
+        works through its backlog. Set `cap` to `0` to read the ledger
+        straight, and `roundDown` to `0` to print to the dollar.
   - **It names two prize winners**, which is the one place a student
     name reaches a public page. Every other page is probed to make sure
     none does, and `FINALE.winners` is typed copy rather than anything
