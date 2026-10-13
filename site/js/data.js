@@ -318,9 +318,17 @@ const rallyAhead = (now = new Date()) => pacificAt(now).slice(0, 10) <= RALLY_DA
    `raisedLead` runs into the figure as one sentence — "We raised
    roughly / $101,000" — with the goal line under it.
 
-   Mission Control stays reachable, since the PTA is still working. */
+   Mission Control stays reachable, since the PTA is still working.
+
+   **Off since 13 October.** It did its job for a week, while the
+   numbers were being corrected and the refunds worked through. What
+   took it down was families asking to see the Rally and not being able
+   to: the board, the honor roll and the classroom race are the thing
+   people actually want to look back at, and one page in front of them
+   had stopped being a kindness. Everything below is kept and still
+   works — set `on` back to true and the closing page returns. */
 const FINALE = {
-  on: true,
+  on: false,
   /* The label names which Rally this was, which is the one thing a page
      that outlives its campaign owes somebody arriving in February off an
      old flyer. "You blew us away" sat here with "thank you for rallying
