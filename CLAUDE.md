@@ -891,6 +891,14 @@ flip to live, in this order:
       outright, which is the backstop for a tab left open through
       Tuesday evening. Money taken after the race locked would credit
       a class that can no longer move.
+    - **Three sentences ask for a gift and have to stop asking.** The
+      home banner's goal-met paragraph, the board's totals note and
+      the shirt page's `shirt-also` line each offered a gift in the
+      present tense; all three now gate on `givingOpen` and point at
+      the Rally Board once it is false. The shirt one is the easy one
+      to miss: its own deadline is two weeks earlier, so that page is
+      already sitting in its closed state when this close arrives, and
+      "you can still give" was true the whole fortnight in between.
     - **Partnerships are not held to it.** `/api/partner/checkout` is
       its own handler and stays open: the ladder runs September to
       October, partner money is deliberately outside the classroom

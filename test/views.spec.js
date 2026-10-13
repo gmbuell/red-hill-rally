@@ -947,4 +947,16 @@ describe('the giving deadline', () => {
     expect(closed).toContain(data.CAMPAIGN.closeLabel);
     expect(closed).toContain('/rally-board');
   });
+
+  /* The shirt page closed two weeks earlier and spent that fortnight
+     telling families they could still give, which was true then. Past
+     this close it would be pointing at a form that is no longer served
+     and a checkout that refuses, so it points at the board instead. */
+  it('stops the shirt page offering a gift once giving has closed', () => {
+    vi.setSystemTime(AFTER);
+    const also = String(shirtSlots()['shirt-also']);
+    expect(also).not.toContain('/donate');
+    expect(also).toContain(data.CAMPAIGN.closeLabel);
+    expect(also).toContain('/rally-board');
+  });
 });

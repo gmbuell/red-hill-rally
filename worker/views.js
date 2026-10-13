@@ -980,7 +980,14 @@ export const linkSlots = () => ({
    Past the deadline the form goes rather than greys out, and the page
    says what happened and points at the thing a family can still do.
    `null` removes the element, so whichever of the two is wrong for the
-   moment never reaches the browser at all. */
+   moment never reaches the browser at all.
+
+   The thing a family can still do changes at CAMPAIGN.close, which is
+   two weeks after the shirt deadline: before it, a gift; after it,
+   nothing but looking at how the race finished. Offering the donate
+   page past the close would be asking for a gift `/api/checkout`
+   refuses — the same sentence the home banner and the board's totals
+   note already gate on `givingOpen()`. */
 export const shirtSlots = () => (shirtsOpen() ? {
   'shirt-assurance': html`Order by <strong>${SHIRT.deadlineLabel}</strong> &mdash; shirts come to your Rocket at school before Rally day`,
   'shirt-lede': html`Rally shirts are <strong>${money(SHIRT.price)}</strong>, and <strong>${money(SHIRT.credit)}</strong> of every one counts toward your Rocket and their classroom, the same as a gift. The rest buys the shirt.`,
@@ -990,5 +997,7 @@ export const shirtSlots = () => (shirtsOpen() ? {
   'shirt-assurance': html`Ordering closed ${SHIRT.deadlineLabel}`,
   'shirt-form': null,
   'shirt-closed': html`Shirt ordering closed <strong>${SHIRT.deadlineLabel}</strong>, so the order could reach the printer in time for Rally day. Shirts are on their way to the Rockets who ordered one.`,
-  'shirt-also': html`You can still give: <a href="/donate">make a donation</a> &mdash; every gift counts for your Rocket and their class.`,
+  'shirt-also': givingOpen()
+    ? html`You can still give: <a href="/donate">make a donation</a> &mdash; every gift counts for your Rocket and their class.`
+    : html`Giving closed ${CAMPAIGN.closeLabel} and the classroom race is locked &mdash; see how it finished on the <a href="/rally-board">Rally Board</a>.`,
 });
