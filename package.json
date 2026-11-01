@@ -13,12 +13,12 @@
     "wcag": "node scripts/wcag.mjs"
   },
   "devDependencies": {
-    "@cloudflare/vitest-pool-workers": "^0.22.0",
-    "axe-core": "^4.13.0",
-    "lighthouse": "^13.5.0",
+    "@cloudflare/vitest-pool-workers": "^0.23.0",
+    "axe-core": "^4.14.0",
+    "lighthouse": "^13.6.0",
     "puppeteer-core": "^25.12.0",
-    "vitest": "^4.1.11",
-    "wrangler": "^4.143.0"
+    "vitest": "^5.0.5",
+    "wrangler": "^4.156.0"
   },
   "allowScripts": { "esbuild": true, "workerd": true }
 }
